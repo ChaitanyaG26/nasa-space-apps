@@ -4,11 +4,15 @@ This module appears **below the existing simulation graphs**, after a lunar site
 
 ## What it provides
 
-- A selection of 14 **representative** NASA-operated, NASA-used, and NASA sounding-rocket launch ranges. These are **not** 14 approved lunar-launch pads and **not** a guaranteed complete inventory. Current range and vehicle eligibility must be confirmed through operators.
+- A deliberately limited selection of three major U.S. orbital launch locations: **Cape Canaveral Space Force Station**, **Kennedy Space Center (LC-39)**, and **Vandenberg Space Force Base**. Current range and vehicle eligibility must be confirmed with the operators; none is presented as a preapproved lunar launchpad.
 - Approximate geocentric lunar coordinates from a truncated analytical Moon theory, and an idealized Earth-centered, impulsive Hohmann-like transfer from circular low Earth orbit to the approximate lunar distance.
 - Departure-time samples centered on the user-selected lunar **arrival** time, with a simple arrival-time and Moon-bearing alignment **heuristic**, a transfer time and TLI ΔV estimate.
 - Optional manual entry of *officially sourced* COLA hold intervals in UTC. Candidate times inside those intervals are suppressed. A time outside those intervals remains **NOT VERIFIED**.
 - A reserved placeholder for a future Higgsfield animation, with **no generated video** or live Higgsfield integration.
+
+## Launch-site acknowledgement
+
+The three selected locations are major U.S. launch ranges used for orbital missions. Many other NASA-associated sites primarily support sounding rockets, suborbital research, smaller vehicles, or specialized missions, although additional facilities also conduct orbital launches. The app's three-site selector is a deliberate educational simplification, not a complete inventory of U.S. or international launch capability.
 
 ## Science and operational restrictions
 
