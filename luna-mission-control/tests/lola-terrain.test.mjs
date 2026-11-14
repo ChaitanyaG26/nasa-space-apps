@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {verifyLola,elevationKm,regionalTerrain} from "../web/lola-terrain.mjs";
+const vals=new Array(1440*60).fill(1.234);
+const data={schema_version:1,grid:{width:1440,height:60,step_deg:.25},elevations_km:vals};
+test("NASA LOLA cache shape is verified",()=>assert.equal(verifyLola(data),data));
+test("Surface height uses km above lunar reference sphere",()=>assert.equal(regionalTerrain(data,-89.5,0).elevation_km,1.234));
+test("Latitude outside real NASA LOLA crop returns unknown",()=>assert.equal(elevationKm(data,0,0),null));
+test("Longitude wraps across 180-degree seam",()=>assert.equal(elevationKm(data,-80,180),elevationKm(data,-80,-180)));
+test("Invalid dataset is rejected",()=>assert.throws(()=>verifyLola({...data,elevations_km:[]}),/invalid/));

@@ -35,10 +35,13 @@ jobs:
           from pathlib import Path
           p=Path('luna-mission-control/web/assets/horizons-moon-reference.json')
           d=json.loads(p.read_text())
-          assert d['schema_version']==1
+          assert d['schema_version']==2
           assert len(d['samples']) > 500
           assert d['samples'][0][0] < d['samples'][-1][0]
           assert all(len(r)==7 for r in d['samples'])
+          from math import hypot
+          assert all(300000 < hypot(*r[4:7]) < 500000 for r in d['samples'])
+          assert all(130000000 < hypot(*r[1:4]) < 170000000 for r in d['samples'])
           print('Verified',len(d['samples']),'reference ephemeris records.')
           PY
       - name: Publish generated dataset

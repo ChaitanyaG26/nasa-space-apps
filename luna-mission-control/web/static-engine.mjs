@@ -72,7 +72,7 @@ export function simulate(input){
   return simulateWithGeometry(r,gs,"OFFLINE ILLUSTRATIVE GEOMETRY");
 }
 
-export function simulateWithGeometry(input,gs,ephemerisLabel){
+export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null){
   // Only a validated and continuous NASA/JPL series should pass in a JPL label.
   const r=validated({...input,data_mode:"demo"}),start=Date.parse(r.landing_time),N=r.duration_days*24;
   if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*HOUR)){
@@ -97,7 +97,7 @@ export function simulateWithGeometry(input,gs,ephemerisLabel){
   const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2,0);
   const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent,commsOk=earth.maxGap<=24;
   return {site:{latitude:r.latitude,longitude:r.longitude},landing_time:r.landing_time,duration_days:r.duration_days,
-    quality:{ephemeris:ephemerisLabel,terrain:'FLAT HORIZON ASSUMPTION — NOT LOLA-VALIDATED',
+    terrain:terrainInfo,quality:{ephemeris:ephemerisLabel,terrain:terrainInfo?.coverage?'NASA LOLA REGIONAL ELEVATION ONLY — NO TERRAIN HORIZON MODEL':'FLAT HORIZON ASSUMPTION — LOLA HEIGHT UNAVAILABLE',
       temperature:'UNVALIDATED SURFACE-RESPONSE PROXY — NOT SPACECRAFT TEMPERATURE',seismic:'NO SITE-SPECIFIC SEISMIC ASSESSMENT',rover:'NO ROVER TRAVERSABILITY DETERMINED'},
     metrics:{total_energy_wh:Math.round(sum),sun_hours:sun.hours,earth_hours:earth.hours,earth_fraction:round(earth.hours/N,3),
       max_earth_blackout_h:earth.maxGap,max_darkness_h:sun.maxGap,min_soc:round(minSoc,1),
