@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeCatalog,demoShipPoint} from "../web/orbit-visualization.mjs";
+import {normalizeCatalog,demoShipPoint,keplerTransferPoint,idealTransferDays} from "../web/orbit-visualization.mjs";
 
 test("Public OMM catalog metadata is filtered, not treated as conjunction screening",()=>{
  const entries=[{OBJECT_NAME:"ISS",NORAD_CAT_ID:25544,EPOCH:"2026-11-14T12:00:00",MEAN_MOTION:15.5},
@@ -22,11 +22,21 @@ test("Catalog display never asserts an operational avoidance solution",()=>{
  assert.match(source,/not real-time propagated coordinates/);
  assert.match(source,/CACHE_MS=2\*60\*60\*1000/);
 });
-test("Sidebar always exposes last action and optimization appears in results header",()=>{
+test("Top-of-globe mission toolbar has unique simulation and comparison controls",()=>{
  const html=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
  const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");
- assert.match(html,/<footer class="sidebar-actions"><button id="simulate"/);
- assert.match(html,/results-optimize/);
- assert.ok(html.indexOf('id="optimize"')>html.indexOf('id="resultsPage"'));
- assert.match(css,/sidebar \.sidebar-actions #simulate/);
+ assert.match(html,/class="mission-toolbar"/);
+ for(const id of ["simulate","optimize","preserve","date","time"]){
+  assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+" must be unique");
+ }
+ assert.ok(html.indexOf('id="simulate"')<html.indexOf('id="mapPage"'));
+ assert.match(css,/\.mission-toolbar/);
+});
+test("Idealized transfer solves Kepler time-of-flight and slows near apogee",()=>{
+ const duration=idealTransferDays(200,384400);
+ assert.ok(duration>4.5&&duration<5.5);
+ const near=keplerTransferPoint(0.1),middle=keplerTransferPoint(.5),far=keplerTransferPoint(.9);
+ assert.ok(near.radiusKm<middle.radiusKm&&middle.radiusKm<far.radiusKm);
+ assert.ok(keplerTransferPoint(1).radiusKm>380000);
+ assert.ok(Number.isFinite(middle.x)&&Number.isFinite(middle.y));
 });
