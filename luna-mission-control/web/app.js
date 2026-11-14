@@ -202,15 +202,20 @@ function timeRibbon(title,samples,key){
  const marks=utcTicks(Date.parse(samples[0].time),Date.parse(samples.at(-1).time),5);
  return '<div class="chart ribbon-chart"><div class="chart-head"><strong>'+escapeHtml(title)+'</strong><span>UTC</span></div>'+
  '<div class="windows">'+subs.map(s=>'<span title="'+escapeHtml(s.time+" UTC")+
- '" style="flex:1;background:'+(s[key]?"#32a994":"#dbe2e8")+'"></span>').join("")+'</div>'+
+ '" style="flex:1;background:'+(s[key]?(key==="power_conservation_advisory"?"#dba748":"#32a994"):"#dbe2e8")+'"></span>').join("")+'</div>'+
  '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
 }
 function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
 function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Projected regolith temperature (°C) · screening model",s,"temperature_proxy_c","#b46b6b")+
+chart("Projected lander thermal node (°C)",s,"lander_temperature_c","#8360ac")+
+chart("Modeled heater power (W)",s,"heater_w","#bf853c")+
+(m.predicted_rf_link_hours!==null?chart("Projected S-band RF link margin (dB)",s,"rf_margin_db","#307db4")+
+timeRibbon("Projected RF link availability · teal = assumed link margin sufficient",s,"rf_link_available"):
+'<div class="chart"><p class="muted">RF link budget unavailable without NASA Earth range; only geometric visibility is shown.</p></div>')+
 (s.some(x=>Number.isFinite(x.diviner_observed_c))?
- plotMeasured(s,"diviner_observed_c","#8052aa")':
+ plotMeasured(s,"diviner_observed_c","#8052aa"):
  '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
-timeRibbon("Power-conservation advisory · teal = no advisory",s,"power_conservation_advisory")+windows(s)+
+timeRibbon("Power-conservation advisory · amber = advisory",s,"power_conservation_advisory")+windows(s)+
 '<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?(
  'Maximum modeled skyline obstruction: '+data.regional_horizon.max_obstruction_deg+'°; '+
  (data.regional_horizon.near_field_resolved?
@@ -223,10 +228,17 @@ timeRibbon("Power-conservation advisory · teal = no advisory",s,"power_conserva
  (data.quality.thermal_model_mean_abs_error_c!==undefined&&data.quality.thermal_model_mean_abs_error_c!==null?
  ' · Mean absolute difference vs historical climatology: '+data.quality.thermal_model_mean_abs_error_c+' °C (NOT forecast validation)':'')+
  ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No certified rover path or seismic risk rating.</div>'+
+(data.rover_route?.available?
+ '<div class="chart"><div class="chart-head"><strong>LOLA rover corridor screening</strong></div><p class="muted">'+
+ escapeHtml(data.rover_route.status)+
+ (data.rover_route.found?' · Route '+data.rover_route.length_m+' m · Peak segment slope '+
+ data.rover_route.maximum_segment_slope_deg+'°':'')+
+ ' · NOT verified rover-safe terrain.</p></div>':
+ '<div class="chart"><p class="muted">No NASA 20-m terrain patch for rover corridor screening at this coordinate.</p></div>')+
 '<section class="terrain-panel" data-site-lat="'+data.site.latitude+'" data-site-lon="'+data.site.longitude+'">'+
 '<div class="terrain-heading"><h3>3D local lunar terrain</h3><small>NASA LOLA DEM · drag to rotate · scroll to zoom</small></div>'+
 '<p class="muted">Loading elevation grid...</p></section></div>'}
-function render(){resetCharts();let html=lastResult?'<div class="quality">NASA DATA: JPL Horizons ephemeris and LOLA global elevation. PROJECTED: power, battery SOC, regolith temperature, Earth visibility, regional skyline, and power-conservation advisory. ASSUMED: hardware efficiency, panel area/tilt, load, battery, and thresholds. No site-calibrated Diviner temperature, link budget, rover hazards, seismic forecast, or certified landing assessment.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;attachChartInteractions($("results"));}
+function render(){resetCharts();let html=lastResult?'<div class="quality">NASA DATA: JPL Horizons geometry, NASA LOLA global and selected 20-meter terrain, and archived Diviner temperature bins where available. PROJECTED: power, battery SOC, lander thermal node, RF link margin, regolith temperature, and terrain-dependent visibility. All spacecraft and rover properties remain assumptions. Seismic hazard is UNASSESSED, not certified safe.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;attachChartInteractions($("results"));}
 let terrainInstances=[];
 async function mountTerrainViews(){
  terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
