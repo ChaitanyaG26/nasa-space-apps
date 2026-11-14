@@ -53,3 +53,8 @@ def static_engine():
 @app.get("/launch-window.mjs")
 def launch_window_module():
     return FileResponse(WEB/"launch-window.mjs",media_type="application/javascript")
+
+
+@app.get("/science-info.mjs")
+def science_information_module():
+    return FileResponse(WEB/"science-info.mjs",media_type="application/javascript")
