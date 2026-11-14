@@ -44,7 +44,7 @@ export async function loadJplReference(){
 }
 
 export function centerPositionsAtUtc(data,when){
-  const millis=Date.parse(when);
+  const millis=typeof when==='number' ? when : Date.parse(when);
   if(!Number.isFinite(millis))throw Error("Invalid Horizons UTC timestamp");
   const rows=data.samples,first=rows[0][0],last=rows.at(-1)[0];
   if(millis<first||millis>last)throw Error("NASA Horizons cache covers "+data.start_utc.slice(0,10)+" through "+data.end_utc.slice(0,10)+" UTC. Select a supported time.");
