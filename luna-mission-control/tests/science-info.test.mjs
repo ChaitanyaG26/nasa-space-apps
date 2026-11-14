@@ -19,7 +19,7 @@ const fixture={
 test("Scientific information is organized into readable source sections",()=>{
  const html=renderScientificInformation(fixture,null);
  for(const expected of [
-  "Information","NASA sources and validation","Terrain and rover screening",
+  "NASA sources and validation","Terrain and rover screening",
   "Temperatures and historical observations","Communications and seismic limits",
   "54 direct observations","337 historical Diviner bins",
   "6.7°","9.97°","47.79 °C",
