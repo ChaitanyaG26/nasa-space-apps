@@ -1,5 +1,6 @@
 /** Browser LUNA mission engine: NASA-derived geometry, engineering projections. */
 import {projectRegolithTemperatureC,powerConservationFlag,THERMAL_PROVENANCE} from './thermal-projection.mjs';
+import {thermalParameters,radioParameters,thermalStep,radioLinkBudget} from './engineering-models.mjs';
 const PI=Math.PI,rad=PI/180,epoch=Date.parse('2026-11-20T00:00:00Z'),HOUR=3600000;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),round=(x,d=2)=>Number(x.toFixed(d)),iso=x=>new Date(x).toISOString();
 function validated(input){
@@ -9,6 +10,7 @@ function validated(input){
   const limits={latitude:[-90,90],longitude:[-180,180],duration_days:[1,21],area_m2:[.01,100],panel_tilt_deg:[0,90],panel_az_deg:[0,360],battery_wh:[1,500000],load_w:[.01,5000],reserve_percent:[0,90]};
   for(const [k,[lo,hi]] of Object.entries(limits))if(!Number.isFinite(r[k])||r[k]<lo||r[k]>hi)throw Error('Invalid '+k);
   if(r.data_mode&&r.data_mode!=='demo')throw Error('GitHub Pages offers offline illustrative geometry only. Live JPL Horizons requires the Python backend.');
+  Object.assign(r,thermalParameters(r),radioParameters(r));
   r.landing_time=iso(r.landing_time);return r;
 }
 function azel(lat,lon,dec,sub){
@@ -109,31 +111,47 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
   if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*HOUR)){
     throw Error("Ephemeris series does not fully cover the selected mission");
   }
-  let energy=r.battery_wh*.9,firstViolation=null;
+  let energy=r.battery_wh*.9,firstViolation=null,landerTempK=r.initial_temp_c+273.15;
+  let heaterEnergyWh=0;
   const rows=[];
   for(let i=0;i<=N;i++){
     const g=gs[i],fraction=solarVisibility(g,regionalHorizon),power=photovoltaicPower(g,r,fraction),time=iso(start+i*HOUR);
+    const irradiance=g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE;
+    const regolithC=projectRegolithTemperatureC(irradiance,g.sun_el,fraction);
+    const geometricEarth=earthVisibility(g,regionalHorizon);
+    const link=g.earth_distance_km?radioLinkBudget(g.earth_distance_km,r):null;
+    const step=i<N?thermalStep(landerTempK,regolithC,irradiance,fraction,r.load_w,r,energy>0):null;
+    const landerTempC=landerTempK-273.15;
     rows.push({time,hours:i,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
-      power_w:round(power),sun_visible:fraction>0,earth_visible:earthVisibility(g,regionalHorizon),solar_fraction:round(fraction,3),
-      solar_irradiance_w_m2:g.sun_distance_km?round(solarIrradiance(g.sun_distance_km)):REFERENCE_SOLAR_IRRADIANCE,
+      power_w:round(power),sun_visible:fraction>0,earth_visible:geometricEarth,solar_fraction:round(fraction,3),
+      solar_irradiance_w_m2:round(irradiance),
       battery_wh:round(energy),soc:round(100*energy/r.battery_wh),diviner_observed_c:null,
-      // PROJECTION, not NASA-measured site temperature or spacecraft hardware temperature.
-      temperature_proxy_c:projectRegolithTemperatureC(g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE,g.sun_el,fraction),
+      temperature_proxy_c:regolithC,
       temperature_status:'PROJECTED REGOLITH RADIATIVE EQUILIBRIUM — NOT VALIDATED',
-      power_conservation_advisory:powerConservationFlag(100*energy/r.battery_wh,r.reserve_percent,power,r.load_w)});
+      lander_temperature_c:round(landerTempC),
+      lander_temperature_status:'PROJECTED ONE-NODE THERMAL HARDWARE — NOT FLIGHT VALIDATED',
+      heater_w:round(step?.average_heater_w??0),
+      thermal_screen_flag:landerTempC<r.operational_min_c||landerTempC>r.operational_max_c,
+      rf_margin_db:link?round(link.margin_db):null,
+      rf_link_available:link?Boolean(geometricEarth&&link.passes_assumed_budget):null,
+      earth_range_km:Number.isFinite(g.earth_distance_km)?round(g.earth_distance_km):null,
+      power_conservation_advisory:powerConservationFlag(100*energy/r.battery_wh,r.reserve_percent,power,r.load_w+(step?.average_heater_w??0))});
     if(firstViolation===null&&energy<r.battery_wh*r.reserve_percent/100)firstViolation=time;
     if(i===N)break;
     const next=gs[i+1],nextP=photovoltaicPower(next,r,solarVisibility(next,regionalHorizon));
-    const net=(power+nextP)/2-r.load_w;
+    const heaterW=step.average_heater_w;
+    heaterEnergyWh+=step.heater_energy_wh;
+    const net=(power+nextP)/2-r.load_w-heaterW;
     energy=clamp(energy+(net>=0?net*.95:net/.9),0,r.battery_wh);
-    // Spacecraft temperature cannot be inferred from Sun elevation alone.
-    // NASA Diviner measures regolith brightness temperatures, not component
-    // temperatures for this unspecified lander.
+    landerTempK=step.temp_k;
 
   }
   const earth=windows(rows,'earth_visible'),sun=windows(rows,'sun_visible');
+  const linkWindows=rows.every(x=>x.rf_link_available!==null)?windows(rows,'rf_link_available'):null;
   const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2,0);
-  const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent,commsOk=earth.maxGap<=24;
+  const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent;
+  // In NASA mode use the assumed RF budget; demo mode has geometry only.
+  const commsOk=(linkWindows??earth).maxGap<=24;
   return {site:{latitude:r.latitude,longitude:r.longitude},landing_time:r.landing_time,duration_days:r.duration_days,
     terrain:terrainInfo,regional_horizon:regionalHorizon?.coverage?{
       max_obstruction_deg:round(Math.max(...regionalHorizon.horizon),2),
@@ -152,7 +170,17 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       thermal_provenance:THERMAL_PROVENANCE,
       solar_power:'PROJECTED from JPL Horizons illumination and Sun distance, LOLA regional obstruction, and assumed panel geometry/efficiency',
       battery:'PROJECTED SOC from spacecraft capacity/load/efficiency assumptions, not validated hardware',
-      communication:'PROJECTED GEOMETRIC EARTH WINDOWS, NOT verified RF link availability',
+      communication:linkWindows?
+        'PROJECTED S-BAND RF LINK MARGIN: NASA Earth range + assumed transmitter, antenna, noise, data rate and losses; NO ground station visibility/scheduling':
+        'GEOMETRIC EARTH VISIBILITY ONLY — no ephemeris distance or RF budget',
+      radio_assumptions:{frequency_ghz:r.rf_frequency_ghz,transmitter_w:r.rf_tx_w,
+        antenna_gain_dbi:r.rf_tx_gain_dbi,ground_gt_db_k:r.rf_ground_gt_dbk,
+        data_rate_bps:r.rf_bitrate_bps,loss_db:r.rf_loss_db,
+        required_ebn0_db:r.rf_required_ebn0_db,required_margin_db:r.rf_required_margin_db},
+      lander_thermal:'PROJECTED ONE-NODE HARDWARE ENERGY BALANCE (NASA HLS thermal-guide method); ASSUMED insulation/radiator/inertia/heater; NOT VALIDATED',
+      thermal_assumptions:{thermal_capacity_j_k:r.thermal_capacity_j_k,radiator_area_m2:r.radiator_area_m2,
+        heater_max_w:r.heater_w,heater_setpoint_c:r.heater_setpoint_c,
+        operational_min_c:r.operational_min_c,operational_max_c:r.operational_max_c},
       validation:'NASA inputs verified for units and coverage; modeled predictions NOT independently validated for mission operations',
       seismic:'NO LOCATION-SPECIFIC SEISMIC HAZARD PREDICTION',
       rover:'NO ROVER TRAVERSABILITY DETERMINED'
@@ -162,15 +190,23 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       battery_reserve_pass:reserveOk,communication_pass:commsOk,feasible:reserveOk&&commsOk,
       constraints_label:'Assumption-based battery reserve and arbitrary 24-hour communication gap checks; NOT certified safe',
       first_reserve_violation:firstViolation,
+      predicted_rf_link_hours:linkWindows?.hours??null,
+      predicted_rf_max_outage_h:linkWindows?.maxGap??null,
+      min_rf_margin_db:linkWindows?round(Math.min(...rows.filter(x=>x.rf_margin_db!==null).map(x=>x.rf_margin_db))):null,
+      heater_consumption_wh:round(heaterEnergyWh),
+      lander_temperature_min_c:round(Math.min(...rows.map(x=>x.lander_temperature_c)),1),
+      lander_temperature_max_c:round(Math.max(...rows.map(x=>x.lander_temperature_c)),1),
+      thermal_screen_hours:rows.slice(0,-1).filter(x=>x.thermal_screen_flag).length,
       power_conservation_hours:rows.slice(0,-1).filter(x=>x.power_conservation_advisory).length,
       projected_temperature_min_c:Math.min(...rows.map(x=>x.temperature_proxy_c)),
       projected_temperature_max_c:Math.max(...rows.map(x=>x.temperature_proxy_c))},
-    earth_windows:earth.intervals,sun_windows:sun.intervals,samples:rows};
+    earth_windows:earth.intervals,sun_windows:sun.intervals,rf_link_windows:linkWindows?.intervals??null,samples:rows};
 }
 const grid=[[-89.5,0],[-89.5,45],[-89.5,90],[-89.5,135],[-89.5,-90],[-89.1,15],[-89.1,75],[-89.1,145],[-88.5,-35],[-88.5,55],[-88.5,135]];
 function rank(out,r){
   const m=out.metrics,possible=1361*r.area_m2*.24*.8*r.duration_days*24;
-  return [Number(m.feasible),round(.6*Math.min(1,m.total_energy_wh/Math.max(1,possible))+.4*m.earth_fraction,6),m.min_soc];
+  const rfFraction=m.predicted_rf_link_hours===null?m.earth_fraction:m.predicted_rf_link_hours/(r.duration_days*24);
+  return [Number(m.feasible),round(.6*Math.min(1,m.total_energy_wh/Math.max(1,possible))+.4*rfFraction,6),m.min_soc];
 }
 export function optimize(payload){
   return optimizeWithEngine(payload,simulate);

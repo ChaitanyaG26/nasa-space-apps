@@ -1,5 +1,5 @@
 import {initGlobe} from "./globe.js";
-import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-lola20m-1";
+import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-engineering-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {loadPolarPatch,localPatchXY,samplePolarHeightKm,polarSiteSlopeDeg,refinePolarHorizon} from "./lola-polar-detail.mjs";

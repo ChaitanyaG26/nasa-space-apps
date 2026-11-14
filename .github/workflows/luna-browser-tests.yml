@@ -28,6 +28,8 @@ jobs:
           node --test luna-mission-control/tests/lola-terrain.test.mjs
           node --test luna-mission-control/tests/lola-global.test.mjs
           node --test luna-mission-control/tests/lola-polar-detail.test.mjs
+          node --test luna-mission-control/tests/engineering-models.test.mjs
+          node --test luna-mission-control/tests/rover-screen.test.mjs
           node --test luna-mission-control/tests/diviner-gcp.test.mjs
           node --test luna-mission-control/tests/horizons-site-validation.test.mjs
           node --input-type=module --check < luna-mission-control/web/app.js
