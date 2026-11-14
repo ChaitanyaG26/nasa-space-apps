@@ -166,6 +166,7 @@ function renderScenarioPanels(el){
  for(const article of list.querySelectorAll("[data-cola-scenario]")){
   renderSiteNote(article);
   const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{scenario:article.dataset.colaScenario});
+  article.orbitController=controller;
   orbitControllers.push(controller);
   loadCatalogContext().then(data=>controller.setCatalog(data));
  }
@@ -209,6 +210,16 @@ function runScenario(article){
  }
  const candidates=searchWindows(site,target.time,parking,span,step,holds.intervals);
  output.innerHTML=resultMarkup(target,candidates,holds.intervals);
+ const selected=candidates.find(c=>!c.held)||candidates[0];
+ if(selected&&article.orbitController?.setTransfer){
+  // Scenario-specific idealized Kepler time of flight; not trajectory certification.
+  article.orbitController.setTransfer({
+   flightDays:selected.flightDays,
+   parkingKm:parking,
+   moonDistanceKm:selected.geometry.moon.distanceKm,
+   departureUtc:selected.launch
+  });
+ }
 }
 if(typeof document!=="undefined"){
  const attach=()=>{
