@@ -42,7 +42,7 @@ test("NASA Sun-distance inverse-square solar reference and panel geometry",async
  assert.equal(solarIrradiance(AU_KM),1361);
  assert.ok(Math.abs(solarIrradiance(AU_KM*1.01)-1361/(1.01*1.01))<1e-8);
  assert.throws(()=>solarIrradiance(0),/Sun distance/);
- const g={sun_el:90,sun_az:0,sun_distance_km:149597870.7_KM};
+ const g={sun_el:90,sun_az:0,sun_distance_km:AU_KM};
  const cfg={area_m2:2,panel_tilt_deg:0,panel_az_deg:0};
  assert.ok(Math.abs(photovoltaicPower(g,cfg,1)-1361*2*.24*.8)<1e-8);
 });
