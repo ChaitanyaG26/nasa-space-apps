@@ -30,6 +30,9 @@ jobs:
         run: |
           node --test luna-mission-control/tests/static-engine.test.mjs
           node --input-type=module --check < luna-mission-control/web/globe.js
+          node --test luna-mission-control/tests/horizons-static.test.mjs
+          node --input-type=module --check < luna-mission-control/web/app.js
+          node --input-type=module --check < luna-mission-control/web/horizons-static.mjs
       - name: Build static website
         run: python3 luna-mission-control/scripts/build_pages.py
       - name: Configure Pages

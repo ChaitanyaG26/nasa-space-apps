@@ -1,12 +1,35 @@
 import {initGlobe} from "./globe.js";
-import {staticApi} from "./static-engine.mjs";
+import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs";
+import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
 const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
 function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("coords").textContent=text;$("mapCoords").textContent=text}
 function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),data_mode:$("mode").value}}
-async function api(path,data){if(IS_PAGES) return staticApi(path,data);let r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});let body=await r.json();if(!r.ok)throw Error(typeof body.detail==="string"?body.detail:JSON.stringify(body.detail));return body}
+async function api(path,data){
+ if(IS_PAGES){
+   const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
+   if(selected==="horizons"){
+     const reference=await loadJplReference();
+     if(path==="preview")return referencePreview(reference,data);
+     if(path==="simulate"){
+       return simulateWithGeometry(data,geometrySeries(reference,data),
+         "NASA/JPL Horizons fixed lunar reference, interpolated and site-projected (approximate)");
+     }
+     if(path==="optimize"){
+       return optimizeWithEngine(data,req=>simulateWithGeometry(req,geometrySeries(reference,req),
+         "NASA/JPL Horizons fixed lunar reference, interpolated and site-projected (approximate)"));
+     }
+     throw Error("Unsupported operation: "+path);
+   }
+   return staticApi(path,data);
+ }
+ let r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+ let body=await r.json();
+ if(!r.ok)throw Error(typeof body.detail==="string"?body.detail:JSON.stringify(body.detail));
+ return body;
+}
 function alertUser(text){$("toast").textContent=text;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),6500)}
 const R=Math.PI/180;
 function svgText(x,y,text,color="#c5d6e3"){return '<text x="'+x+'" y="'+y+'" font-size="10" fill="'+color+'">'+text+'</text>'}
@@ -47,7 +70,7 @@ function updateDiagrams(p){
  $("source").textContent=p.source+" · "+p.global_source;
  globe.setSun(fixed.sun.x,fixed.sun.y,fixed.sun.z);
 }
-async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq)$("source").textContent="Preview unavailable: "+e.message}}
+async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message; $("angles").textContent="No verified ephemeris for this selection";}}}
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
 function showGlobe(){ $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -57,10 +80,14 @@ function windows(samples){const ss=samples.filter((r,i)=>i%Math.max(1,Math.ceil(
 function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Unvalidated thermal response proxy (°C, not lander temperature)",s,"temperature_proxy_c","#b46b6b")+windows(s)+'<div class="note">FLAT HORIZON / NOT LOLA-CALIBRATED · '+escapeHtml(data.quality.ephemeris)+' · No site-specific seismic or rover-traversal analysis.</div></div>'}
 function render(){let html=lastResult?'<div class="quality">Preliminary planning model. No terrain-aware obstruction, validated temperatures, radio-link budget, or landing hazard certification. Offline mode is illustrative.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;}
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
-$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=req.data_mode!=="demo";render();showResults();}));
+$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();}));
 $("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults()})});
 $("back").addEventListener("click",showGlobe);$("focus").addEventListener("click",()=>{globe.focus();position={latitude:-89.5,longitude:0};globe.setSite(position.latitude,position.longitude);showCoords();refreshPreview()});
 $("time").addEventListener("input",()=>{let t=Number($("time").value)*10;$("timeLabel").textContent=String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")+" UTC";refreshPreview()});
 for(const id of ["date","mode"])$(id).addEventListener("change",refreshPreview);
 showCoords();refreshPreview();
-if(IS_PAGES){const live=$("mode").querySelector("option[value=\"horizons\"]");if(live){live.disabled=true;live.textContent="JPL Horizons — requires Python backend";}$("mode").value="demo";$("mode").title="Static GitHub Pages deployment uses offline illustrative calculations; live NASA queries need the FastAPI backend.";}
+if(IS_PAGES){
+ $("mode").value="horizons";
+ $("mode").title="NASA/JPL Horizons data are generated server-side by GitHub Actions, published as a reference cache and interpolated in the browser. Locations use approximate geometric projection, not site-specific Horizons queries.";
+ refreshPreview();
+}

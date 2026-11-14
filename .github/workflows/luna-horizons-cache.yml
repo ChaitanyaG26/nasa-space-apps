@@ -1,0 +1,54 @@
+name: Refresh NASA JPL Horizons cache
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/scripts/build_horizons_cache.py'
+      - '.github/workflows/luna-horizons-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: luna-horizons-cache
+  cancel-in-progress: false
+
+jobs:
+  build-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Horizons client dependencies
+        run: python -m pip install -r luna-mission-control/requirements.txt
+      - name: Generate Moon-fixed JPL reference ephemeris
+        run: python luna-mission-control/scripts/build_horizons_cache.py
+      - name: Verify JSON coverage and shape
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('luna-mission-control/web/assets/horizons-moon-reference.json')
+          d=json.loads(p.read_text())
+          assert d['schema_version']==1
+          assert len(d['samples']) > 500
+          assert d['samples'][0][0] < d['samples'][-1][0]
+          assert all(len(r)==7 for r in d['samples'])
+          print('Verified',len(d['samples']),'reference ephemeris records.')
+          PY
+      - name: Publish generated dataset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add luna-mission-control/web/assets/horizons-moon-reference.json
+          if git diff --cached --quiet; then
+            echo "JPL ephemeris cache is unchanged."
+            exit 0
+          fi
+          git commit -m "Cache NASA JPL Horizons ephemeris for public web application"
+          git push origin HEAD:main

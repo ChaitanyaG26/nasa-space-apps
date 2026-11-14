@@ -16,7 +16,7 @@
 <p class="muted" id="source">Offline illustrative positions · not NASA ephemerides</p>
 <h3>03 / LANDING SITE</h3>
 <section class="site"><b>⌖ Selected location</b><div id="coords">89.500° S, 0.000° E</div><button id="focus">Focus south pole</button></section>
-<label>Ephemeris source<select id="mode"><option value="demo">Offline illustrative geometry</option><option value="horizons">JPL Horizons (live)</option></select></label>
+<label>Ephemeris source<select id="mode"><option value="horizons" selected>NASA JPL Horizons (cached reference)</option><option value="demo">Offline illustrative geometry</option></select></label>
 <label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option></select></label>
 <details><summary>Spacecraft assumptions</summary>
 <label>Solar array (m²)<input id="area" type="number" value="1.6" step="0.1" min="0.1"></label>
@@ -30,7 +30,7 @@
 <h3>04 / COMPARISON</h3>
 <label>Preserve<select id="preserve"><option value="time">Landing date/time — optimize site</option><option value="site">Landing site — optimize time ±14 days</option></select></label>
 <button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
-<p class="muted">Prototype: flat terrain horizon and illustrative offline astronomy. No certified landing safety, seismic assessment, rover route or validated thermal forecast.</p>
+<p class="muted">JPL default uses Horizons data from a fixed Moon reference, projected approximately to selected sites. Terrain horizon remains flat. Communication opportunities, thermal proxy, and landing feasibility are not validated.</p>
 </div>
 <footer>● OPEN SCIENCE PROTOTYPE <span>V0.1</span></footer>
 </aside>

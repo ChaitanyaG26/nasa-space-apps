@@ -76,3 +76,11 @@ The visual globe is a procedural Moon representation (not NASA texture) and cann
 ### Moon-fixed vs site-local coordinates
 
 The first sidebar mini-widget represents Moon-fixed **directions** toward Sun and Earth (not scaled orbits). At constant UTC time, changing landing sites does not change these global directions. The second mini-widget uses site-specific local north-clockwise azimuth and elevation, which *do* change with the chosen location. Global Moon lighting also uses the Moon-fixed Sun direction, so moving the landing marker cannot change the illuminated hemisphere. Browser-only global values are illustrative, not NASA Horizons-validated.
+
+### Public JPL Horizons default (GitHub Pages)
+
+The ephemeris selector now defaults to **NASA JPL Horizons (cached reference)**. GitHub Pages cannot host Python and NASA's SSD API is not meant for direct public-browser embedding. The GitHub Actions workflow `.github/workflows/luna-horizons-cache.yml` queries Horizons from a server-side Python job and saves a compact JSON file in `web/assets/horizons-moon-reference.json`.
+
+The published cache is generated from a **fixed lunar equatorial reference observer** (latitude 0°, east longitude 0°, height 0) and is transformed into Moon-fixed direction vectors. Browser calculations project those vectors into local azimuth and elevation for selected sites. This is **an approximation, not direct JPL Horizons observer output for each selected site**; Earth parallax, near-horizon clearance, and communication windows can deviate from site-specific Horizons output. Never use this as a flight-ready site ranking. Terrain remains flat until LOLA is incorporated. It is important that JPL reference data never silently falls back to the offline demo when missing.
+
+The initial dataset covers **2026-10-01 through 2027-03-01 UTC**, sampled every three hours and interpolated between samples; adjust the generator dates to extend coverage. A missing cache or out-of-range date generates a visible error. The offline illustrative mode remains an explicit opt-in. After merging, check that the cache workflow succeeds and publishes the JSON before testing JPL mode.
