@@ -1,4 +1,4 @@
-import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs";
+import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-kepler-v4";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
  * NASA LSP launch range references: nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/
