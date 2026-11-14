@@ -1,4 +1,4 @@
-import "./launch-window.mjs";
+import "./launch-window.mjs?v=20261114-three-sites";
 import {initGlobe} from "./globe.js";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
 import {initTerrain3D} from "./terrain-3d.mjs";
