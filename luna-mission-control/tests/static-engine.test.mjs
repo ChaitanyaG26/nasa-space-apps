@@ -10,3 +10,29 @@ test('site preserved',()=>{const x=optimize({mission:r,preserve:'site'});assert.
 test('time preserved',()=>{const x=optimize({mission:r,preserve:'time'});assert.equal(x.original.landing_time,x.recommended.landing_time);assert.notDeepEqual(x.original.site,x.recommended.site)});
 test('unsupported Horizons mode fails clearly',()=>{assert.throws(()=>simulate({...r,data_mode:'horizons'}),/backend/)});
 test('invalid latitude rejected',()=>{assert.throws(()=>simulate({...r,latitude:91}),/latitude/)});
+
+import {moonFixedDirections,demoGeometry} from '../web/static-engine.mjs';
+test('Moon-centered directions are independent of selected location',()=>{
+ const a=preview(r);
+ const b=preview({...r,latitude:-88.1,longitude:145});
+ assert.deepEqual(a.global,b.global);
+ assert.notDeepEqual([a.sun_az,a.sun_el,a.earth_az,a.earth_el],[b.sun_az,b.sun_el,b.earth_az,b.earth_el]);
+});
+test('Moon-centered directions change with UTC time',()=>{
+ const a=moonFixedDirections('2026-11-20T12:00:00Z');
+ const b=moonFixedDirections('2026-11-22T12:00:00Z');
+ assert.notDeepEqual(a.sun,b.sun);
+ assert.notDeepEqual(a.earth,b.earth);
+ for(const dir of [a.sun,a.earth]){
+   assert.ok(Math.abs(Math.hypot(dir.x,dir.y,dir.z)-1)<1e-10);
+ }
+});
+test('local elevations agree with global radial vectors',()=>{
+ const d=moonFixedDirections(r.landing_time);
+ const g=demoGeometry(r.latitude,r.longitude,r.landing_time);
+ const p=r.latitude*Math.PI/180,l=r.longitude*Math.PI/180;
+ const up=[Math.cos(p)*Math.sin(l),Math.sin(p),Math.cos(p)*Math.cos(l)];
+ const el=(v)=>Math.asin(up[0]*v.x+up[1]*v.y+up[2]*v.z)*180/Math.PI;
+ assert.ok(Math.abs(el(d.sun)-g.sun_el)<1e-8);
+ assert.ok(Math.abs(el(d.earth)-g.earth_el)<1e-8);
+});

@@ -21,15 +21,46 @@ def _body_azel(lat:float,lon:float,sub_lat:float,sub_lon:float):
     az=atan2(sin(dl)*cos(dec),cos(phi)*sin(dec)-sin(phi)*cos(dec)*cos(dl))
     return (degrees(az)%360,degrees(elev))
 
-def demo_geometry(lat: float,lon: float,t:datetime):
+def moon_fixed_demo(t: datetime):
+    """Global Moon-fixed Sun/Earth unit vectors, independent of landing site.
+
+    This is an illustrative model and must not be represented as Horizons data.
+    Axes: +Y north, +Z 0° east at equator, +X 90° east at equator.
+    """
     days=(t-EPOCH).total_seconds()/86400
-    subsolar_lon=(12.19*days)%360
-    sun_dec=1.54*sin(2*pi*days/(365.25))
-    subearth_lon=6.5*sin(2*pi*days/27.32)
-    subearth_lat=5.8*sin(2*pi*days/27.2-0.7)
-    sun_az,sun_el=_body_azel(lat,lon,sun_dec,subsolar_lon)
-    earth_az,earth_el=_body_azel(lat,lon,subearth_lat,subearth_lon)
+    sun_lon=(12.19*days)%360
+    sun_lat=1.54*sin(2*pi*days/365.25)
+    earth_lon=6.5*sin(2*pi*days/27.32)
+    earth_lat=5.8*sin(2*pi*days/27.2-0.7)
+
+    def vector(lat,lon):
+        phi,lam=radians(lat),radians(lon)
+        return dict(x=cos(phi)*sin(lam),y=sin(phi),z=cos(phi)*cos(lam))
+
+    return dict(sun=vector(sun_lat,sun_lon),earth=vector(earth_lat,earth_lon),
+                sun_sub_lon_deg=sun_lon,sun_sub_lat_deg=sun_lat,
+                earth_sub_lon_deg=earth_lon,earth_sub_lat_deg=earth_lat)
+
+
+def demo_geometry(lat: float,lon: float,t:datetime):
+    fixed=moon_fixed_demo(t)
+    sun_az,sun_el=_body_azel(lat,lon,fixed['sun_sub_lat_deg'],fixed['sun_sub_lon_deg'])
+    earth_az,earth_el=_body_azel(lat,lon,fixed['earth_sub_lat_deg'],fixed['earth_sub_lon_deg'])
     return dict(time=t,sun_az=sun_az,sun_el=sun_el,earth_az=earth_az,earth_el=earth_el)
+
+
+def moon_fixed_direction_from_local(az_deg: float, el_deg: float, lat_deg: float, lon_deg: float):
+    """Convert local north-clockwise azimuth/elevation into Moon-fixed Cartesian.
+
+    Basis: east, north and radial up at the given reference latitude/longitude.
+    """
+    a,e,phi,lam=map(radians,(az_deg,el_deg,lat_deg,lon_deg))
+    east=(cos(lam),0.0,-sin(lam))
+    north=(-sin(phi)*sin(lam),cos(phi),-sin(phi)*cos(lam))
+    up=(cos(phi)*sin(lam),sin(phi),cos(phi)*cos(lam))
+    v=[cos(e)*sin(a)*east[i]+cos(e)*cos(a)*north[i]+sin(e)*up[i] for i in range(3)]
+    return dict(x=v[0],y=v[1],z=v[2])
+
 
 def visible_disk(clearance:float,radius:float=SUN_RADIUS_DEG):
     x=clearance/radius
@@ -132,11 +163,27 @@ def run_mission(req:MissionRequest, preloaded=None):
 def preview(req:MissionRequest):
     if req.data_mode=='horizons':
         anchor=req.landing_time.replace(minute=0,second=0,microsecond=0)
-        rows=get_series(req.latitude,req.longitude,anchor,anchor+timedelta(hours=2),60)
+        end=anchor+timedelta(hours=2)
+        # Horizons site-specific observer: correct for the local horizon.
+        rows=get_series(req.latitude,req.longitude,anchor,end,60)
         row=min(rows,key=lambda r:abs((r['time']-req.landing_time).total_seconds()))
-        source='JPL Horizons — nearest hourly sample'
+        # Separate fixed reference. The same UTC produces the same global
+        # arrows regardless of selected site. Surface-reference parallax
+        # remains, so this is an approximate Moon-centered direction.
+        ref=get_series(0.0,0.0,anchor,end,60)
+        reference=min(ref,key=lambda r:abs((r['time']-req.landing_time).total_seconds()))
+        fixed=dict(
+            sun=moon_fixed_direction_from_local(reference['sun_az'],reference['sun_el'],0.0,0.0),
+            earth=moon_fixed_direction_from_local(reference['earth_az'],reference['earth_el'],0.0,0.0),
+        )
+        source='JPL Horizons — nearest hourly local observer sample'
+        global_source='Moon-fixed directions from Horizons fixed 0°, 0° surface reference (parallax approximation)'
     else:
         row=demo_geometry(req.latitude,req.longitude,req.landing_time)
+        fixed=moon_fixed_demo(req.landing_time)
         source='OFFLINE ILLUSTRATIVE — NOT NASA EPHEMERIS'
-    return dict(source=source,sun_az=round(row['sun_az'],2),sun_el=round(row['sun_el'],2),
-                earth_az=round(row['earth_az'],2),earth_el=round(row['earth_el'],2))
+        global_source='Moon-fixed demo directions — not measured ephemerides'
+    return dict(source=source,global_source=global_source,
+                sun_az=round(row['sun_az'],2),sun_el=round(row['sun_el'],2),
+                earth_az=round(row['earth_az'],2),earth_el=round(row['earth_el'],2),
+                **{'global': {'sun':fixed['sun'],'earth':fixed['earth']}})

@@ -16,10 +16,29 @@ function azel(lat,lon,dec,sub){
   const az=(Math.atan2(Math.sin(delta)*Math.cos(d),Math.cos(p)*Math.sin(d)-Math.sin(p)*Math.cos(d)*Math.cos(delta))/rad+360)%360;
   return [az,el];
 }
+// Global Moon-fixed body directions. This frame has +Y at lunar north,
+// +Z toward the zero-longitude equator and +X toward 90° east.
+// A direction depends only on UTC time, NEVER on the selected landing site.
+export function moonFixedDirections(time){
+  const days=(new Date(time).getTime()-epoch)/86400000;
+  const sun_sub_lon_deg=(12.19*days)%360;
+  const sun_sub_lat_deg=1.54*Math.sin(2*PI*days/365.25);
+  const earth_sub_lon_deg=6.5*Math.sin(2*PI*days/27.32);
+  const earth_sub_lat_deg=5.8*Math.sin(2*PI*days/27.2-.7);
+  const vector=(latitude,longitude)=>{
+    const p=latitude*rad,l=longitude*rad;
+    return {x:Math.cos(p)*Math.sin(l),y:Math.sin(p),z:Math.cos(p)*Math.cos(l)};
+  };
+  return {
+    sun:vector(sun_sub_lat_deg,sun_sub_lon_deg),
+    earth:vector(earth_sub_lat_deg,earth_sub_lon_deg),
+    sun_sub_lon_deg,sun_sub_lat_deg,earth_sub_lon_deg,earth_sub_lat_deg
+  };
+}
 export function demoGeometry(lat,lon,time){
-  const days=(new Date(time).getTime()-epoch)/86400000,solarLon=12.19*days%360,solarDec=1.54*Math.sin(2*PI*days/365.25);
-  const earthLon=6.5*Math.sin(2*PI*days/27.32),earthDec=5.8*Math.sin(2*PI*days/27.2-.7);
-  const [sun_az,sun_el]=azel(lat,lon,solarDec,solarLon),[earth_az,earth_el]=azel(lat,lon,earthDec,earthLon);
+  const fixed=moonFixedDirections(time);
+  const [sun_az,sun_el]=azel(lat,lon,fixed.sun_sub_lat_deg,fixed.sun_sub_lon_deg);
+  const [earth_az,earth_el]=azel(lat,lon,fixed.earth_sub_lat_deg,fixed.earth_sub_lon_deg);
   return {time:iso(time),sun_az,sun_el,earth_az,earth_el};
 }
 export function solarDiskFraction(clearance,radius=.266){
@@ -44,7 +63,7 @@ function windows(rows,key){
 }
 export function preview(input){
   const r=validated(input),g=demoGeometry(r.latitude,r.longitude,r.landing_time);
-  return {source:'OFFLINE ILLUSTRATIVE — NOT NASA EPHEMERIS',sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el)};
+  return {source:'OFFLINE ILLUSTRATIVE — NOT NASA EPHEMERIS',global_source:'Moon-fixed demo directions — not measured ephemerides',global:moonFixedDirections(r.landing_time),sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el)};
 }
 export function simulate(input){
   const r=validated(input),start=Date.parse(r.landing_time),N=r.duration_days*24;
