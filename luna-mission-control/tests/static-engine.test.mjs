@@ -56,7 +56,7 @@ test("Coarse ridge obscures Sun and Earth's center",async()=>{
  const req={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1};
  const g=Array.from({length:25},(_,i)=>({
    time:new Date(Date.parse(req.landing_time)+i*3600000).toISOString(),
-   sun_el:5,sun_az:0,earth_el:2,earth_az:0,sun_distance_km:AU
+   sun_el:5,sun_az:0,earth_el:2,earth_az:0,sun_distance_km:149597870.7
  }));
  const clear=simulateWithGeometry(req,g,"test");
  const blocked=simulateWithGeometry(req,g,"test",null,{coverage:true,horizon:Array(72).fill(10),bearing_step_deg:5,max_range_km:120});
