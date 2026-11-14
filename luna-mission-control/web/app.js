@@ -1,3 +1,4 @@
+import {renderScientificInformation} from "./science-info.mjs";
 import "./launch-window.mjs?v=20261114-three-sites";
 import {initGlobe} from "./globe.js";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
@@ -184,7 +185,7 @@ function updateDiagrams(p){
 }
 async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message; $("angles").textContent="No verified ephemeris for this selection";}}}
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
-function showGlobe(){ $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
+function showGlobe(){ closeScienceInformation(); $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function chart(name,rows,key,color,maxVal){
  const unit=key==="soc"?"%":key==="rf_margin_db"?"dB":key.includes("temperature")?"°C":
@@ -218,29 +219,79 @@ timeRibbon("Projected RF link availability · teal = assumed link margin suffici
  plotMeasured(s,"diviner_observed_c","#8052aa"):
  '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
 timeRibbon("Power-conservation advisory · amber = advisory",s,"power_conservation_advisory")+windows(s)+
-'<div class="note">PROJECTED regolith radiative equilibrium uses assumed albedo 0.12, emissivity 0.95 and baseline 95 K. The historical NASA Diviner PDS observational overlay is shown separately where its site/local-time bin exists; it does NOT directly validate a temperature forecast at mission UTC. The projected one-node lander temperature is a separate assumed hardware model, not a certified spacecraft thermal prediction.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured '+(data.terrain.detail_coverage?'20-meter local':'8-ppd regional')+' elevation: '+data.terrain.elevation_km.toFixed(3)+' km above lunar reference sphere. · '):'LOLA elevation unavailable at this coordinate. · ')+(data.regional_horizon?(
- 'Maximum modeled skyline obstruction: '+data.regional_horizon.max_obstruction_deg+'°; '+
- (data.regional_horizon.near_field_resolved?
-   'NASA LOLA 20m local detail to 3 km + coarse LOLA beyond; small hazards remain unresolved. · ':
-   'COARSE regional LOLA only; nearby ridges and hazards may be unresolved. · ')
- ):'Regional skyline unavailable. · ')+
- (data.terrain?.detail_coverage?('Local 20m-DEM screening slope: '+
-   (Number.isFinite(data.terrain.detail_slope_deg)?data.terrain.detail_slope_deg.toFixed(1)+'°':'unavailable')+
-   ' — NOT certified rover traversability. · '):'')+escapeHtml(data.quality.ephemeris)+' · <b>Independent JPL site check:</b> '+escapeHtml(data.quality.horizons_direct_validation||"Unavailable")+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
- (data.quality.thermal_model_mean_abs_error_c!==undefined&&data.quality.thermal_model_mean_abs_error_c!==null?
- ' · Mean absolute difference vs historical climatology: '+data.quality.thermal_model_mean_abs_error_c+' °C (NOT forecast validation)':'')+
- ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No certified rover path or seismic risk rating.</div>'+
-(data.rover_route?.available?
- '<div class="chart"><div class="chart-head"><strong>LOLA rover corridor screening</strong></div><p class="muted">'+
- escapeHtml(data.rover_route.status)+
- (data.rover_route.found?' · Route '+data.rover_route.length_m+' m · Peak segment slope '+
- data.rover_route.maximum_segment_slope_deg+'°':'')+
- ' · NOT verified rover-safe terrain.</p></div>':
- '<div class="chart"><p class="muted">No NASA 20-m terrain patch for rover corridor screening at this coordinate.</p></div>')+
+'<div class="science-card-summary"><span>NASA-derived data · Engineering projections</span><button type="button" data-info-open class="science-card-info">ⓘ Methods &amp; limitations</button></div>'+
 '<section class="terrain-panel" data-site-lat="'+data.site.latitude+'" data-site-lon="'+data.site.longitude+'">'+
 '<div class="terrain-heading"><h3>3D local lunar terrain</h3><small>NASA LOLA DEM · drag to rotate · scroll to zoom</small></div>'+
 '<p class="muted">Loading elevation grid...</p></section></div>'}
-function render(){resetCharts();let html=lastResult?'<div class="quality">NASA DATA: JPL Horizons geometry, NASA LOLA global and selected 20-meter terrain, and archived Diviner temperature bins where available. PROJECTED: power, battery SOC, lander thermal node, RF link margin, regolith temperature, and terrain-dependent visibility. All spacecraft and rover properties remain assumptions. Seismic hazard is UNASSESSED, not certified safe.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;attachChartInteractions($("results"));}
+let scienceInfoReturnFocus=null;
+function openScienceInformation(){
+ const panel=$("scienceInfoDrawer"),overlay=$("scienceInfoOverlay");
+ if(!panel)return;
+ scienceInfoReturnFocus=document.activeElement;
+ overlay.hidden=false;panel.hidden=false;
+ $("scienceInfoOpen").setAttribute("aria-expanded","true");
+ $("scienceInfoClose").focus();
+}
+function closeScienceInformation(){
+ const panel=$("scienceInfoDrawer"),overlay=$("scienceInfoOverlay");
+ if(!panel||panel.hidden)return;
+ panel.hidden=true;overlay.hidden=true;
+ $("scienceInfoOpen").setAttribute("aria-expanded","false");
+ const back=scienceInfoReturnFocus?.isConnected?scienceInfoReturnFocus:$("scienceInfoOpen");
+ if(typeof back?.focus==="function")back.focus();
+ scienceInfoReturnFocus=null;
+}
+function setupScienceInformation(){
+ const page=$("resultsPage"),back=$("back");
+ const trigger=document.createElement("button");
+ trigger.type="button";trigger.id="scienceInfoOpen";trigger.className="science-info-trigger";
+ trigger.setAttribute("aria-haspopup","dialog");trigger.setAttribute("aria-controls","scienceInfoDrawer");
+ trigger.setAttribute("aria-expanded","false");
+ trigger.textContent="ⓘ Information";
+ back.parentNode.insertBefore(trigger,back);
+ const overlay=document.createElement("div");
+ overlay.id="scienceInfoOverlay";overlay.className="science-info-overlay";overlay.hidden=true;
+ const panel=document.createElement("aside");
+ panel.id="scienceInfoDrawer";panel.className="science-info-drawer";panel.hidden=true;
+ panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");
+ panel.setAttribute("aria-labelledby","scienceInfoTitle");
+ panel.innerHTML='<header class="science-info-header"><div><small>SIMULATION REFERENCE</small><h2 id="scienceInfoTitle">Information &amp; sources</h2><p>Data provenance, engineering assumptions and limitations</p></div><button id="scienceInfoClose" type="button" aria-label="Close information panel">✕</button></header><div id="scienceInfoBody" class="science-info-body"></div>';
+ page.append(overlay,panel);
+ trigger.addEventListener("click",openScienceInformation);
+ $("scienceInfoClose").addEventListener("click",closeScienceInformation);
+ overlay.addEventListener("click",closeScienceInformation);
+ $("results").addEventListener("click",event=>{
+  if(event.target.closest("[data-info-open]"))openScienceInformation();
+ });
+ document.addEventListener("keydown",event=>{
+  if(panel.hidden)return;
+  if(event.key==="Escape"){event.preventDefault();closeScienceInformation();return;}
+  if(event.key==="Tab"){
+   const focusable=[...panel.querySelectorAll('button:not([disabled]),a[href],input,select,textarea')].filter(el=>!el.hidden);
+   if(!focusable.length)return;
+   const first=focusable[0],last=focusable.at(-1);
+   if(event.shiftKey&&(document.activeElement===first||!panel.contains(document.activeElement))){
+    event.preventDefault();last.focus();
+   }else if(!event.shiftKey&&(document.activeElement===last||!panel.contains(document.activeElement))){
+    event.preventDefault();first.focus();
+   }
+  }
+ });
+}
+setupScienceInformation();
+function render(){
+ resetCharts();
+ let html=lastResult?
+  '<div class="science-overview"><span class="science-overview-tag">NASA DATA + MODELS</span><p>Sun, Earth and terrain data inform these graphs. Power, thermal, radio and safety results are preliminary estimates.</p><button type="button" data-info-open class="science-overview-link">ⓘ View information &amp; sources</button></div>':"";
+ if(comparison){
+  html+='<div class="science-compare-heading"><span>Original and alternative mission scenarios</span><button type="button" data-info-open>Comparison details</button></div>'+
+   '<div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+
+   (comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>';
+ }else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>';
+ $("results").innerHTML=html;
+ $("scienceInfoBody").innerHTML=renderScientificInformation(lastResult,comparison);
+ attachChartInteractions($("results"));
+}
 let terrainInstances=[];
 async function mountTerrainViews(){
  terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
