@@ -1,0 +1,45 @@
+name: Cache official NASA lunar texture
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/web/globe.js'
+      - '.github/workflows/luna-moon-texture.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  download-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download NASA Moon Kit image
+        run: |
+          set -euo pipefail
+          target="luna-mission-control/web/assets/lroc_color_2k.jpg"
+          mkdir -p "luna-mission-control/web/assets"
+          curl --fail --location --retry 4 --retry-delay 3 --connect-timeout 20 --max-time 120 \
+            --user-agent 'LUNA Space Apps educational demo' \
+            'https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg' \
+            --output "$target.tmp"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('luna-mission-control/web/assets/lroc_color_2k.jpg.tmp')
+          data=p.read_bytes()
+          assert len(data)>50000, 'NASA texture seems too small'
+          assert data[:3]==b'\xff\xd8\xff', 'Not a valid JPEG header'
+          PY
+          mv "$target.tmp" "$target"
+      - name: Commit cached map into the repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add luna-mission-control/web/assets/lroc_color_2k.jpg
+          if git diff --cached --quiet; then
+            echo 'The official NASA map is unchanged.'
+            exit 0
+          fi
+          git commit -m 'Cache NASA LRO lunar imagery for website globe'
+          git push origin HEAD:main

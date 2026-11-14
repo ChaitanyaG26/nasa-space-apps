@@ -27,7 +27,9 @@ jobs:
         with:
           node-version: '22'
       - name: Validate browser simulator
-        run: node --test luna-mission-control/tests/static-engine.test.mjs
+        run: |
+          node --test luna-mission-control/tests/static-engine.test.mjs
+          node --input-type=module --check < luna-mission-control/web/globe.js
       - name: Build static website
         run: python3 luna-mission-control/scripts/build_pages.py
       - name: Configure Pages
