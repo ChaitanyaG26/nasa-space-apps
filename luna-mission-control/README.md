@@ -72,3 +72,7 @@ luna-mission-control/
 Integrate NASA LOLA elevation tiles and site-specific terrain horizons first; then cache validated Horizons ephemerides, extend the candidate list to scientifically screened locations, and implement physics-grounded temperature modeling and uncertainty labels.
 
 The visual globe is a procedural Moon representation (not NASA texture) and cannot be used to infer local slopes or landing safety.
+
+### Moon-fixed vs site-local coordinates
+
+The first sidebar mini-widget represents Moon-fixed **directions** toward Sun and Earth (not scaled orbits). At constant UTC time, changing landing sites does not change these global directions. The second mini-widget uses site-specific local north-clockwise azimuth and elevation, which *do* change with the chosen location. Global Moon lighting also uses the Moon-fixed Sun direction, so moving the landing marker cannot change the illuminated hemisphere. Browser-only global values are illustrative, not NASA Horizons-validated.

@@ -10,11 +10,42 @@ async function api(path,data){if(IS_PAGES) return staticApi(path,data);let r=awa
 function alertUser(text){$("toast").textContent=text;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),6500)}
 const R=Math.PI/180;
 function svgText(x,y,text,color="#c5d6e3"){return '<text x="'+x+'" y="'+y+'" font-size="10" fill="'+color+'">'+text+'</text>'}
-function updateDiagrams(p){const sun=p.sun_az*R,earth=p.earth_az*R;$("orbital").innerHTML='<circle cx="160" cy="57" r="29" fill="#738fa3"/><ellipse cx="160" cy="57" rx="133" ry="41" stroke="#45687a" fill="none" stroke-dasharray="3 4"/><line x1="160" y1="57" x2="'+(160+100*Math.cos(sun))+'" y2="'+(57+32*Math.sin(sun))+'" stroke="#f2c773" stroke-width="2"/><circle cx="'+(160+100*Math.cos(sun))+'" cy="'+(57+32*Math.sin(sun))+'" r="11" fill="#f3c56b"/><line x1="160" y1="57" x2="'+(160+80*Math.cos(earth))+'" y2="'+(57+27*Math.sin(earth))+'" stroke="#5acbff" stroke-width="2"/><circle cx="'+(160+80*Math.cos(earth))+'" cy="'+(57+27*Math.sin(earth))+'" r="8" fill="#56b2df"/>'+svgText(142,60,"Moon")+svgText(8,14,"Not to scale");
+// The Moon-centered widget uses a fixed lunar frame; site selection changes
+// ONLY the local horizon angles (and the separate marker on the big globe).
+function updateDiagrams(p){
+ const fixed=p.global;
+ if(!fixed || !fixed.sun || !fixed.earth)throw Error("Global Moon-fixed geometry missing");
+ const cx=160,cy=55;
+ const endpoint=(vec,radius)=>{
+   const h=Math.hypot(vec.x,vec.z)||1;
+   return [cx+radius*vec.x/h,cy-radius*vec.z/h];
+ };
+ const [sx,sy]=endpoint(fixed.sun,42),[ex,ey]=endpoint(fixed.earth,28);
+ $("orbital").innerHTML=
+   '<circle cx="160" cy="55" r="44" fill="none" stroke="#425f73" stroke-dasharray="3 5"/>'+
+   '<line x1="160" y1="8" x2="160" y2="102" stroke="#304e60" stroke-dasharray="2 4"/>'+
+   '<line x1="111" y1="55" x2="209" y2="55" stroke="#304e60" stroke-dasharray="2 4"/>'+
+   '<line x1="160" y1="55" x2="'+sx+'" y2="'+sy+'" stroke="#f2c773" stroke-width="2"/>'+
+   '<line x1="160" y1="55" x2="'+ex+'" y2="'+ey+'" stroke="#5acbff" stroke-width="2"/>'+
+   '<circle cx="160" cy="55" r="11" fill="#738fa3" stroke="#afcad8"/>'+
+   '<circle cx="'+sx+'" cy="'+sy+'" r="6" fill="#f3c56b"/>'+
+   '<circle cx="'+ex+'" cy="'+ey+'" r="5" fill="#56b2df"/>'+
+   svgText(12,15,"0°E ↑", "#90aabb")+
+   svgText(251,15,"Top-down", "#90aabb")+
+   svgText(15,104,"Moon-fixed", "#90aabb")+
+   svgText(218,104,"Not to scale","#90aabb")+
+   svgText(176,55,"Moon")+
+   svgText(Math.min(265,sx+8),Math.max(11,Math.min(100,sy-4)),"Sun","#f3c56b")+
+   svgText(Math.min(265,ex+7),Math.max(11,Math.min(100,ey+12)),"Earth","#56b2df");
  const hx=az=>20+280*(az%360)/360,hy=el=>88-Math.max(-25,Math.min(90,el))*.54;
- $("horizon").innerHTML='<line x1="12" y1="88" x2="308" y2="88" stroke="#83a5b8"/>'+svgText(12,103,"N")+svgText(87,103,"E")+svgText(159,103,"S")+svgText(232,103,"W")+svgText(296,103,"N")+'<circle cx="'+hx(p.sun_az)+'" cy="'+hy(p.sun_el)+'" r="7" fill="#ffc979"/><circle cx="'+hx(p.earth_az)+'" cy="'+hy(p.earth_el)+'" r="6" fill="#68caff"/>';
- $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° elevation · Earth "+p.earth_el.toFixed(1)+"° elevation";$("source").textContent=p.source;
- globe.setSun(Math.cos(sun),Math.max(-.4,Math.min(.8,Math.sin(p.sun_el*R))),Math.sin(sun));
+ $("horizon").innerHTML='<line x1="12" y1="88" x2="308" y2="88" stroke="#83a5b8"/>'+
+   svgText(12,103,"N")+svgText(87,103,"E")+svgText(159,103,"S")+
+   svgText(232,103,"W")+svgText(296,103,"N")+
+   '<circle cx="'+hx(p.sun_az)+'" cy="'+hy(p.sun_el)+'" r="7" fill="#ffc979"/>'+
+   '<circle cx="'+hx(p.earth_az)+'" cy="'+hy(p.earth_el)+'" r="6" fill="#68caff"/>';
+ $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° elevation · Earth "+p.earth_el.toFixed(1)+"° elevation";
+ $("source").textContent=p.source+" · "+p.global_source;
+ globe.setSun(fixed.sun.x,fixed.sun.y,fixed.sun.z);
 }
 async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq)$("source").textContent="Preview unavailable: "+e.message}}
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
