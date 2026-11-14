@@ -14,7 +14,7 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Stream and validate two NASA PDS Diviner archival products
+      - name: Stream and validate 18 NASA PDS Diviner archival latitude bands
         run: python luna-mission-control/scripts/build_diviner_cache.py
       - name: Verify historical measured temperature coverage and units
         run: |
@@ -31,7 +31,7 @@ jobs:
           from pathlib import Path
           p=Path('luna-mission-control/web/assets')
           d=json.loads((p/'diviner-gcp-meta.json').read_text())
-          assert len(d['bands'])==2
+          assert len(d['bands'])==18
           for b in d['bands']:
               assert b['valid_samples']>30000
               z=p/b['file']

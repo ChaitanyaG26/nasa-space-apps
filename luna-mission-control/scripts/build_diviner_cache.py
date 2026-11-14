@@ -20,7 +20,8 @@ from pathlib import Path
 
 URL = "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_gcp/"
 DEST = Path(__file__).resolve().parents[1] / "web" / "assets"
-BANDS = ("60s50s", "90s80s")
+BANDS = ("10s00s","20s10s","30s20s","40s30s","50s40s","60s50s","70s60s","80s70s","90s80s",
+         "00n10n","10n20n","20n30n","30n40n","40n50n","50n60n","60n70n","70n80n","80n90n")
 WIDTH, HEIGHT, TIMES = 720, 20, 96
 NODATA = -32768
 SOURCE_FMT = "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/label/dlre_gcp.fmt"
@@ -33,7 +34,7 @@ def parse_record(record: bytes):
             float(record[17:23]), float(record[102:111]))
 
 def process_band(band: str):
-    north = -int(band[3:5])
+    north = int(band[3:5]) * (1 if band[2]=='n' else -1)
     uri = URL + f"global_cumul_avg_cyl_{band}_002.tab"
     source = hashlib.sha256()
     output = [NODATA] * (WIDTH * HEIGHT * TIMES)
@@ -103,7 +104,7 @@ def main():
         "spatial_resolution_deg":0.5,"local_time_resolution_h":0.25,
         "temperature_units":"int16 tenths kelvin","missing_value":NODATA,
         "longitude_first_center_deg":-179.75,
-        "coverage":"Only 50-60°S and 80-90°S bands; other sites retain a clearly marked physical projection.",
+        "coverage":"Whole Moon 18 global 10-degree latitude bands; bins with no NASA observations remain unavailable.",
         "bands":bands,"generated_utc":datetime.now(timezone.utc).isoformat()
     }
     (DEST/"diviner-gcp-meta.json").write_text(json.dumps(meta,separators=(",",":")),encoding="utf-8")

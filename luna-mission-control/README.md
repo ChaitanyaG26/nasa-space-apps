@@ -136,3 +136,10 @@ Official fields: https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_
 ### Site-specific NASA JPL Horizons validation
 
 The independent script validate_horizons_sites.py directly queries NASA Horizons at selected lunar sites and compares angular residuals against the cached-reference Moon geometry, publishing an explicit residual report. Validation of ephemerides does not validate the coarse terrain shadow, temperature model, communication link budget, or lander engineering.
+
+
+### Global coverage expansion and measured ephemeris residual disclosure
+
+All 18 official Diviner PDS3 Global Cumulative Product 10-degree latitude bands are ingested, for global historical *regolith bolometric brightness temperature* local-time context at 0.5-degree bins, 0.25-hour local-time bins. The site-specific observational overlay is not a date-specific forecast; bins that NASA marked missing remain missing. The official 2009–2015 PDS archive is the measurement source, not the standalone equilibrium equation.
+
+The results view also discloses the independent direct NASA Horizons comparison sample count, checked coordinates/epoch and maximum residual angular errors from the real JPL Horizons observer service. Those residuals validate only the astronomical geometry at the checked sites/time, not the terrain horizon, spacecraft thermal control or radio link budget.
