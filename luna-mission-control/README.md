@@ -107,3 +107,18 @@ Global elevation is sourced from the NASA GSFC SVS CGI Moon Kit LOLA GDR (ldem_1
 NASA/JPL Horizons positions supply Sun/Earth directions and range; irradiance uses the measured Sun distance via the inverse square rule and a reference 1361 W/m² at 1 AU. The 24% panel conversion, 80% electrical factor, user panel tilt/azimuth, battery capacity and power load are design assumptions rather than measured hardware.
 
 The former thermal curve was an unvalidated proxy. It has been removed: NASA Diviner measures regolith temperatures, not an unspecified lander's components. No temperature or hibernation forecast is reported without a thermal balance model including radiation, conduction, internal heat and mass/thermal inertia. The app still does not predict seismic risk or centimeter-/meter-scale rover traversability. Geometric Earth visibility is not a radio link budget; communication service is not guaranteed by the view alone.
+
+
+### Phase II: Restore all scenario graphs, without mislabeling projections
+
+The UI includes solar power, battery state of charge, geometric Earth communication opportunities, **projected regolith temperature** and **power conservation advisory** (a screening indicator rather than a validated need for hibernation). The thermal graph is NOT a measured lander or even an independently validated site-specific soil forecast. It uses radiative equilibrium:
+\(T=(T_\mathrm{background}^4+[(1-a) S \sin(\mathrm{Sun\ elevation}) f_\mathrm{sun}]/(\epsilon\sigma))^{1/4}\).
+It references NASA LRO Diviner's observed thermal ranges (roughly below 100 K at lunar night and around 400 K in equatorial daytime), but 0.12 albedo, 0.95 emissivity and a 95 K background are **assumptions**. Thermal inertia, shadowed polar cold traps, local reflection, emission from nearby terrain, subsurface conduction, solar geometry/roughness and actual hardware thermal design are not represented. The output label always says **PROJECTED — NOT SITE-VALIDATED**. Solar energy, battery SOC and communication windows are also **PROJECTED** and depend on user hardware assumptions; no radio link budget or rover safety evaluation is claimed. A low-power advisory appears if the assumed battery SOC is within 10 percentage points of the user's reserve and projected instantaneous solar output is lower than assumed load.
+
+NASA data and research references:
+- JPL Horizons: https://ssd.jpl.nasa.gov/horizons/
+- LOLA global surface height raster: https://svs.gsfc.nasa.gov/4720/
+- LRO Diviner measurements and science: https://www.diviner.ucla.edu/science and archive https://pds-geosciences.wustl.edu/missions/lro/diviner.htm
+- Apollo lunar seismic archive (context only, **not** local seismic prediction): https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm
+
+Validation status: JavaScript unit/integration tests verify model equations, JPL data time interpolation, NASA LOLA grid shape, energy bounds and labels. Independent validation against site-specific Diviner temperatures or a flight lander's telemetry is **not** yet available. Do not use these outputs for operational mission decisions.
