@@ -43,4 +43,15 @@ jobs:
           git add luna-mission-control/web/assets/lola-south-025deg.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Cache NASA LOLA south pole elevation samples'
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              echo "NASA dataset published successfully"
+              exit 0
+            fi
+            echo "Push raced with another NASA dataset job; retrying ($attempt/5)"
+            sleep $((attempt * 2))
+          done
+          echo "Unable to publish NASA dataset after retries" >&2
+          exit 1
