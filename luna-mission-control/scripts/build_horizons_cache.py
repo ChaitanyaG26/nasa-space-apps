@@ -21,8 +21,8 @@ from backend.horizons import get_series_with_ranges
 UTC = timezone.utc
 START = datetime(2026, 10, 1, tzinfo=UTC)
 END = datetime(2027, 3, 1, tzinfo=UTC)
-STEP_MINUTES = 180
-CHUNK_DAYS = 24
+STEP_MINUTES = 60
+CHUNK_DAYS = 14
 OUTPUT = APP / "web" / "assets" / "horizons-moon-reference.json"
 MOON_REFERENCE_RADIUS_KM = 1737.4
 
