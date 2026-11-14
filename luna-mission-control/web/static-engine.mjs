@@ -139,12 +139,14 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       max_obstruction_deg:round(Math.max(...regionalHorizon.horizon),2),
       max_range_km:regionalHorizon.max_range_km,
       angular_resolution_deg:regionalHorizon.bearing_step_deg,
-      near_field_resolved:false
+      near_field_resolved:regionalHorizon.near_field_resolved===true,
+      detail_resolution_m:regionalHorizon.detail_resolution_m??null
     }:null,
     quality:{
       ephemeris:ephemerisLabel,
       irradiance:'NASA/JPL Sun distance + 1361 W/m² reference; panel efficiency/tilt/load are assumptions',
-      terrain:regionalHorizon?.coverage?'NASA LOLA COARSE REGIONAL OBSTRUCTION: NO FINE HORIZON VALIDATION':
+      terrain:regionalHorizon?.detail_resolution_m?'NASA LOLA LOCAL 20-METER DEM + COARSE DISTANT HORIZON; NOT LANDING CERTIFICATION':
+        regionalHorizon?.coverage?'NASA LOLA COARSE REGIONAL OBSTRUCTION: NO FINE HORIZON VALIDATION':
         terrainInfo?.coverage?'NASA LOLA REGIONAL ELEVATION ONLY; HORIZON UNAVAILABLE':'LOLA TERRAIN UNAVAILABLE — GEOMETRIC HORIZON',
       temperature:'PROJECTED REGOLITH EQUILIBRIUM — Diviner context, NOT calibrated to site or spacecraft',
       thermal_provenance:THERMAL_PROVENANCE,

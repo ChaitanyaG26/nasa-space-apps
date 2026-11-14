@@ -143,3 +143,11 @@ The independent script validate_horizons_sites.py directly queries NASA Horizons
 All 18 official Diviner PDS3 Global Cumulative Product 10-degree latitude bands are ingested, for global historical *regolith bolometric brightness temperature* local-time context at 0.5-degree bins, 0.25-hour local-time bins. The site-specific observational overlay is not a date-specific forecast; bins that NASA marked missing remain missing. The official 2009–2015 PDS archive is the measurement source, not the standalone equilibrium equation.
 
 The results view also discloses the independent direct NASA Horizons comparison sample count, checked coordinates/epoch and maximum residual angular errors from the real JPL Horizons observer service. Those residuals validate only the astronomical geometry at the checked sites/time, not the terrain horizon, spacecraft thermal control or radio link budget.
+
+### NASA LOLA 20-meter south polar high-resolution DEM patches
+
+NASA GSFC's Cloud Optimized GeoTIFF LDEM_80S_20MPP_ADJ.TIF is an official 20-m/pixel LOLA digital elevation product with Moon south polar stereographic coordinates, MOON_ME/DE421. Official source: https://pgda.gsfc.nasa.gov/products/90 .
+
+The NASA COG is about 2.6GB, so the optional high-resolution GitHub Actions pipeline requests only four 512 x 512 local windows using GDAL windowed cloud-optimized access, never bundling the multi-GB source. It creates 20-m resolution, 10.24-km lunar azimuthal-equidistant patches at three -89.5°S sectors (0, 90, 180 E) and -85°S/45°E. Heights are encoded as signed meters relative to the lunar reference sphere and the source vertical datum is checked. The source must have valid Moon georeferencing; otherwise the pipeline fails rather than inventing locations.
+
+Only when the selected location falls within a verified generated patch does LUNA use the 20m grid for local height, screening slope and 0–3-km terrain obstruction, combining it with coarse global LOLA farther away. The entire site, horizon and rover path are not proven safe at 20m resolution. If the high-resolution source or projection is unavailable, the original global LOLA terrain still works and the interface clearly labels near-field terrain unresolved.
