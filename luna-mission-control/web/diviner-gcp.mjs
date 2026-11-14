@@ -3,7 +3,7 @@
  * Use local solar time computed from JPL Horizons Sun direction at UTC;
  * never confuse 2026 geometry with the 2009-2015 observation epoch.
  */
-const W=720,H=20,SLOTS=96,NO_DATA=-32768,DATA_VERSION="gcp1";
+const W=720,H=20,SLOTS=96,NO_DATA=-32768,DATA_VERSION="gcp2-global-20261114";
 let metadata=null;
 const datasets=new Map();
 const wrap=x=>((x%360)+360)%360;

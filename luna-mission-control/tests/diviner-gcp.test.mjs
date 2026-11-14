@@ -30,3 +30,19 @@ test("Missing Diviner bands and missing values are not filled with fictional mea
  assert.equal(readMeasuredBin(data,-55,30,12),null);
  assert.throws(()=>decodeDiviner(new ArrayBuffer(2),{latitude_north_edge:-50},meta),/shape/);
 });
+
+test("Committed global NASA PDS Diviner source is readable and has measured samples",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const meta=JSON.parse(readFileSync(new URL("../web/assets/diviner-gcp-meta.json",import.meta.url),"utf8"));
+ assert.equal(meta.schema_version,1);
+ assert.equal(meta.bands.length,18);
+ assert.equal(meta.local_time_bins,96);
+ const band=meta.bands.find(x=>x.name==="60s50s");
+ const b=readFileSync(new URL("../web/assets/"+band.file,import.meta.url));
+ const buffer=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);
+ const data=decodeDiviner(buffer,band,meta);
+ const values=Array.from({length:96},(_,i)=>readMeasuredBin(data,-53.25,-99.75,.125+i*.25)).filter(v=>v!==null);
+ assert.ok(values.length>5, "No actual NASA Diviner local-time samples near the test site");
+ assert.ok(values.every(v=>v>0&&v<500));
+ assert.ok(meta.bands.every(x=>x.source_sha256.length===64));
+});
