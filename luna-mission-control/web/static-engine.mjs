@@ -66,8 +66,18 @@ export function preview(input){
   return {source:'OFFLINE ILLUSTRATIVE — NOT NASA EPHEMERIS',global_source:'Moon-fixed demo directions — not measured ephemerides',global:moonFixedDirections(r.landing_time),sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el)};
 }
 export function simulate(input){
-  const r=validated(input),start=Date.parse(r.landing_time),N=r.duration_days*24;
+  const r=validated(input);
+  const start=Date.parse(r.landing_time),N=r.duration_days*24;
   const gs=Array.from({length:N+1},(_,i)=>demoGeometry(r.latitude,r.longitude,start+i*HOUR));
+  return simulateWithGeometry(r,gs,"OFFLINE ILLUSTRATIVE GEOMETRY");
+}
+
+export function simulateWithGeometry(input,gs,ephemerisLabel){
+  // Only a validated and continuous NASA/JPL series should pass in a JPL label.
+  const r=validated({...input,data_mode:"demo"}),start=Date.parse(r.landing_time),N=r.duration_days*24;
+  if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*HOUR)){
+    throw Error("Ephemeris series does not fully cover the selected mission");
+  }
   let energy=r.battery_wh*.9,temp=-75,firstViolation=null;
   const rows=[];
   for(let i=0;i<=N;i++){
@@ -87,7 +97,7 @@ export function simulate(input){
   const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2,0);
   const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent,commsOk=earth.maxGap<=24;
   return {site:{latitude:r.latitude,longitude:r.longitude},landing_time:r.landing_time,duration_days:r.duration_days,
-    quality:{ephemeris:'OFFLINE ILLUSTRATIVE GEOMETRY',terrain:'FLAT HORIZON ASSUMPTION — NOT LOLA-VALIDATED',
+    quality:{ephemeris:ephemerisLabel,terrain:'FLAT HORIZON ASSUMPTION — NOT LOLA-VALIDATED',
       temperature:'UNVALIDATED SURFACE-RESPONSE PROXY — NOT SPACECRAFT TEMPERATURE',seismic:'NO SITE-SPECIFIC SEISMIC ASSESSMENT',rover:'NO ROVER TRAVERSABILITY DETERMINED'},
     metrics:{total_energy_wh:Math.round(sum),sun_hours:sun.hours,earth_hours:earth.hours,earth_fraction:round(earth.hours/N,3),
       max_earth_blackout_h:earth.maxGap,max_darkness_h:sun.maxGap,min_soc:round(minSoc,1),
@@ -100,13 +110,17 @@ function rank(out,r){
   return [Number(m.feasible),round(.6*Math.min(1,m.total_energy_wh/Math.max(1,possible))+.4*m.earth_fraction,6),m.min_soc];
 }
 export function optimize(payload){
-  const r=validated(payload.mission),original=simulate(r),choices=[];
+  return optimizeWithEngine(payload,simulate);
+}
+
+export function optimizeWithEngine(payload,runner){
+  const r=validated({...payload.mission,data_mode:"demo"}),original=runner(r),choices=[];
   if(payload.preserve==='time'){
     grid.forEach(([latitude,longitude],i)=>{if(latitude!==r.latitude||longitude!==r.longitude)choices.push({name:'Grid '+(i+1),request:{...r,latitude,longitude}})});
   }else if(payload.preserve==='site'){
     for(let j=-28;j<=28;j++)if(j!==0)choices.push({name:(j>=0?'+':'')+(j*12)+' h',request:{...r,landing_time:iso(Date.parse(r.landing_time)+j*12*HOUR)}});
   }else throw Error('preserve must be site or time');
-  const sorted=choices.map(c=>({...c,result:simulate(c.request)})).sort((a,b)=>{
+  const sorted=choices.map(c=>({...c,result:runner(c.request)})).sort((a,b)=>{
     const x=rank(a.result,r),y=rank(b.result,r);return y[0]-x[0]||y[1]-x[1]||y[2]-x[2];
   });
   const winner=sorted[0],feasible=sorted.some(c=>c.result.metrics.feasible);
@@ -115,7 +129,7 @@ export function optimize(payload){
     preserve:payload.preserve,
     search:payload.preserve==='time'?'Demonstration grid of 11 south-pole coordinates; not vetted landing zones.':'Fixed site; landing dates sampled every 12 hours within ±14 days.',
     comparison_note:feasible?'Top feasible alternatives rank by modeled energy and Earth visibility.':'No evaluated alternative passes both illustrative battery reserve and 24-hour-blackout checks. The displayed candidate is NOT certified safe.',
-    scientific_limit:'Browser-only demonstration; NASA terrain and actual landing safety are not evaluated.'};
+    scientific_limit:'Geometric Earth visibility only. NASA terrain and actual landing safety are not evaluated.'};
 }
 export async function staticApi(path,body){
   await Promise.resolve();
