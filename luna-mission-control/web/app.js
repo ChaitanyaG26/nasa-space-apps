@@ -1,5 +1,5 @@
 import {initGlobe} from "./globe.js";
-import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs";
+import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-projections-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {THERMAL_PROVENANCE} from "./thermal-projection.mjs";
