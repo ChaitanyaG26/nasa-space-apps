@@ -48,3 +48,8 @@ def globe():return FileResponse(WEB/'globe.js',media_type='application/javascrip
 @app.get("/static-engine.mjs")
 def static_engine():
     return FileResponse(WEB/"static-engine.mjs",media_type="application/javascript")
+
+
+@app.get("/launch-window.mjs")
+def launch_window_module():
+    return FileResponse(WEB/"launch-window.mjs",media_type="application/javascript")
