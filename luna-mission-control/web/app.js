@@ -1,7 +1,7 @@
 import {initGlobe} from "./globe.js";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
-import {loadLola,regionalTerrain} from "./lola-terrain.mjs";
+import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
 const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
@@ -12,21 +12,23 @@ async function api(path,data){
  if(IS_PAGES){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
    if(selected==="horizons"){
-     const [reference,lola]=await Promise.all([loadJplReference(),loadLola()]);
-     const terrain=(req)=>regionalTerrain(lola,req.latitude,req.longitude);
+     const [reference,lola]=await Promise.all([loadJplReference(),loadLolaGlobal()]);
+     const terrain=(req)=>siteElevation(lola,req.latitude,req.longitude);
+     const horizon=(req)=>terrainHorizon(lola,req.latitude,req.longitude);
      const height=(req)=>terrain(req).elevation_km??0;
      if(path==="preview"){
        const p=referencePreview(reference,data,height(data));
        p.terrain=terrain(data);
+       p.regional_horizon=horizon(data);
        return p;
      }
      if(path==="simulate"){
        return simulateWithGeometry(data,geometrySeries(reference,data,height(data)),
-         "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(data));
+         "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(data),horizon(data));
      }
      if(path==="optimize"){
        return optimizeWithEngine(data,req=>simulateWithGeometry(req,geometrySeries(reference,req,height(req)),
-         "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(req)));
+         "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(req),horizon(req)));
      }
      throw Error("Unsupported operation: "+path);
    }
@@ -75,7 +77,7 @@ function updateDiagrams(p){
    '<circle cx="'+hx(p.earth_az)+'" cy="'+hy(p.earth_el)+'" r="6" fill="#68caff"/>';
  $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° elevation · Earth "+p.earth_el.toFixed(1)+"° elevation"+
  (p.terrain?.coverage?" · LOLA elevation "+p.terrain.elevation_km.toFixed(3)+" km":"");
- $("source").textContent=p.source+" · "+p.global_source;
+ $("source").textContent=p.source+" · "+p.global_source+(p.regional_horizon?.coverage?" · NASA LOLA coarse regional skyline":" · Regional horizon unavailable");
  globe.setSun(fixed.sun.x,fixed.sun.y,fixed.sun.z);
 }
 async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message; $("angles").textContent="No verified ephemeris for this selection";}}}
@@ -85,8 +87,8 @@ const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">"
 function plot(samples,key,color,maxVal=null){if(!samples||samples.length<2)return "";const w=340,h=104,vals=samples.map(r=>Number(r[key]||0)),hi=maxVal??Math.max(...vals,1),lo=0;const coords=vals.map((v,i)=>(10+(w-20)*i/(vals.length-1)).toFixed(1)+","+(h-11-(h-23)*(v-lo)/Math.max(1,hi-lo)).toFixed(1)).join(" ");return '<svg viewBox="0 0 340 122" role="img" aria-label="'+key+' over time"><path d="M10 6 V105 H330" stroke="#c8d8e0" fill="none"/><polyline points="'+coords+'" stroke="'+color+'" fill="none" stroke-width="2"/>'+svgText(10,119,"Landing")+svgText(284,119,"Mission end", "#516976")+'</svg>'}
 function chart(name,samples,key,color,maxVal){return '<div class="chart"><div class="chart-title">'+name+'</div>'+plot(samples,key,color,maxVal)+'</div>'}
 function windows(samples){const ss=samples.filter((r,i)=>i%Math.max(1,Math.ceil(samples.length/140))===0);return '<div class="chart"><div class="chart-title">Geometric Earth visibility (teal = visible)</div><div class="windows">'+ss.map(s=>'<span style="flex:1;background:'+(s.earth_visible?"#4fbea6":"#c8d4df")+'"></span>').join("")+'</div></div>'}
-function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Unvalidated thermal response proxy (°C, not lander temperature)",s,"temperature_proxy_c","#b46b6b")+windows(s)+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km above reference sphere; ~7.6 km N–S cells; not suitable for slope or horizon certification. · '):'LOLA regional elevation unavailable at this coordinate. · ')+'Terrain shadows are NOT modeled. · '+escapeHtml(data.quality.ephemeris)+' · No site-specific seismic or rover-traversal analysis.</div></div>'}
-function render(){let html=lastResult?'<div class="quality">Preliminary planning model. No terrain-aware obstruction, validated temperatures, radio-link budget, or landing hazard certification. Offline mode is illustrative.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;}
+function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+'<div class="chart"><div class="chart-title">Thermal forecast unavailable</div><p class="muted">NASA Diviner observes lunar regolith temperatures, not component temperatures of this unspecified lander. A spacecraft thermal model requires insulation, emissivity, heat transfer and heater properties. No justified hibernation windows can be predicted.</p></div>'+windows(s)+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?('Maximum COARSE regional obstruction: '+data.regional_horizon.max_obstruction_deg+'°. Local crater rims and near-field hazards are unresolved. · '):'Regional skyline unavailable. · ')+escapeHtml(data.quality.ephemeris)+' · No site-specific seismic or rover-traversal analysis.</div></div>'}
+function render(){let html=lastResult?'<div class="quality">Preliminary NASA/JPL astronomy with coarse measured NASA LOLA terrain. No fine local shadows, validated spacecraft temperatures, radio-link budget, or landing certification. Panel efficiency, battery and load values are assumptions.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;}
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
 $("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();}));
 $("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults()})});

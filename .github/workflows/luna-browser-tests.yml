@@ -1,0 +1,31 @@
+name: LUNA browser and NASA scientific engine regression
+on:
+  pull_request:
+    paths:
+      - 'luna-mission-control/**'
+      - 'index.html'
+      - '.github/workflows/luna-browser-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/**'
+      - 'index.html'
+      - '.github/workflows/luna-browser-tests.yml'
+permissions:
+  contents: read
+jobs:
+  browser-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scientific browser unit tests (no NASA downloads)
+        run: |
+          node --test luna-mission-control/tests/static-engine.test.mjs
+          node --test luna-mission-control/tests/horizons-static.test.mjs
+          node --test luna-mission-control/tests/lola-terrain.test.mjs
+          node --test luna-mission-control/tests/lola-global.test.mjs
+          node --input-type=module --check < luna-mission-control/web/app.js
+          node --input-type=module --check < luna-mission-control/web/lola-global.mjs
