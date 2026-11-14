@@ -1,7 +1,8 @@
 import {initGlobe} from "./globe.js";
-import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-projections-1";
+import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-lola20m-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
+import {loadPolarPatch,localPatchXY,samplePolarHeightKm,polarSiteSlopeDeg,refinePolarHorizon} from "./lola-polar-detail.mjs";
 import {THERMAL_PROVENANCE} from "./thermal-projection.mjs";
 import {loadDivinerAtLatitude,divinerObservedReference} from "./diviner-gcp.mjs";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
@@ -77,8 +78,27 @@ async function api(path,data){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
    if(selected==="horizons"){
      const [reference,lola]=await Promise.all([loadJplReference(),loadLolaGlobal()]);
-     const terrain=(req)=>siteElevation(lola,req.latitude,req.longitude);
-     const horizon=(req)=>terrainHorizon(lola,req.latitude,req.longitude);
+     const initial=(path==="optimize"?data.mission:data);
+     const locations=[[initial.latitude,initial.longitude]];
+     if(path==="optimize")locations.push([-89.5,0],[-89.5,90],[-89.5,180],[-85,45]);
+     const highRes=(await Promise.all(locations.map(([lat,lon])=>loadPolarPatch(lat,lon)))).filter(Boolean);
+     const patchFor=(req)=>highRes.find(p=>{
+       const [x,y]=localPatchXY(p.entry.latitude,p.entry.longitude,req.latitude,req.longitude);
+       return Math.abs(x)<4900&&Math.abs(y)<4900;
+     })??null;
+     const terrain=(req)=>{
+       const coarse=siteElevation(lola,req.latitude,req.longitude);
+       const local=patchFor(req);
+       const detail=samplePolarHeightKm(local,req.latitude,req.longitude);
+       return detail===null?coarse:{
+         ...coarse,elevation_km:Number(detail.toFixed(3)),detail_coverage:true,
+         detail_slope_deg:polarSiteSlopeDeg(local,req.latitude,req.longitude),
+         source:"NASA GSFC LOLA 20m high-resolution DEM patch",
+         resolution:"20 meters within 10.24-km local patch; coarse LOLA outside"
+       };
+     };
+     const horizon=(req)=>refinePolarHorizon(patchFor(req),req.latitude,req.longitude,
+       terrainHorizon(lola,req.latitude,req.longitude));
      const height=(req)=>terrain(req).elevation_km??0;
      if(path==="preview"){
        const p=referencePreview(reference,data,height(data));
@@ -185,7 +205,15 @@ function card(data,label){const m=data.metrics,s=data.samples;return '<div class
  '<p class="muted">Historical observational reference at local lunar time, NOT a 2026 temperature observation or spacecraft measurement.</p></div>':
  '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
 '<div class="chart"><div class="chart-title">Power conservation advisory (amber = threshold)</div><div class="windows">'+s.filter((r,i)=>i%Math.max(1,Math.ceil(s.length/140))===0).map(x=>'<span title="'+escapeHtml(x.time)+'" style="flex:1;background:'+(x.power_conservation_advisory?"#dfaa49":"#a5cfca")+'"></span>').join("")+'</div><p class="muted">Projected energy conservation only: SOC within 10 percentage points of reserve and solar power below load. NOT a command to hibernate or a thermal survival prediction.</p></div>'+windows(s)+
-'<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?('Maximum COARSE regional obstruction: '+data.regional_horizon.max_obstruction_deg+'°. Local crater rims and near-field hazards are unresolved. · '):'Regional skyline unavailable. · ')+escapeHtml(data.quality.ephemeris)+' · <b>Independent JPL site check:</b> '+escapeHtml(data.quality.horizons_direct_validation||"Unavailable")+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
+'<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?(
+ 'Maximum modeled skyline obstruction: '+data.regional_horizon.max_obstruction_deg+'°; '+
+ (data.regional_horizon.near_field_resolved?
+   'NASA LOLA 20m local detail to 3 km + coarse LOLA beyond; small hazards remain unresolved. · ':
+   'COARSE regional LOLA only; nearby ridges and hazards may be unresolved. · ')
+ ):'Regional skyline unavailable. · ')+
+ (data.terrain?.detail_coverage?('Local 20m-DEM screening slope: '+
+   (Number.isFinite(data.terrain.detail_slope_deg)?data.terrain.detail_slope_deg.toFixed(1)+'°':'unavailable')+
+   ' — NOT certified rover traversability. · '):'')+escapeHtml(data.quality.ephemeris)+' · <b>Independent JPL site check:</b> '+escapeHtml(data.quality.horizons_direct_validation||"Unavailable")+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
  (data.quality.thermal_model_mean_abs_error_c!==undefined&&data.quality.thermal_model_mean_abs_error_c!==null?
  ' · Mean absolute difference vs historical climatology: '+data.quality.thermal_model_mean_abs_error_c+' °C (NOT forecast validation)':'')+
  ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No rover traversal or seismic forecast.</div></div>'}

@@ -1,0 +1,52 @@
+name: Cache NASA 20m LOLA polar elevation windows
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/scripts/build_lola_polar_detail.py'
+      - '.github/workflows/luna-lola-polar-detail.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install GDAL/raster processing
+        run: python -m pip install numpy rasterio
+      - name: Read NASA GSFC LOLA 20m COG windows
+        run: python luna-mission-control/scripts/build_lola_polar_detail.py
+      - name: Verify registered products
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('luna-mission-control/web/assets')
+          d=json.loads((p/'lola-polar-detail.json').read_text())
+          assert len(d['patches'])==4 and d['cell_size_m']==20
+          for tile in d['patches']:
+              assert (p/tile['binary']).stat().st_size==512*512*2
+              assert tile['valid_fraction']>.9
+          print('NASA 20m local patch products validated')
+          PY
+      - name: Commit NASA 20m terrain evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add luna-mission-control/web/assets/lola-polar-*.bin luna-mission-control/web/assets/lola-polar-detail.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Publish NASA 20m LOLA near-field polar terrain patches'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
