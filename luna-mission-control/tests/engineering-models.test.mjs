@@ -37,7 +37,7 @@ test("One-node thermal parameters are explicitly bounded assumptions",()=>{
  assert.throws(()=>thermalParameters({operational_min_c:20,operational_max_c:10}),/min must be below max/);
 });
 const mission={latitude:-89.5,longitude:0,landing_time:"2026-12-12T12:00:00Z",
- duration_days:1,area_m2:1.6,panel_tilt_deg:0,panel_az_deg:0,battery_wh:5000,load_w:75,reserve_percent:20,data_mode:"demo"};
+ duration_days:1,area_m2:1.6,panel_tilt_deg:0,panel_az_deg:0,battery_wh:5000,load_w:75,reserve_percent:20,data_mode:"demo",sample_minutes:60};
 function geometry(earthDistance=384400){
  const st=Date.parse(mission.landing_time);
  return Array.from({length:25},(_,i)=>({time:new Date(st+i*3600000).toISOString(),

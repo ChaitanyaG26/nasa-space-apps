@@ -99,11 +99,16 @@ export function geometryAtUtc(data,lat,lon,when,heightKm=0){
 }
 
 export function geometrySeries(data,req,heightKm=0){
-  const start=utcMillis(req.landing_time),steps=req.duration_days*24;
-  // Date range checks apply to the entire mission, not just landing instant.
+  const minutes=Number(req.sample_minutes??30);
+  if(![15,30,60].includes(minutes))throw Error("Invalid simulation time step");
+  const start=utcMillis(req.landing_time),stepMs=minutes*60000;
+  const steps=Math.round(req.duration_days*24*60/minutes);
+  // NASA source samples are hourly; sub-hour positions are interpolated,
+  // NOT additional independent JPL Horizons observations.
   atUtc(data,new Date(start));
-  atUtc(data,new Date(start+steps*3600000));
-  return Array.from({length:steps+1},(_,i)=>geometryAtUtc(data,req.latitude,req.longitude,start+i*3600000,heightKm));
+  atUtc(data,new Date(start+steps*stepMs));
+  return Array.from({length:steps+1},(_,i)=>
+    geometryAtUtc(data,req.latitude,req.longitude,start+i*stepMs,heightKm));
 }
 
 export function referencePreview(data,req,heightKm=0){

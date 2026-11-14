@@ -7,10 +7,13 @@ function validated(input){
   const r={...input},numeric=['latitude','longitude','duration_days','area_m2','panel_tilt_deg','panel_az_deg','battery_wh','load_w','reserve_percent'];
   for(const k of numeric)r[k]=Number(r[k]);
   if(!Number.isFinite(Date.parse(r.landing_time)))throw Error('Invalid UTC landing time');
-  const limits={latitude:[-90,90],longitude:[-180,180],duration_days:[1,21],area_m2:[.01,100],panel_tilt_deg:[0,90],panel_az_deg:[0,360],battery_wh:[1,500000],load_w:[.01,5000],reserve_percent:[0,90]};
+  r.sample_minutes=Number(r.sample_minutes??30);
+  if(![15,30,60].includes(r.sample_minutes))throw Error('Invalid time step; choose 15, 30 or 60 minutes');
+  const limits={latitude:[-90,90],longitude:[-180,180],duration_days:[1,35],area_m2:[.01,100],panel_tilt_deg:[0,90],panel_az_deg:[0,360],battery_wh:[1,500000],load_w:[.01,5000],reserve_percent:[0,90]};
   for(const [k,[lo,hi]] of Object.entries(limits))if(!Number.isFinite(r[k])||r[k]<lo||r[k]>hi)throw Error('Invalid '+k);
   if(r.data_mode&&r.data_mode!=='demo')throw Error('GitHub Pages offers offline illustrative geometry only. Live JPL Horizons requires the Python backend.');
   Object.assign(r,thermalParameters(r),radioParameters(r));
+  if(!Number.isInteger(r.duration_days))throw Error('Duration must be a whole number of days');
   r.landing_time=iso(r.landing_time);return r;
 }
 function azel(lat,lon,dec,sub){
@@ -100,29 +103,31 @@ export function preview(input){
 }
 export function simulate(input){
   const r=validated(input);
-  const start=Date.parse(r.landing_time),N=r.duration_days*24;
-  const gs=Array.from({length:N+1},(_,i)=>demoGeometry(r.latitude,r.longitude,start+i*HOUR));
+  const dt=r.sample_minutes/60,stepMs=r.sample_minutes*60000;
+  const start=Date.parse(r.landing_time),N=Math.round(r.duration_days*24/dt);
+  const gs=Array.from({length:N+1},(_,i)=>demoGeometry(r.latitude,r.longitude,start+i*stepMs));
   return simulateWithGeometry(r,gs,"OFFLINE ILLUSTRATIVE GEOMETRY");
 }
 
 export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,regionalHorizon=null){
   // Only a validated and continuous NASA/JPL series should pass in a JPL label.
-  const r=validated({...input,data_mode:"demo"}),start=Date.parse(r.landing_time),N=r.duration_days*24;
-  if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*HOUR)){
+  const r=validated({...input,data_mode:"demo"}),start=Date.parse(r.landing_time),
+        dt=r.sample_minutes/60,stepMs=r.sample_minutes*60000,N=Math.round(r.duration_days*24/dt);
+  if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*stepMs)){
     throw Error("Ephemeris series does not fully cover the selected mission");
   }
   let energy=r.battery_wh*.9,firstViolation=null,landerTempK=r.initial_temp_c+273.15;
   let heaterEnergyWh=0;
   const rows=[];
   for(let i=0;i<=N;i++){
-    const g=gs[i],fraction=solarVisibility(g,regionalHorizon),power=photovoltaicPower(g,r,fraction),time=iso(start+i*HOUR);
+    const g=gs[i],fraction=solarVisibility(g,regionalHorizon),power=photovoltaicPower(g,r,fraction),time=iso(start+i*stepMs);
     const irradiance=g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE;
     const regolithC=projectRegolithTemperatureC(irradiance,g.sun_el,fraction);
     const geometricEarth=earthVisibility(g,regionalHorizon);
     const link=g.earth_distance_km?radioLinkBudget(g.earth_distance_km,r):null;
-    const step=i<N?thermalStep(landerTempK,regolithC,irradiance,fraction,r.load_w,r,energy>0):null;
+    const step=i<N?thermalStep(landerTempK,regolithC,irradiance,fraction,r.load_w,r,energy>0,r.sample_minutes*60):null;
     const landerTempC=landerTempK-273.15;
-    rows.push({time,hours:i,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
+    rows.push({time,hours:i*dt,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
       power_w:round(power),sun_visible:fraction>0,earth_visible:geometricEarth,solar_fraction:round(fraction,3),
       solar_irradiance_w_m2:round(irradiance),
       battery_wh:round(energy),soc:round(100*energy/r.battery_wh),diviner_observed_c:null,
@@ -142,13 +147,13 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
     const heaterW=step.average_heater_w;
     heaterEnergyWh+=step.heater_energy_wh;
     const net=(power+nextP)/2-r.load_w-heaterW;
-    energy=clamp(energy+(net>=0?net*.95:net/.9),0,r.battery_wh);
+    energy=clamp(energy+(net>=0?net*.95:net/.9)*dt,0,r.battery_wh);
     landerTempK=step.temp_k;
 
   }
   const earth=windows(rows,'earth_visible'),sun=windows(rows,'sun_visible');
   const linkWindows=rows.every(x=>x.rf_link_available!==null)?windows(rows,'rf_link_available'):null;
-  const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2,0);
+  const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2*dt,0);
   const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent;
   // In NASA mode use the assumed RF budget; demo mode has geometry only.
   const commsOk=(linkWindows??earth).maxGap<=24;
@@ -196,11 +201,11 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       heater_consumption_wh:round(heaterEnergyWh),
       lander_temperature_min_c:round(Math.min(...rows.map(x=>x.lander_temperature_c)),1),
       lander_temperature_max_c:round(Math.max(...rows.map(x=>x.lander_temperature_c)),1),
-      thermal_screen_hours:rows.slice(0,-1).filter(x=>x.thermal_screen_flag).length,
-      power_conservation_hours:rows.slice(0,-1).filter(x=>x.power_conservation_advisory).length,
+      thermal_screen_hours:round(rows.slice(0,-1).filter(x=>x.thermal_screen_flag).length*dt,2),
+      power_conservation_hours:round(rows.slice(0,-1).filter(x=>x.power_conservation_advisory).length*dt,2),
       projected_temperature_min_c:Math.min(...rows.map(x=>x.temperature_proxy_c)),
       projected_temperature_max_c:Math.max(...rows.map(x=>x.temperature_proxy_c))},
-    earth_windows:earth.intervals,sun_windows:sun.intervals,rf_link_windows:linkWindows?.intervals??null,samples:rows};
+    sample_minutes:r.sample_minutes,earth_windows:earth.intervals,sun_windows:sun.intervals,rf_link_windows:linkWindows?.intervals??null,samples:rows};
 }
 const grid=[[-89.5,0],[-89.5,45],[-89.5,90],[-89.5,135],[-89.5,-90],[-89.1,15],[-89.1,75],[-89.1,145],[-88.5,-35],[-88.5,55],[-88.5,135]];
 function rank(out,r){
