@@ -1,3 +1,4 @@
+import "./launch-window.mjs";
 import {initGlobe} from "./globe.js";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-engineering-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
