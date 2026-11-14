@@ -76,7 +76,7 @@ test("Real NASA Horizons cache simulates December 9 2026 at 53.716 S 64.389 W",(
   };
   const series=geometrySeries(cached,request,0);
   assert.equal(series.length,169);
-  assert.equal(series[0].time,request.landing_time.replace(".000",""));
+  assert.equal(series[0].time,"2026-12-09T03:20:00.000Z");
   assert.equal(series.at(-1).time,"2026-12-16T03:20:00.000Z");
   assert.ok(series.every(row=>Number.isFinite(row.sun_el)&&Number.isFinite(row.earth_el)));
   const result=simulateWithGeometry(request,series,"NASA JPL Horizons, simulated regression");
