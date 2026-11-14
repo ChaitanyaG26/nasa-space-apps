@@ -95,7 +95,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
   series='<path d="'+path.trim()+'" fill="none" stroke="'+color+'" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
  }
  const id="luna-graph-"+(++counter);
- registry.set(id,{points,start,end,unit,title,color,key});
+ registry.set(id,{points,start,end,unit,title,color,key,dom});
  const periodLabel=kind==="observed"?"Historical NASA observations · discrete bins":"Physics model · connected computed samples";
  return '<div class="chart science-plot"><div class="chart-head"><strong>'+esc(title)+'</strong><span>'+esc(unit)+'</span></div>'+
  '<div class="chart-subtitle">'+esc(subtitle||periodLabel)+'</div><div class="plot-wrap">'+
@@ -136,9 +136,7 @@ export function attachChartInteractions(root){
    const p=nearestAt(plot,t);
    if(!p)return;
    const cx=M.left+(p.time-plot.start)/(plot.end-plot.start)*pw;
-   const dom=niceDomain(plot.points.map(x=>x.value),{
-    percent:plot.unit==="%",zero:["W","Wh"].includes(plot.unit)
-   });
+   const dom=plot.dom;
    // Read exact plotted y from nearest path value rather than interpolate
    // between archived measurements.
    const cy=M.top+(dom.max-p.value)/(dom.max-dom.min)*ph;
