@@ -1,4 +1,5 @@
-/** Browser-only LUNA demonstration. Never treat output as NASA-validated data. */
+/** Browser LUNA mission engine: NASA-derived geometry, engineering projections. */
+import {projectRegolithTemperatureC,powerConservationFlag,THERMAL_PROVENANCE} from './thermal-projection.mjs';
 const PI=Math.PI,rad=PI/180,epoch=Date.parse('2026-11-20T00:00:00Z'),HOUR=3600000;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x)),round=(x,d=2)=>Number(x.toFixed(d)),iso=x=>new Date(x).toISOString();
 function validated(input){
@@ -115,7 +116,11 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
     rows.push({time,hours:i,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
       power_w:round(power),sun_visible:fraction>0,earth_visible:earthVisibility(g,regionalHorizon),solar_fraction:round(fraction,3),
       solar_irradiance_w_m2:g.sun_distance_km?round(solarIrradiance(g.sun_distance_km)):REFERENCE_SOLAR_IRRADIANCE,
-      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),temperature_proxy_c:null});
+      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),
+      // PROJECTION, not NASA-measured site temperature or spacecraft hardware temperature.
+      temperature_proxy_c:projectRegolithTemperatureC(g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE,g.sun_el,fraction),
+      temperature_status:'PROJECTED REGOLITH RADIATIVE EQUILIBRIUM — NOT VALIDATED',
+      power_conservation_advisory:powerConservationFlag(100*energy/r.battery_wh,r.reserve_percent,power,r.load_w)});
     if(firstViolation===null&&energy<r.battery_wh*r.reserve_percent/100)firstViolation=time;
     if(i===N)break;
     const next=gs[i+1],nextP=photovoltaicPower(next,r,solarVisibility(next,regionalHorizon));
@@ -141,7 +146,12 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       irradiance:'NASA/JPL Sun distance + 1361 W/m² reference; panel efficiency/tilt/load are assumptions',
       terrain:regionalHorizon?.coverage?'NASA LOLA COARSE REGIONAL OBSTRUCTION: NO FINE HORIZON VALIDATION':
         terrainInfo?.coverage?'NASA LOLA REGIONAL ELEVATION ONLY; HORIZON UNAVAILABLE':'LOLA TERRAIN UNAVAILABLE — GEOMETRIC HORIZON',
-      temperature:'SPACECRAFT THERMAL FORECAST UNAVAILABLE — NASA DIVINER MEASURES REGOLITH, NOT THIS LANDER',
+      temperature:'PROJECTED REGOLITH EQUILIBRIUM — Diviner context, NOT calibrated to site or spacecraft',
+      thermal_provenance:THERMAL_PROVENANCE,
+      solar_power:'PROJECTED from JPL Horizons illumination and Sun distance, LOLA regional obstruction, and assumed panel geometry/efficiency',
+      battery:'PROJECTED SOC from spacecraft capacity/load/efficiency assumptions, not validated hardware',
+      communication:'PROJECTED GEOMETRIC EARTH WINDOWS, NOT verified RF link availability',
+      validation:'NASA inputs verified for units and coverage; modeled predictions NOT independently validated for mission operations',
       seismic:'NO LOCATION-SPECIFIC SEISMIC HAZARD PREDICTION',
       rover:'NO ROVER TRAVERSABILITY DETERMINED'
     },
@@ -149,7 +159,10 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       max_earth_blackout_h:earth.maxGap,max_darkness_h:sun.maxGap,min_soc:round(minSoc,1),
       battery_reserve_pass:reserveOk,communication_pass:commsOk,feasible:reserveOk&&commsOk,
       constraints_label:'Assumption-based battery reserve and arbitrary 24-hour communication gap checks; NOT certified safe',
-      first_reserve_violation:firstViolation},
+      first_reserve_violation:firstViolation,
+      power_conservation_hours:rows.slice(0,-1).filter(x=>x.power_conservation_advisory).length,
+      projected_temperature_min_c:Math.min(...rows.map(x=>x.temperature_proxy_c)),
+      projected_temperature_max_c:Math.max(...rows.map(x=>x.temperature_proxy_c))},
     earth_windows:earth.intervals,sun_windows:sun.intervals,samples:rows};
 }
 const grid=[[-89.5,0],[-89.5,45],[-89.5,90],[-89.5,135],[-89.5,-90],[-89.1,15],[-89.1,75],[-89.1,145],[-88.5,-35],[-88.5,55],[-88.5,135]];
@@ -177,7 +190,7 @@ export function optimizeWithEngine(payload,runner){
     preserve:payload.preserve,
     search:payload.preserve==='time'?'Demonstration grid of 11 south-pole coordinates; not vetted landing zones.':'Fixed site; landing dates sampled every 12 hours within ±14 days.',
     comparison_note:feasible?'Candidate passes assumed battery and communication thresholds, NOT landing safety.':'No evaluated candidate passes assumption-based battery and 24-hour blackout checks. This is NOT landing safety certification.',
-    scientific_limit:'Geometric Earth visibility only. NASA terrain and actual landing safety are not evaluated.'};
+    scientific_limit:'NASA Horizons and coarse LOLA inform projections; landing safety, lander thermal survival, and RF links remain unvalidated.'};
 }
 export async function staticApi(path,body){
   await Promise.resolve();

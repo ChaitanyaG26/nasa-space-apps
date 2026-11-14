@@ -46,10 +46,13 @@ test("NASA Sun-distance inverse-square solar reference and panel geometry",async
  const cfg={area_m2:2,panel_tilt_deg:0,panel_az_deg:0};
  assert.ok(Math.abs(photovoltaicPower(g,cfg,1)-1361*2*.24*.8)<1e-8);
 });
-test("No fabricated lander temperatures are displayed",()=>{
+test("Diviner-referenced regolith temperature projection is labeled; spacecraft temperature is not claimed",()=>{
  const o=simulate(r);
- assert.ok(o.samples.every(s=>s.temperature_proxy_c===null));
- assert.match(o.quality.temperature,/UNAVAILABLE/);
+ assert.ok(o.samples.every(s=>Number.isFinite(s.temperature_proxy_c)));
+ assert.ok(o.samples.every(s=>s.temperature_status.startsWith("PROJECTED REGOLITH")));
+ assert.match(o.quality.temperature,/PROJECTED/);
+ assert.match(o.quality.thermal_provenance.limitations,/not a Diviner|Not a Diviner/i);
+ assert.ok(o.samples.every(s=>typeof s.power_conservation_advisory==="boolean"));
 });
 test("Coarse ridge obscures Sun and Earth's center",async()=>{
  const {simulateWithGeometry}=await import("../web/static-engine.mjs");
@@ -64,4 +67,24 @@ test("Coarse ridge obscures Sun and Earth's center",async()=>{
  assert.equal(blocked.metrics.total_energy_wh,0);
  assert.equal(blocked.metrics.earth_hours,0);
  assert.equal(blocked.metrics.max_earth_blackout_h,24);
+});
+
+test("Lunar radiative equilibrium follows NASA Diviner-scale day/night behavior",async()=>{
+ const {projectRegolithTemperatureC,THERMAL_PROVENANCE,STEFAN_BOLTZMANN}=await import("../web/thermal-projection.mjs");
+ const sun=projectRegolithTemperatureC(1361,90,1),night=projectRegolithTemperatureC(1361,-20,0);
+ assert.ok(sun>100 && sun<125); // regolith ~373–398 K noon, physically plausible
+ assert.ok(night < -175 && night > -185); // assumed 95 K floor = -178.15 °C
+ assert.ok(Math.abs(STEFAN_BOLTZMANN-5.670374419e-8)<1e-15);
+ assert.match(THERMAL_PROVENANCE.status,/PROJECTED/);
+ assert.throws(()=>projectRegolithTemperatureC(-1,0,1),/physical bounds/);
+});
+test("Projected temperature changes with NASA-derived irradiance and sunlight",async()=>{
+ const {simulateWithGeometry}=await import("../web/static-engine.mjs");
+ const base={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1};
+ const make=(distance)=>Array.from({length:25},(_,i)=>({
+  time:new Date(Date.parse(base.landing_time)+i*3600000).toISOString(),
+  sun_el:50,sun_az:0,earth_el:30,earth_az:180,sun_distance_km:distance
+ }));
+ const a=simulateWithGeometry(base,make(147000000),"NASA synthetic test"),b=simulateWithGeometry(base,make(152000000),"NASA synthetic test");
+ assert.ok(a.samples[0].temperature_proxy_c>b.samples[0].temperature_proxy_c);
 });
