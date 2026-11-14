@@ -78,3 +78,9 @@
 .launch-cola-provenance a{color:#126d85}
 @media(max-width:1000px){.launch-cola-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.launch-cola{padding:14px}.launch-cola-head{display:block}.launch-cola-tag{display:inline-block;margin:4px 0 10px}.launch-cola-form,.launch-cola-summary{grid-template-columns:1fr}}
+
+/* Make the 500-m landing-site terrain visual materially larger. */
+.terrain-3d-canvas{height:520px}
+.terrain-panel{padding:18px}
+.terrain-controls{gap:12px 18px}
+@media(max-width:700px){.terrain-3d-canvas{height:360px}}
