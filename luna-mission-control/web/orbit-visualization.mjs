@@ -39,84 +39,103 @@ export function loadCatalogContext(){
  if(!catalogPromise)catalogPromise=downloadCatalog();
  return catalogPromise;
 }
-const point=(p0,p1,p2,p3,t)=>{
- const q=1-t;return q*q*q*p0+3*q*q*t*p1+3*q*t*t*p2+t*t*t*p3;
-};
-export function demoShipPoint(t){
- const u=Math.max(0,Math.min(1,t));
- return {x:point(102,200,405,544,u),y:point(151,19,19,131,u)};
+
+// Idealized two-body TLI coast, not ascent, targeting, flyby, or COLA.
+// Kepler's equation M=E-e*sin(E) ensures motion slows near apogee.
+const MU=398600.4418,RE=6378.137,DAY=86400000;
+export function idealTransferDays(parkingKm=200,moonDistanceKm=384400){
+ const rp=RE+parkingKm,ra=moonDistanceKm;
+ if(!(rp>RE&&ra>rp))throw new RangeError("Invalid reference orbit");
+ return Math.PI*Math.sqrt(((rp+ra)/2)**3/MU)/86400;
 }
-export function mountOrbitAnimation(host,{scenario="original"}={}){
- if(!host||typeof document==="undefined")return {destroy(){},setCatalog(){}};
+export function keplerTransferPoint(fraction,{parkingKm=200,moonDistanceKm=384400}={}){
+ const t=Math.max(0,Math.min(1,fraction)),rp=RE+parkingKm,ra=moonDistanceKm;
+ if(!(rp>RE&&ra>rp))throw new RangeError("Invalid transfer radii");
+ const a=(rp+ra)/2,e=(ra-rp)/(ra+rp),M=Math.PI*t;
+ let E=M;
+ for(let k=0;k<24;k++){
+  const step=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  E-=step;
+  if(Math.abs(step)<1e-12)break;
+ }
+ const radius=a*(1-e*Math.cos(E));
+ const nu=Math.atan2(Math.sqrt(1-e*e)*Math.sin(E),Math.cos(E)-e);
+ const x=102+442*(-radius*Math.cos(nu)+rp)/(ra+rp);
+ const y=151-20*(radius-rp)/(ra-rp)-155*radius*Math.sin(nu)/ra;
+ return {x,y,radiusKm:radius,trueAnomalyRad:nu,elapsedFraction:t};
+}
+// Compatibility name for earlier educational-render callers.
+export function demoShipPoint(t){const {x,y}=keplerTransferPoint(t);return {x,y};}
+export function mountOrbitAnimation(host,{scenario="original",parkingKm=200,moonDistanceKm=384400,flightDays=null,departureUtc=null}={}){
+ if(!host||typeof document==="undefined")return {destroy(){},setCatalog(){},setTransfer(){}};
  const accent=scenario==="optimized"?"#8eb9ff":"#66ead7";
- host.innerHTML='<div class="orbit-scene"><div class="orbit-title">Animated lunar transfer concept</div>'+
-  '<p class="orbit-subtitle">Schematic positions and timing, not to scale. No flight path is planned around the catalog markers.</p>'+
-  '<svg viewBox="0 0 640 210" role="img" aria-label="Animated educational orbit: Earth spins, Moon and Sun move schematically, and the spacecraft follows a highlighted transfer curve. Public catalog markers are not propagated positions.">'+
-  '<circle cx="102" cy="150" r="26" fill="#4d8db6"/><path data-meridian d="M88 126 Q108 150 88 174" stroke="#b9e9ff" fill="none" stroke-width="2"/>'+
-  '<path data-track d="M102 151 C200 19 405 19 544 131" stroke="'+accent+'" stroke-width="3" stroke-dasharray="8 5" fill="none"/>'+
-  '<g data-satellite-markers></g>'+
-  '<circle data-sun cx="574" cy="31" r="14" fill="#ffc66f"/>'+
-  '<circle data-moon cx="544" cy="131" r="16" fill="#c0cbd5"/>'+
+ host.innerHTML='<div class="orbit-scene"><div class="orbit-title">Idealized Earth-to-Moon transfer</div>'+
+  '<p class="orbit-subtitle">Two-body Kepler timing · geometric visualization (scale compressed) · no targeting or collision screening.</p>'+
+  '<svg viewBox="0 0 640 210" role="img" aria-label="Educational transfer: Keplerian spacecraft motion from Earth parking orbit toward the approximate lunar orbital radius, not a validated flight trajectory.">'+
+  '<circle cx="102" cy="151" r="24" fill="#4d8db6"/><path data-meridian d="M88 127 Q108 151 88 175" stroke="#b9e9ff" fill="none" stroke-width="2"/>'+
+  '<path data-track fill="none" stroke="'+accent+'" stroke-width="3" stroke-dasharray="7 5"/>'+
+  '<circle cx="544" cy="131" r="16" fill="#c0cbd5"/>'+
   '<g data-ship transform="translate(102,151)"><path d="M0,-8 L6,7 L0,4 L-6,7Z" fill="'+accent+'" stroke="#fff" stroke-width="1"/></g>'+
-  '<text x="66" y="195" fill="#bcdde9" font-size="13">Earth</text>'+
-  '<text x="529" y="177" fill="#bcdde9" font-size="13">Moon</text>'+
-  '<text x="570" y="59" fill="#ffddac" font-size="12">Sun</text>'+
+  '<text x="64" y="194" fill="#bcdde9" font-size="13">Earth</text><text x="513" y="177" fill="#bcdde9" font-size="13">Lunar orbital radius</text>'+
   '</svg>'+
   '<div class="orbit-controls"><button type="button" data-orbit-toggle>Pause</button>'+
-  '<input type="range" data-orbit-scrub min="0" max="1000" step="1" value="0" aria-label="Conceptual transfer animation progress">'+
-  '<span data-orbit-phase class="orbit-phase">Transfer 0%</span></div>'+
-  '<div class="orbit-legend">Solid bodies and catalog markers are illustrative placements, not real-time propagated coordinates or predicted close approaches.</div>'+
-  '<div class="orbit-catalog" data-orbit-catalog>Loading a small public station catalog…</div></div>';
- const qs=s=>host.querySelector(s);
- const svg=qs("svg"),path=qs("[data-track]"),ship=qs("[data-ship]"),
-  moon=qs("[data-moon]"),sun=qs("[data-sun]"),meridian=qs("[data-meridian]");
- const markers=qs("[data-satellite-markers]"),scrub=qs("[data-orbit-scrub]"),
-  label=qs("[data-orbit-phase]"),button=qs("[data-orbit-toggle]");
- let alive=true,playing=!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
- let t=0,last=0,raf=0,count=0;
- const NS="http://www.w3.org/2000/svg";
- const dots=[];
+  '<input type="range" data-orbit-scrub min="0" max="1000" step="1" value="0" aria-label="Kepler transfer elapsed fraction">'+
+  '<span data-orbit-phase class="orbit-phase">Elapsed 0.00 d</span></div>'+
+  '<div class="orbit-legend">Physical time-of-flight parameterization; launch ascent, lunar arrival interception, Earth-Moon perturbations and any collision avoidance are NOT modeled. No live satellite positions are depicted.</div>'+
+  '<div class="orbit-catalog" data-orbit-catalog>Loading limited public station metadata…</div></div>';
+ const qs=x=>host.querySelector(x);
+ const track=qs("[data-track]"),ship=qs("[data-ship]"),meridian=qs("[data-meridian]");
+ const scrub=qs("[data-orbit-scrub]"),phase=qs("[data-orbit-phase]"),button=qs("[data-orbit-toggle]");
+ const scene={parkingKm,moonDistanceKm,flightDays:flightDays??idealTransferDays(parkingKm,moonDistanceKm),departureUtc};
+ let alive=true,playing=!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,t=0,last=0,raf=0;
+ const drawTrack=()=>{
+  track.setAttribute("d",Array.from({length:201},(_,i)=>{
+   const p=keplerTransferPoint(i/200,scene);
+   return (i?"L":"M")+p.x.toFixed(2)+","+p.y.toFixed(2);
+  }).join(" "));
+ };
  function redraw(){
-  const p=demoShipPoint(t),theta=2*Math.PI*t;
+  const p=keplerTransferPoint(t,scene);
   ship.setAttribute("transform","translate("+p.x.toFixed(2)+","+p.y.toFixed(2)+")");
-  // All moving bodies and object placements are intentionally stylized.
-  moon.setAttribute("cy",(131+5*Math.sin(theta)).toFixed(2));
-  moon.setAttribute("cx",(544+4*Math.sin(theta*.7)).toFixed(2));
-  sun.setAttribute("cx",(574-9*Math.sin(theta*.4)).toFixed(2));
-  sun.setAttribute("cy",(31+5*Math.sin(theta*.55)).toFixed(2));
-  meridian.setAttribute("transform","rotate("+(360*t).toFixed(2)+" 102 150)");
-  dots.forEach((d,i)=>{
-   const a=theta*(1.1+i*.14)+i*1.5,r=36+i*4.2;
-   d.setAttribute("cx",(102+r*Math.cos(a)).toFixed(2));
-   d.setAttribute("cy",(150+r*.56*Math.sin(a)).toFixed(2));
-  });
-  scrub.value=Math.round(t*1000);label.textContent="Transfer "+Math.round(t*100)+"%";
+  // Reference Earth turns about once per sidereal day; orientation is illustrative.
+  meridian.setAttribute("transform","rotate("+(360*scene.flightDays*t/0.99726968).toFixed(2)+" 102 151)");
+  scrub.value=Math.round(t*1000);
+  const elapsed=(scene.flightDays*t).toFixed(2)+" / "+scene.flightDays.toFixed(2)+" days";
+  const utc=Number.isFinite(scene.departureUtc)?
+   " · "+new Date(scene.departureUtc+scene.flightDays*t*DAY).toISOString().slice(0,16).replace("T"," ")+" UTC":"";
+  phase.textContent=elapsed+utc;
  }
  function frame(now){
   if(!alive||!host.isConnected)return;
-  if(playing&&last)t=(t+(now-last)/20000)%1;
+  if(playing&&last)t=Math.min(1,t+(now-last)/20000);
+  if(t>=1){playing=false;button.textContent="Replay";}
   last=now;redraw();raf=requestAnimationFrame(frame);
  }
  function setCatalog(data){
   if(!alive)return;
   const records=data?.records||[];
   const catalog=qs("[data-orbit-catalog]");
-  catalog.innerHTML='<b>Public catalog context:</b> '+escapeHTML(data?.source||"Unavailable")+
+  catalog.innerHTML='<b>Public station catalog (metadata only):</b> '+escapeHTML(data?.source||"Unavailable")+
    (data?.updated?" · downloaded "+escapeHTML(new Date(data.updated).toISOString().slice(0,16))+" UTC":"")+
-   '. These are NOT a full tracked-object database and NOT COLA screening.'+
+   '. These are NOT real-time propagated coordinates and NOT COLA screening.'+
    (records.length?'<ul>'+records.map(o=>'<li>'+escapeHTML(o.name)+" (ID "+escapeHTML(o.id)+", epoch "+escapeHTML(o.epoch.slice(0,10))+')</li>').join("")+'</ul>':
-   '<p>No orbiting-object positions are shown until catalog metadata is available.</p>');
-  markers.replaceChildren();dots.length=0;count=records.length;
-  for(let i=0;i<count;i++){
-   const dot=document.createElementNS(NS,"circle");
-   dot.setAttribute("r","3.1");dot.setAttribute("fill","#81bfe2");
-   dot.setAttribute("aria-hidden","true");markers.appendChild(dot);dots.push(dot);
-  }
-  redraw();
+   '<p>No orbiting-object positions have been plotted.</p>');
  }
- button.addEventListener("click",()=>{playing=!playing;button.textContent=playing?"Pause":"Play";last=0;});
- scrub.addEventListener("input",()=>{t=Number(scrub.value)/1000;playing=false;button.textContent="Play";redraw();});
+ function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,departureUtc:launch}={}){
+  if(Number.isFinite(alt)&&alt>=160&&alt<=2000)scene.parkingKm=alt;
+  if(Number.isFinite(distance)&&distance>300000&&distance<450000)scene.moonDistanceKm=distance;
+  scene.flightDays=Number.isFinite(days)&&days>0?days:idealTransferDays(scene.parkingKm,scene.moonDistanceKm);
+  scene.departureUtc=Number.isFinite(launch)?launch:null;
+  t=0;last=0;drawTrack();redraw();
+ }
+ button.addEventListener("click",()=>{
+  if(t>=1)t=0;
+  playing=!playing;button.textContent=playing?"Pause":"Play";last=0;
+ });
+ scrub.addEventListener("input",()=>{
+  t=Number(scrub.value)/1000;playing=false;button.textContent="Play";redraw();
+ });
  button.textContent=playing?"Pause":"Play";
- redraw();raf=requestAnimationFrame(frame);
- return {setCatalog,destroy(){alive=false;cancelAnimationFrame(raf);}};
+ drawTrack();redraw();raf=requestAnimationFrame(frame);
+ return {setCatalog,setTransfer,destroy(){alive=false;cancelAnimationFrame(raf);}};
 }
