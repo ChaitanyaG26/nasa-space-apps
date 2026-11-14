@@ -5,6 +5,32 @@ import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {THERMAL_PROVENANCE} from "./thermal-projection.mjs";
 import {loadDivinerAtLatitude,divinerObservedReference} from "./diviner-gcp.mjs";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
+let siteValidationReport=null;
+async function getHorizonsValidation(){
+ if(siteValidationReport)return siteValidationReport;
+ try{
+   const response=await fetch(new URL("./assets/horizons-direct-check.json?v=sitecheck1",import.meta.url));
+   if(response.ok){
+     const report=await response.json();
+     if(report.schema_version===1&&report.sample_count>=24&&report.max_error_deg){
+       siteValidationReport=report;
+       return report;
+     }
+   }
+ }catch(error){console.warn("Independent JPL verification report is unavailable",error);}
+ return null;
+}
+function attachEphemerisValidation(out,report){
+ if(!out?.quality)return out;
+ out.quality.horizons_direct_validation=report?
+   ("Direct Horizons observer cross-check: "+report.sample_count+
+    " Sun/Earth observations across "+report.sites.length+" sampled lunar sites on "+
+    report.time_window_utc[0].slice(0,10)+
+    "; maximum angular residual Sun "+report.max_error_deg.sun+"°, Earth "+report.max_error_deg.earth+
+    "°. This is not an arbitrary-site or terrain validation."):
+   "Direct site-specific NASA Horizons cross-check unavailable; geometry uses Horizons cached-reference projection";
+ return out;
+}
 // Attach ACTUAL NASA PDS historical measurements only when present.
 // Do not invent values for missing bins or unsupported latitude bands.
 async function attachDivinerClimatology(result,request,geom){
@@ -64,7 +90,8 @@ async function api(path,data){
        const geometry=geometrySeries(reference,data,height(data));
        const result=simulateWithGeometry(data,geometry,
          "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(data),horizon(data));
-       return await attachDivinerClimatology(result,data,geometry);
+       await attachDivinerClimatology(result,data,geometry);
+       return attachEphemerisValidation(result,await getHorizonsValidation());
      }
      if(path==="optimize"){
        const output=optimizeWithEngine(data,req=>simulateWithGeometry(req,geometrySeries(reference,req,height(req)),
@@ -77,6 +104,9 @@ async function api(path,data){
          await attachDivinerClimatology(output.recommended,candidate,
            geometrySeries(reference,candidate,height(candidate)));
        }
+       const report=await getHorizonsValidation();
+       attachEphemerisValidation(output.original,report);
+       if(output.recommended)attachEphemerisValidation(output.recommended,report);
        return output;
      }
      throw Error("Unsupported operation: "+path);
@@ -155,7 +185,7 @@ function card(data,label){const m=data.metrics,s=data.samples;return '<div class
  '<p class="muted">Historical observational reference at local lunar time, NOT a 2026 temperature observation or spacecraft measurement.</p></div>':
  '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
 '<div class="chart"><div class="chart-title">Power conservation advisory (amber = threshold)</div><div class="windows">'+s.filter((r,i)=>i%Math.max(1,Math.ceil(s.length/140))===0).map(x=>'<span title="'+escapeHtml(x.time)+'" style="flex:1;background:'+(x.power_conservation_advisory?"#dfaa49":"#a5cfca")+'"></span>').join("")+'</div><p class="muted">Projected energy conservation only: SOC within 10 percentage points of reserve and solar power below load. NOT a command to hibernate or a thermal survival prediction.</p></div>'+windows(s)+
-'<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?('Maximum COARSE regional obstruction: '+data.regional_horizon.max_obstruction_deg+'°. Local crater rims and near-field hazards are unresolved. · '):'Regional skyline unavailable. · ')+escapeHtml(data.quality.ephemeris)+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
+'<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?('Maximum COARSE regional obstruction: '+data.regional_horizon.max_obstruction_deg+'°. Local crater rims and near-field hazards are unresolved. · '):'Regional skyline unavailable. · ')+escapeHtml(data.quality.ephemeris)+' · <b>Independent JPL site check:</b> '+escapeHtml(data.quality.horizons_direct_validation||"Unavailable")+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
  (data.quality.thermal_model_mean_abs_error_c!==undefined&&data.quality.thermal_model_mean_abs_error_c!==null?
  ' · Mean absolute difference vs historical climatology: '+data.quality.thermal_model_mean_abs_error_c+' °C (NOT forecast validation)':'')+
  ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No rover traversal or seismic forecast.</div></div>'}

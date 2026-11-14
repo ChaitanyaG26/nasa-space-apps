@@ -16,6 +16,7 @@ export function decodeDiviner(buffer,band,meta){
 }
 export function readMeasuredBin(data,latitude,longitude,localTimeHours){
  if(![latitude,longitude,localTimeHours].every(Number.isFinite))return null;
+ if(latitude>data.band.latitude_north_edge||latitude<data.band.latitude_north_edge-10)return null;
  const x=Math.round((wrap(longitude+180)-.25)*2);
  const y=Math.round((data.band.latitude_north_edge-.25-latitude)*2);
  const slot=Math.round((wrap(localTimeHours*15)/15-.125)*4);
