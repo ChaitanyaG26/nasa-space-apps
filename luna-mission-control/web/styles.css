@@ -236,3 +236,44 @@ main{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
  .mission-toolbar .toolbar-flyout{width:min(400px,calc(100vw - 36px))}
  .map-page{min-height:340px}
 }
+
+
+/* Sticky action: only the sidebar fields scroll; Simulate Mission remains visible. */
+.sidebar{min-height:0;}
+.sidebar .fields{flex:1;min-height:0;overflow-y:auto;padding-bottom:10px;}
+.sidebar .fields h3{margin-top:18px;margin-bottom:8px;}
+.sidebar .fields label{margin:10px 0;}
+.sidebar .fields details{margin:8px 0;}
+.sidebar .sidebar-actions{display:block;flex:none;padding:12px 17px 15px;background:#102638;border-top:1px solid #315465;}
+.sidebar .sidebar-actions #simulate{display:block;width:100%;margin:0;text-align:center;padding:13px 15px;font-size:14px;min-height:46px;cursor:pointer;}
+.sidebar .sidebar-actions #simulate:focus-visible{outline:3px solid #c0ffff;outline-offset:2px;}
+.results-top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;}
+.results-top .results-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+.results-top .results-preserve-label{display:flex;align-items:center;gap:8px;margin:0;font-size:11px;font-weight:700;color:#496b7b;}
+.results-top .results-preserve-label select{width:auto;max-width:190px;min-width:128px;margin:0;padding:9px 10px;background:#fff;color:#2b5063;border:1px solid #bed1da;border-radius:7px;color-scheme:light;}
+.results-top .results-optimize{background:#087e87;color:white;border-color:#087e87;font-weight:750;padding:10px 14px;}
+.results-top .results-optimize:hover:not(:disabled){background:#066670;}
+.results-top .results-optimize:disabled{opacity:.47;cursor:not-allowed;}
+.results-top .science-info-trigger{white-space:nowrap;}
+@media(max-width:800px){
+ .sidebar{height:min(74dvh,670px);display:flex;flex-direction:column;min-height:460px;}
+ .sidebar .fields{max-height:none;}
+ .sidebar .sidebar-actions{position:relative;z-index:2;}
+ .results-top .results-actions{justify-content:flex-start;}
+ .results-top .results-preserve-label{width:100%;}
+}
+
+/* Data-backed illustrative orbital scene: never interpret as flight/avoidance solution. */
+#luna-launch-cola .orbit-scene{margin:16px 0;background:#0f273a;border:1px solid #2e5b6f;border-radius:12px;padding:13px;color:#e4f8fb;}
+#luna-launch-cola .orbit-scene .orbit-title{font-size:12px;font-weight:750;color:#a4e4e5;margin-bottom:4px;}
+#luna-launch-cola .orbit-scene .orbit-subtitle{font-size:11px;color:#bdd3de;line-height:1.6;margin:0 0 10px;}
+#luna-launch-cola .orbit-scene svg{display:block;width:100%;height:auto;border-radius:8px;background:linear-gradient(145deg,#071827,#17364a);}
+#luna-launch-cola .orbit-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0;}
+#luna-launch-cola .orbit-controls button{border:1px solid #5bafaf;color:#e7ffff;background:#1f4e61;padding:8px 11px;border-radius:7px;font-size:11px;cursor:pointer;}
+#luna-launch-cola .orbit-controls input{flex:1;min-width:120px;margin:0;padding:0;background:transparent;accent-color:#50d2c2;}
+#luna-launch-cola .orbit-phase{font-size:11px;min-width:100px;color:#c6e3e8;}
+#luna-launch-cola .orbit-catalog{font-size:11px;color:#bcd8e1;line-height:1.55;border-top:1px solid #345970;margin:12px 0 0;padding-top:11px;}
+#luna-launch-cola .orbit-catalog ul{display:flex;flex-wrap:wrap;gap:5px 12px;margin:6px 0 0;padding:0;list-style:none;}
+#luna-launch-cola .orbit-catalog li{font-size:10px;}
+#luna-launch-cola .orbit-catalog li::before{content:"●";color:#84c9eb;margin-right:5px;}
+#luna-launch-cola .orbit-legend{font-size:10px;color:#afd1dc;margin-top:7px;}

@@ -6,7 +6,7 @@
 <div class="shell">
 <aside class="sidebar">
 <header><strong class="logo">◐ LUNA<span>.</span></strong><small>LUNAR MISSION CONTROL</small></header>
-<footer>● OPEN SCIENCE PROTOTYPE <span>V0.1</span></footer>
+<footer class="sidebar-actions"><button id="simulate" class="primary" type="button">▶ Simulate mission</button></footer>
 </aside>
 <main>
 <section class="mission-toolbar" aria-label="Mission control parameters">
@@ -63,10 +63,10 @@
 <p class="muted">Projected from NASA data and declared hardware assumptions. Not flight certification or a safe rover route.</p>
 </div></details>
 
-<details class="toolbar-disclosure"><summary>Data &amp; model notes</summary><div class="toolbar-flyout"><p class="muted">NASA Horizons data are hourly; shorter steps interpolate positions and recalculate engineering models, not additional NASA observations.</p><p class="muted">NASA JPL Horizons, NASA LOLA and NASA Diviner inform observational and projected curves. Optional lander thermal, S-band RF and slope-only rover screening use explicit assumptions; none is certified for flight or traversal.</p></div></details>
+<details class="toolbar-disclosure"><summary>Data &amp; model notes</summary><div class="toolbar-flyout"><p class="muted">NASA Horizons data are hourly; shorter steps interpolate positions and recalculate engineering models, not additional NASA observations.</p></div></details>
 </div>
 <div class="control-group control-actions"><h3>04 / RUN &amp; COMPARE</h3>
-<button id="simulate" class="primary">▶ Simulate mission</button>
+
 <h3 class="comparison-label">COMPARISON</h3>
 <label>Preserve<select id="preserve"><option value="time">Landing date/time — optimize site</option><option value="site">Landing site — optimize time ±14 days</option></select></label>
 <button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
@@ -79,7 +79,11 @@
 <div class="map-bottom"><span>DRAG TO ROTATE · SCROLL TO ZOOM · CLICK TO SELECT</span><span id="mapCoords">89.500° S · 0.000° E</span></div>
 </div>
 <div id="resultsPage" class="results-page hidden">
-<div class="results-top"><div><small>MISSION INTELLIGENCE</small><h1>Scenario analysis</h1></div><button id="back">← Return to globe</button></div>
+<div class="results-top"><div><small>MISSION INTELLIGENCE</small><h1>Scenario analysis</h1></div>
+<div class="results-actions">
+<label class="results-preserve-label">Optimize for <select id="preserve"><option value="time">New landing site</option><option value="site">New date (±14 days)</option></select></label>
+<button id="optimize" class="results-optimize" type="button" disabled>◇ Optimize &amp; compare</button>
+<button id="back">← Return to globe</button></div></div>
 <div id="results"></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
 </main>

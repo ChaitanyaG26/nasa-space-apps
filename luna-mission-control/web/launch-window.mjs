@@ -1,3 +1,4 @@
+import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
  * NASA LSP launch range references: nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/
@@ -84,6 +85,7 @@ const userState={
  optimized:{site:"ksc",holds:""}
 };
 let controls={parking:200,span:24,step:60};
+let orbitControllers=[];
 function findScenarios(){
  const shared=globalThis.window?.lunaLaunchScenarios;
  if(Array.isArray(shared)&&shared.length)return shared.filter(s=>s?.data!==null);
@@ -112,6 +114,7 @@ function scenarioMarkup(s){
   '<textarea data-cola-field="holds" rows="2" placeholder="2026-11-15T12:00Z,2026-11-15T12:40Z">'+htmlSafe(state.holds)+'</textarea></details>'+
   '<button class="launch-cola-run" data-cola-calc type="button">Evaluate '+htmlSafe(s.label.toLowerCase())+'</button>'+
   '<div data-cola-output aria-live="polite"><p class="launch-cola-hint">Run this scenario to see its own candidate departure times and clearance status.</p></div>'+
+  '<div data-orbit-host></div>'+
  '</article>';
 }
 function installPanel(){
@@ -131,8 +134,8 @@ function installPanel(){
   '<div class="launch-cola-animation"><b>Launch animations — reserved</b><p>Separate Higgsfield clips can be inserted for each mission later. The schematic is not a computed flight path.</p></div>'+
   '<details class="launch-cola-provenance"><summary>Methodology, scientific limits and sources</summary>'+
   '<p>Truncated lunar theory and idealized two-body Earth-to-lunar-radius transfer. The destination coordinates label the selected lunar surface site; the simplified transfer does not solve a surface landing or lunar orbit insertion. Ranking uses an arrival-timing and Moon-bearing heuristic, not operational launch trajectory optimization.</p>'+
-  '<p>Real launch approval requires vehicle/range capabilities, trajectory targeting, tracked-object ephemerides, uncertainties and official COLA clearance. A time outside entered hold intervals is never declared safe.</p>'+
-  '<p><a href="https://www.nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/" target="_blank" rel="noopener noreferrer">NASA launch ranges</a> · <a href="https://www.nasa.gov/cara/" target="_blank" rel="noopener noreferrer">NASA conjunction assessment</a> · <a href="https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_450.169-1.pdf" target="_blank" rel="noopener noreferrer">FAA COLA guidance</a></p></details>'+
+  '<p>Real launch approval requires vehicle/range capabilities, trajectory targeting, tracked-object ephemerides, uncertainties and official COLA clearance. CelesTrak public OMM data is a partial, lower-fidelity reference and cannot validate a collision-free route. A time outside entered hold intervals is never declared safe.</p>'+
+  '<p><a href="https://www.nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/" target="_blank" rel="noopener noreferrer">NASA launch ranges</a> · <a href="https://www.nasa.gov/cara/" target="_blank" rel="noopener noreferrer">NASA conjunction assessment</a> · <a href="https://celestrak.org/NORAD/documentation/gp-data-formats.php" target="_blank" rel="noopener noreferrer">CelesTrak public catalog documentation</a> · <a href="https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_450.169-1.pdf" target="_blank" rel="noopener noreferrer">FAA COLA guidance</a></p></details>'+
   '<p class="launch-cola-scope-note"><b>Launch-site acknowledgement:</b> This educational model focuses on Cape Canaveral Space Force Station, Kennedy Space Center, and Vandenberg Space Force Base as major U.S. orbital launch locations. Many other NASA-associated ranges mainly support sounding rockets, small or specialized missions. This is not a complete list of orbital launch facilities.</p>';
  parent.appendChild(el);
  for(const field of el.querySelectorAll("[data-cola-shared]")){
@@ -156,10 +159,16 @@ function installPanel(){
  });
 }
 function renderScenarioPanels(el){
+ orbitControllers.forEach(c=>c.destroy());orbitControllers=[];
  const list=el.querySelector("[data-cola-list]");
  const scenarios=findScenarios();
  list.innerHTML=scenarios.map(s=>scenarioMarkup(s)).join("");
- for(const article of list.querySelectorAll("[data-cola-scenario]"))renderSiteNote(article);
+ for(const article of list.querySelectorAll("[data-cola-scenario]")){
+  renderSiteNote(article);
+  const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{scenario:article.dataset.colaScenario});
+  orbitControllers.push(controller);
+  loadCatalogContext().then(data=>controller.setCatalog(data));
+ }
 }
 function renderSiteNote(article){
  const id=article.dataset.colaScenario;

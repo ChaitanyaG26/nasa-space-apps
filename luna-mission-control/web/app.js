@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-scenarios-v2";
+import "./launch-window.mjs?v=20261114-orbit-ui-v3";
 import {initGlobe} from "./globe.js";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
