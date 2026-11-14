@@ -46,10 +46,40 @@ export function solarDiskFraction(clearance,radius=.266){
   if(x<=-1)return 0;if(x>=1)return 1;
   return (Math.acos(-x)+x*Math.sqrt(Math.max(0,1-x*x)))/PI;
 }
-export function photovoltaicPower(g,r,f){
-  const e=g.sun_el*rad,b=r.panel_tilt_deg*rad,d=(g.sun_az-r.panel_az_deg)*rad;
-  return 1361*r.area_m2*.24*.8*f*Math.max(0,Math.sin(e)*Math.cos(b)+Math.cos(e)*Math.sin(b)*Math.cos(d));
+// NASA/JPL Horizons Sun-distance correction. 1361 W/m² is a reference
+// total solar irradiance at exactly 1 astronomical unit, not a guarantee of
+// electrical output for any particular spacecraft.
+export const AU_KM=149597870.700;
+export const REFERENCE_SOLAR_IRRADIANCE=1361;
+export function solarIrradiance(distanceKm){
+  if(!Number.isFinite(distanceKm)||distanceKm<1.3e8||distanceKm>1.7e8)throw Error("Sun distance is missing or outside expected lunar orbit range");
+  return REFERENCE_SOLAR_IRRADIANCE*(AU_KM/distanceKm)**2;
 }
+export function photovoltaicPower(g,r,visibleFraction){
+  const e=g.sun_el*rad,b=r.panel_tilt_deg*rad,d=(g.sun_az-r.panel_az_deg)*rad;
+  const incidence=Math.max(0,Math.sin(e)*Math.cos(b)+Math.cos(e)*Math.sin(b)*Math.cos(d));
+  // 24% module conversion and 80% balance-of-system factor are user-facing
+  // design assumptions, not measurements of an unspecified lunar lander.
+  const irradiance=g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE;
+  return irradiance*r.area_m2*.24*.8*incidence*visibleFraction;
+}
+export function solarVisibility(g,horizon=null){
+  const theta=horizon?.coverage ? horizonAngleAt(horizon,g.sun_az) : 0;
+  const radius=g.sun_distance_km? Math.asin(Math.min(1,695700/g.sun_distance_km))/rad : .266;
+  return solarDiskFraction(g.sun_el-theta,radius);
+}
+export function earthVisibility(g,horizon=null){
+  // Earth's CENTER above coarse regional obstruction, not a radio-link budget.
+  const theta=horizon?.coverage?horizonAngleAt(horizon,g.earth_az):0;
+  return g.earth_el>theta;
+}
+export function horizonAngleAt(horizon,az){
+  if(!horizon||!horizon.coverage||!Array.isArray(horizon.horizon))return 0;
+  const a=horizon.horizon,n=a.length,x=((az%360+360)%360)*n/360;
+  const i=Math.floor(x),f=x-i;
+  return (1-f)*a[i%n]+f*a[(i+1)%n];
+}
+
 function windows(rows,key){
   let intervals=[],open=null,hours=0,maxGap=0,gap=0;
   for(let i=0;i<rows.length-1;i++){
@@ -72,36 +102,54 @@ export function simulate(input){
   return simulateWithGeometry(r,gs,"OFFLINE ILLUSTRATIVE GEOMETRY");
 }
 
-export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null){
+export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,regionalHorizon=null){
   // Only a validated and continuous NASA/JPL series should pass in a JPL label.
   const r=validated({...input,data_mode:"demo"}),start=Date.parse(r.landing_time),N=r.duration_days*24;
   if(!Array.isArray(gs)||gs.length!==N+1||gs[0].time!==iso(start)||gs.at(-1).time!==iso(start+N*HOUR)){
     throw Error("Ephemeris series does not fully cover the selected mission");
   }
-  let energy=r.battery_wh*.9,temp=-75,firstViolation=null;
+  let energy=r.battery_wh*.9,firstViolation=null;
   const rows=[];
   for(let i=0;i<=N;i++){
-    const g=gs[i],fraction=solarDiskFraction(g.sun_el),power=photovoltaicPower(g,r,fraction),time=iso(start+i*HOUR);
+    const g=gs[i],fraction=solarVisibility(g,regionalHorizon),power=photovoltaicPower(g,r,fraction),time=iso(start+i*HOUR);
     rows.push({time,hours:i,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
-      power_w:round(power),sun_visible:fraction>0,earth_visible:g.earth_el>0,solar_fraction:round(fraction,3),
-      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),temperature_proxy_c:round(temp)});
+      power_w:round(power),sun_visible:fraction>0,earth_visible:earthVisibility(g,regionalHorizon),solar_fraction:round(fraction,3),
+      solar_irradiance_w_m2:g.sun_distance_km?round(solarIrradiance(g.sun_distance_km)):REFERENCE_SOLAR_IRRADIANCE,
+      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),temperature_proxy_c:null});
     if(firstViolation===null&&energy<r.battery_wh*r.reserve_percent/100)firstViolation=time;
     if(i===N)break;
-    const next=gs[i+1],nextP=photovoltaicPower(next,r,solarDiskFraction(next.sun_el));
+    const next=gs[i+1],nextP=photovoltaicPower(next,r,solarVisibility(next,regionalHorizon));
     const net=(power+nextP)/2-r.load_w;
     energy=clamp(energy+(net>=0?net*.95:net/.9),0,r.battery_wh);
-    const target=-145+210*clamp(fraction*Math.max(0,Math.sin(Math.max(0,g.sun_el)*rad))*5,0,1);
-    temp+=(target-temp)*(1-Math.exp(-1/12));
+    // Spacecraft temperature cannot be inferred from Sun elevation alone.
+    // NASA Diviner measures regolith brightness temperatures, not component
+    // temperatures for this unspecified lander.
+
   }
   const earth=windows(rows,'earth_visible'),sun=windows(rows,'sun_visible');
   const sum=rows.slice(0,-1).reduce((n,g,i)=>n+(g.power_w+rows[i+1].power_w)/2,0);
   const minSoc=Math.min(...rows.map(x=>x.soc)),reserveOk=minSoc>=r.reserve_percent,commsOk=earth.maxGap<=24;
   return {site:{latitude:r.latitude,longitude:r.longitude},landing_time:r.landing_time,duration_days:r.duration_days,
-    terrain:terrainInfo,quality:{ephemeris:ephemerisLabel,terrain:terrainInfo?.coverage?'NASA LOLA REGIONAL ELEVATION ONLY — NO TERRAIN HORIZON MODEL':'FLAT HORIZON ASSUMPTION — LOLA HEIGHT UNAVAILABLE',
-      temperature:'UNVALIDATED SURFACE-RESPONSE PROXY — NOT SPACECRAFT TEMPERATURE',seismic:'NO SITE-SPECIFIC SEISMIC ASSESSMENT',rover:'NO ROVER TRAVERSABILITY DETERMINED'},
+    terrain:terrainInfo,regional_horizon:regionalHorizon?.coverage?{
+      max_obstruction_deg:round(Math.max(...regionalHorizon.horizon),2),
+      max_range_km:regionalHorizon.max_range_km,
+      angular_resolution_deg:regionalHorizon.bearing_step_deg,
+      near_field_resolved:false
+    }:null,
+    quality:{
+      ephemeris:ephemerisLabel,
+      irradiance:'NASA/JPL Sun distance + 1361 W/m² reference; panel efficiency/tilt/load are assumptions',
+      terrain:regionalHorizon?.coverage?'NASA LOLA COARSE REGIONAL OBSTRUCTION: NO FINE HORIZON VALIDATION':
+        terrainInfo?.coverage?'NASA LOLA REGIONAL ELEVATION ONLY; HORIZON UNAVAILABLE':'LOLA TERRAIN UNAVAILABLE — GEOMETRIC HORIZON',
+      temperature:'SPACECRAFT THERMAL FORECAST UNAVAILABLE — NASA DIVINER MEASURES REGOLITH, NOT THIS LANDER',
+      seismic:'NO LOCATION-SPECIFIC SEISMIC HAZARD PREDICTION',
+      rover:'NO ROVER TRAVERSABILITY DETERMINED'
+    },
     metrics:{total_energy_wh:Math.round(sum),sun_hours:sun.hours,earth_hours:earth.hours,earth_fraction:round(earth.hours/N,3),
       max_earth_blackout_h:earth.maxGap,max_darkness_h:sun.maxGap,min_soc:round(minSoc,1),
-      battery_reserve_pass:reserveOk,communication_pass:commsOk,feasible:reserveOk&&commsOk,first_reserve_violation:firstViolation},
+      battery_reserve_pass:reserveOk,communication_pass:commsOk,feasible:reserveOk&&commsOk,
+      constraints_label:'Assumption-based battery reserve and arbitrary 24-hour communication gap checks; NOT certified safe',
+      first_reserve_violation:firstViolation},
     earth_windows:earth.intervals,sun_windows:sun.intervals,samples:rows};
 }
 const grid=[[-89.5,0],[-89.5,45],[-89.5,90],[-89.5,135],[-89.5,-90],[-89.1,15],[-89.1,75],[-89.1,145],[-88.5,-35],[-88.5,55],[-88.5,135]];
@@ -128,7 +176,7 @@ export function optimizeWithEngine(payload,runner){
     alternatives:sorted.slice(0,5).map(c=>({name:c.name,site:c.result.site,landing_time:c.result.landing_time,metrics:c.result.metrics})),
     preserve:payload.preserve,
     search:payload.preserve==='time'?'Demonstration grid of 11 south-pole coordinates; not vetted landing zones.':'Fixed site; landing dates sampled every 12 hours within ±14 days.',
-    comparison_note:feasible?'Top feasible alternatives rank by modeled energy and Earth visibility.':'No evaluated alternative passes both illustrative battery reserve and 24-hour-blackout checks. The displayed candidate is NOT certified safe.',
+    comparison_note:feasible?'Candidate passes assumed battery and communication thresholds, NOT landing safety.':'No evaluated candidate passes assumption-based battery and 24-hour blackout checks. This is NOT landing safety certification.',
     scientific_limit:'Geometric Earth visibility only. NASA terrain and actual landing safety are not evaluated.'};
 }
 export async function staticApi(path,body){

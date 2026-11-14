@@ -93,7 +93,9 @@ export function geometryAtUtc(data,lat,lon,when,heightKm=0){
   const local=vectorsForSite(centers,lat,lon,heightKm);
   const [sun_az,sun_el]=localAngles(local.sun,lat,lon);
   const [earth_az,earth_el]=localAngles(local.earth,lat,lon);
-  return {time:new Date(utcMillis(when)).toISOString(),sun_az,sun_el,earth_az,earth_el,global};
+  return {time:new Date(utcMillis(when)).toISOString(),sun_az,sun_el,earth_az,earth_el,global,
+    sun_distance_km:Math.hypot(centers.sun.x,centers.sun.y,centers.sun.z),
+    earth_distance_km:Math.hypot(centers.earth.x,centers.earth.y,centers.earth.z)};
 }
 
 export function geometrySeries(data,req,heightKm=0){

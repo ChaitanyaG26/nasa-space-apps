@@ -91,3 +91,9 @@ test("NASA LOLA data is explicitly unavailable at 53.716 S rather than fabricate
   assert.equal(terrain.coverage,false);
   assert.equal(terrain.elevation_km,null);
 });
+
+test("NASA JPL position result carries physical Sun and Earth distance",()=>{
+ const g=geometryAtUtc(EX,0,0,"2026-11-20T12:00:00Z");
+ assert.ok(g.sun_distance_km>1.3e8);
+ assert.ok(g.earth_distance_km>3e5);
+});

@@ -98,3 +98,12 @@ Source: https://svs.gsfc.nasa.gov/4720/ . High-resolution polar DEMs: https://pg
 ### Date/time and data freshness
 
 The Horizons browser module accepts timezone-qualified ISO UTC strings, JavaScript Date objects, and numeric epoch-millisecond timestamps (the latter are used for every hourly simulation sample). A regression test exercises a seven-day mission from **2026-12-09T03:20:00Z**, **53.716°S, 64.389°W**, including missing LOLA coverage at that latitude. The NASA Horizons generator now produces 1-hour reference samples rather than 3-hour samples, while the browser computes results at the same hourly simulation cadence. The root Pages entrypoint and GitHub Actions build include a versioned script URL so visitors don't continue running an outdated, incompatible browser module. The data is cached and interpolated; exact-site Horizons observer queries are still not performed in the browser.
+
+
+### Phase II — NASA measurements and remaining model assumptions
+
+Global elevation is sourced from the NASA GSFC SVS CGI Moon Kit LOLA GDR (ldem_16.tif): https://svs.gsfc.nasa.gov/4720/ . The build_lola_global.py pipeline creates a 2x2-averaged **8 pixels/degree whole-Moon elevation raster**, preserving SHA256 source provenance and storing half-meter quantized heights relative to the 1737.4 km lunar reference sphere. Output resolution is approximately 3.8 km north-south. The browser estimates a 72-bearing regional skyline out to 120 km with lunar curvature; near-field obstructions and individual rover obstacles are **not resolvable** at this scale. The Sun/Earth windows are regional estimates, not guaranteed site line of sight.
+
+NASA/JPL Horizons positions supply Sun/Earth directions and range; irradiance uses the measured Sun distance via the inverse square rule and a reference 1361 W/m² at 1 AU. The 24% panel conversion, 80% electrical factor, user panel tilt/azimuth, battery capacity and power load are design assumptions rather than measured hardware.
+
+The former thermal curve was an unvalidated proxy. It has been removed: NASA Diviner measures regolith temperatures, not an unspecified lander's components. No temperature or hibernation forecast is reported without a thermal balance model including radiation, conduction, internal heat and mass/thermal inertia. The app still does not predict seismic risk or centimeter-/meter-scale rover traversability. Geometric Earth visibility is not a radio link budget; communication service is not guaranteed by the view alone.
