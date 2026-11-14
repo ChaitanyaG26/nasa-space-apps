@@ -122,3 +122,17 @@ NASA data and research references:
 - Apollo lunar seismic archive (context only, **not** local seismic prediction): https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm
 
 Validation status: JavaScript unit/integration tests verify model equations, JPL data time interpolation, NASA LOLA grid shape, energy bounds and labels. Independent validation against site-specific Diviner temperatures or a flight lander's telemetry is **not** yet available. Do not use these outputs for operational mission decisions.
+
+
+### NASA Diviner PDS3 measured bolometric temperatures
+
+NASA PDS Global Cumulative Products LRO-L-DLRE-5-GCP-V1.0 provide historical bolometric brightness temperatures in kelvin, at 0.5-degree latitude/longitude and 0.25-hour lunar-local-time bins from 2009-07-05 to 2015-04-01. The official PDS3 DLRE_GCP.FMT fixed-width columns are clon, clat, ltim, tbol; missing values are -9999.
+
+The dataset ingestion job downloads the 50–60 S and 80–90 S latitude bands and checks the exact 1,382,400 records in each source file. These are compressed to little-endian signed tenths-kelvin samples with source SHA256 hashes. A matched sample is an actual NASA Diviner historical brightness-temperature observation binned at a similar local lunar time, but it is NOT an observation during the selected 2026/2027 mission and NOT a lander temperature. Missing values remain null. Outside the measured bands, only the labeled projected radiative-equilibrium curve remains.
+
+NASA PDS dataset: https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_gcp/
+Official fields: https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/label/dlre_gcp.fmt
+
+### Site-specific NASA JPL Horizons validation
+
+The independent script validate_horizons_sites.py directly queries NASA Horizons at selected lunar sites and compares angular residuals against the cached-reference Moon geometry, publishing an explicit residual report. Validation of ephemerides does not validate the coarse terrain shadow, temperature model, communication link budget, or lander engineering.

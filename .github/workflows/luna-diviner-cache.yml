@@ -1,0 +1,54 @@
+name: Cache NASA Diviner measured temperature bins
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/scripts/build_diviner_cache.py'
+      - '.github/workflows/luna-diviner-cache.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: nasa-diviner-gcp-cache
+  cancel-in-progress: false
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Stream and validate two NASA PDS Diviner archival products
+        run: python luna-mission-control/scripts/build_diviner_cache.py
+      - name: Verify historical measured temperature coverage and units
+        run: |
+          python - <<'PY'
+          import json,struct
+          from pathlib import Path
+          p=Path('luna-mission-control/web/assets')
+          d=json.loads((p/'diviner-gcp-meta.json').read_text())
+          assert len(d['bands'])==2
+          for b in d['bands']:
+              assert b['valid_samples']>30000
+              z=p/b['file']
+              assert z.stat().st_size==720*20*96*2
+              print('Validated NASA Diviner',b['name'],b['valid_samples'],'samples',b['source_sha256'])
+          PY
+      - name: Commit NASA GCP evidence
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add luna-mission-control/web/assets/diviner-gcp-*.bin luna-mission-control/web/assets/diviner-gcp-meta.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Publish NASA Diviner historical temperature bin references'
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*3))
+          done
+          exit 1

@@ -1,0 +1,32 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {decodeDiviner,readMeasuredBin,localSolarTimeHours,divinerObservedReference} from "../web/diviner-gcp.mjs";
+const W=720,H=20,BINS=96;
+const meta={schema_version:1,width:W,height_per_band:H,local_time_bins:BINS};
+function fixture(){
+ const buffer=new ArrayBuffer(W*H*BINS*2),view=new DataView(buffer);
+ for(let i=0;i<W*H*BINS;i++)view.setInt16(i*2,-32768,true);
+ const band={name:"60s50s",latitude_north_edge:-50};
+ return {data:decodeDiviner(buffer,band,meta),view};
+}
+test("PDS Diviner GCP signed 0.1 K bin yields actual measurement units",()=>{
+ const {data,view}=fixture();
+ const lon=-99.75,lat=-53.25,time=.125;
+ const x=Math.round(((lon+180)%360-.25)*2),y=Math.round((-50-.25-lat)*2),slot=0;
+ view.setInt16(((y*W+x)*BINS+slot)*2,3022,true);
+ assert.equal(readMeasuredBin(data,lat,lon,time),302.2);
+ assert.equal(readMeasuredBin(data,lat,lon,1.125),null);
+ const observed=divinerObservedReference(data,lat,lon,{x:Math.sin((-lon)*Math.PI/180),z:Math.cos((-lon)*Math.PI/180)});
+ assert.ok(observed===null||observed.status.includes("HISTORICAL"));
+});
+test("Lunar local time is based on relative Moon-fixed Sun longitude",()=>{
+ assert.equal(localSolarTimeHours(0,{x:0,z:1}),12);
+ assert.equal(localSolarTimeHours(90,{x:0,z:1}),18);
+ assert.equal(localSolarTimeHours(-90,{x:0,z:1}),6);
+});
+test("Missing Diviner bands and missing values are not filled with fictional measurements",()=>{
+ const {data}=fixture();
+ assert.equal(readMeasuredBin(data,-43,30,12),null);
+ assert.equal(readMeasuredBin(data,-55,30,12),null);
+ assert.throws(()=>decodeDiviner(new ArrayBuffer(2),{latitude_north_edge:-50},meta),/shape/);
+});

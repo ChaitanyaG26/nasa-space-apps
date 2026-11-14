@@ -116,7 +116,7 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
     rows.push({time,hours:i,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
       power_w:round(power),sun_visible:fraction>0,earth_visible:earthVisibility(g,regionalHorizon),solar_fraction:round(fraction,3),
       solar_irradiance_w_m2:g.sun_distance_km?round(solarIrradiance(g.sun_distance_km)):REFERENCE_SOLAR_IRRADIANCE,
-      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),
+      battery_wh:round(energy),soc:round(100*energy/r.battery_wh),diviner_observed_c:null,
       // PROJECTION, not NASA-measured site temperature or spacecraft hardware temperature.
       temperature_proxy_c:projectRegolithTemperatureC(g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE,g.sun_el,fraction),
       temperature_status:'PROJECTED REGOLITH RADIATIVE EQUILIBRIUM — NOT VALIDATED',
