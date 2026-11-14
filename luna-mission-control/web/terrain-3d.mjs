@@ -44,7 +44,7 @@ export function slopeClass(deg){
 export function buildTerrainMesh({latitude,longitude,patch=null,global=null,size=55}){
  if(!(size>=9&&size<=95))throw Error("Invalid terrain mesh size");
  const detailed=Boolean(patch);
- const spacingKm=detailed?.02:4;
+ const spacingKm=detailed ? 0.02 : 4;
  const pxy=detailed?localPatchXY(patch.entry.latitude,patch.entry.longitude,latitude,longitude):null;
  const vertices=[];
  for(let y=0;y<size;y++){
@@ -71,8 +71,8 @@ export function buildTerrainMesh({latitude,longitude,patch=null,global=null,size
   for(let i=0;i<size-1;i++){
    const c=[vertices[j][i],vertices[j+1][i],vertices[j][i+1],vertices[j+1][i+1]];
    if(c.some(v=>v===null)){line.push(null);missing++;continue;}
-   const dx=(c[2].z+c[3].z-c[0].z-c[1].z)*500/(2*spacingKm);
-   const dy=(c[0].z+c[2].z-c[1].z-c[3].z)*500/(2*spacingKm);
+   const dx=(c[2].z+c[3].z-c[0].z-c[1].z)/(2*spacingKm);
+   const dy=(c[0].z+c[2].z-c[1].z-c[3].z)/(2*spacingKm);
    const slope=Math.atan(Math.hypot(dx,dy))*180/Math.PI;
    line.push(slope);
    if(slopeClass(slope)==="green")green++;
