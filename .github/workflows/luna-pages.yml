@@ -35,6 +35,8 @@ jobs:
           node --test luna-mission-control/tests/lola-global.test.mjs
           node --test luna-mission-control/tests/lola-polar-detail.test.mjs
           node --test luna-mission-control/tests/engineering-models.test.mjs
+          node --test luna-mission-control/tests/launch-window.test.mjs
+          node --check luna-mission-control/web/launch-window.mjs
           node --test luna-mission-control/tests/rover-screen.test.mjs
           node --test luna-mission-control/tests/diviner-gcp.test.mjs
           node --test luna-mission-control/tests/horizons-site-validation.test.mjs
