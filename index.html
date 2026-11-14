@@ -17,7 +17,9 @@
 <h3>03 / LANDING SITE</h3>
 <section class="site"><b>⌖ Selected location</b><div id="coords">89.500° S, 0.000° E</div><button id="focus">Focus south pole</button></section>
 <label>Ephemeris source<select id="mode"><option value="horizons" selected>NASA JPL Horizons (cached reference)</option><option value="demo">Offline illustrative geometry</option></select></label>
-<label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option></select></label>
+<label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option><option value="28">28 days</option><option value="35">35 days</option></select></label>
+<label>Simulation time step<select id="sampleMinutes"><option value="15">15 minutes (interpolated)</option><option value="30" selected>30 minutes (recommended)</option><option value="60">60 minutes</option></select></label>
+<p class="muted">NASA Horizons data are hourly; shorter steps interpolate positions and recalculate engineering models, not additional NASA observations.</p>
 <details><summary>Spacecraft assumptions</summary>
 <label>Solar array (m²)<input id="area" type="number" value="1.6" step="0.1" min="0.1"></label>
 <label>Panel tilt (°)<input id="tilt" type="number" value="60" min="0" max="90"></label>
@@ -30,7 +32,7 @@
 <h3>04 / COMPARISON</h3>
 <label>Preserve<select id="preserve"><option value="time">Landing date/time — optimize site</option><option value="site">Landing site — optimize time ±14 days</option></select></label>
 <button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
-<p class="muted">NASA JPL Horizons positions, Sun-distance irradiance, and whole-Moon NASA LOLA coarse regional terrain now inform simulations. Local terrain obstacles and rover hazards are unresolved; spacecraft temperature forecasts are unavailable.</p>
+<p class="muted">NASA JPL Horizons, LOLA and historical Diviner measurements feed documented models. 3D terrain colors show measured DEM slope; seismic risk is unassessed, not certified safe. Engineering outputs remain projections.</p>
 </div>
 <footer>● OPEN SCIENCE PROTOTYPE <span>V0.1</span></footer>
 </aside>

@@ -5,7 +5,7 @@ const r={latitude:-89.5,longitude:0,landing_time:'2026-11-20T12:00:00Z',duration
 test('preview is labeled illustrative',()=>{assert.match(preview(r).source,/ILLUSTRATIVE/)});
 test('solar disk fractions',()=>{assert.equal(solarDiskFraction(-1),0);assert.equal(solarDiskFraction(1),1);assert.ok(Math.abs(solarDiskFraction(0)-.5)<1e-9)});
 test('solar generation geometry',()=>{assert.ok(photovoltaicPower({sun_az:0,sun_el:90},{area_m2:1,panel_tilt_deg:0,panel_az_deg:0},1)>200);assert.equal(photovoltaicPower({sun_az:0,sun_el:90},{area_m2:1,panel_tilt_deg:0,panel_az_deg:0},0),0)});
-test('mission series and SOC bounds',()=>{const out=simulate(r);assert.equal(out.samples.length,25);assert.ok(out.samples.every(x=>x.soc>=0&&x.soc<=100));assert.match(out.quality.terrain,/GEOMETRIC HORIZON/)});
+test('mission series and SOC bounds',()=>{const out=simulate(r);assert.equal(out.samples.length,49);assert.ok(out.samples.every(x=>x.soc>=0&&x.soc<=100));assert.match(out.quality.terrain,/GEOMETRIC HORIZON/)});
 test('site preserved',()=>{const x=optimize({mission:r,preserve:'site'});assert.deepEqual(x.original.site,x.recommended.site);assert.notEqual(x.original.landing_time,x.recommended.landing_time)});
 test('time preserved',()=>{const x=optimize({mission:r,preserve:'time'});assert.equal(x.original.landing_time,x.recommended.landing_time);assert.notDeepEqual(x.original.site,x.recommended.site)});
 test('unsupported Horizons mode fails clearly',()=>{assert.throws(()=>simulate({...r,data_mode:'horizons'}),/backend/)});
@@ -56,7 +56,7 @@ test("Diviner-referenced regolith temperature projection is labeled; spacecraft 
 });
 test("Coarse ridge obscures Sun and Earth's center",async()=>{
  const {simulateWithGeometry}=await import("../web/static-engine.mjs");
- const req={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1};
+ const req={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1,sample_minutes:60};
  const g=Array.from({length:25},(_,i)=>({
    time:new Date(Date.parse(req.landing_time)+i*3600000).toISOString(),
    sun_el:5,sun_az:0,earth_el:2,earth_az:0,sun_distance_km:149597870.7
@@ -80,11 +80,29 @@ test("Lunar radiative equilibrium follows NASA Diviner-scale day/night behavior"
 });
 test("Projected temperature changes with NASA-derived irradiance and sunlight",async()=>{
  const {simulateWithGeometry}=await import("../web/static-engine.mjs");
- const base={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1};
+ const base={...r,landing_time:"2026-11-20T12:00:00Z",duration_days:1,sample_minutes:60};
  const make=(distance)=>Array.from({length:25},(_,i)=>({
   time:new Date(Date.parse(base.landing_time)+i*3600000).toISOString(),
   sun_el:50,sun_az:0,earth_el:30,earth_az:180,sun_distance_km:distance
  }));
  const a=simulateWithGeometry(base,make(147000000),"NASA synthetic test"),b=simulateWithGeometry(base,make(152000000),"NASA synthetic test");
  assert.ok(a.samples[0].temperature_proxy_c>b.samples[0].temperature_proxy_c);
+});
+
+test("Thirty-five-day mission uses 30-minute calculations with energy units, stable SOC and UTC timeline",()=>{
+ const req={...r,duration_days:35,landing_time:"2026-12-01T03:20:00Z",sample_minutes:30};
+ const out=simulate(req);
+ assert.equal(out.samples.length,35*48+1);
+ assert.equal(out.samples.at(-1).time,"2027-01-05T03:20:00.000Z");
+ assert.ok(out.samples.every(x=>Number.isFinite(x.power_w)&&Number.isFinite(x.soc)&&x.soc>=0&&x.soc<=100));
+ assert.ok(out.metrics.total_energy_wh>=0);
+ assert.ok(out.metrics.max_darkness_h<=35*24);
+ assert.equal(out.sample_minutes,30);
+});
+test("Fifteen-minute and sixty-minute time steps preserve the same duration",()=>{
+ for(const minutes of [15,60]){
+  const out=simulate({...r,duration_days:7,sample_minutes:minutes});
+  assert.equal(out.samples.length,7*24*60/minutes+1);
+  assert.equal(out.samples.at(-1).hours,168);
+ }
 });

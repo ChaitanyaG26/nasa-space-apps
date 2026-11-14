@@ -1,4 +1,6 @@
 import {initGlobe} from "./globe.js";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
+import {initTerrain3D} from "./terrain-3d.mjs";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-engineering-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
@@ -72,7 +74,7 @@ const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
 function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("coords").textContent=text;$("mapCoords").textContent=text}
-function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),data_mode:$("mode").value}}
+function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:Number($("sampleMinutes").value),data_mode:$("mode").value}}
 async function api(path,data){
  if(IS_PAGES){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
@@ -183,28 +185,32 @@ async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
 function showGlobe(){ $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function plot(samples,key,color,maxVal=null){if(!samples||samples.length<2)return "";const w=340,h=104,vals=samples.map(r=>Number(r[key])),finite=vals.filter(Number.isFinite);if(finite.length<2)return '<p class="muted">Projection unavailable for this selection</p>';const temp=key==="temperature_proxy_c";const lo=temp?Math.floor(Math.min(...finite)/10)*10:0,hi=maxVal??(temp?Math.ceil(Math.max(...finite)/10)*10:Math.max(...finite,1));const top=Math.max(lo+1,hi);const coords=vals.map((v,i)=>(10+(w-20)*i/(vals.length-1)).toFixed(1)+","+(h-11-(h-23)*(v-lo)/(top-lo)).toFixed(1)).join(" ");return '<svg viewBox="0 0 340 122" role="img" aria-label="'+key+' over time"><path d="M10 6 V105 H330" stroke="#c8d8e0" fill="none"/><polyline points="'+coords+'" stroke="'+color+'" fill="none" stroke-width="2"/>'+svgText(10,119,"Landing")+svgText(284,119,"Mission end","#516976")+svgText(15,14,top.toFixed(0)+(temp?" °C":""))+svgText(15,101,lo.toFixed(0)+(temp?" °C":""))+'</svg>'}
-function plotMeasured(samples,key,color){
- const good=samples.map((v,i)=>({i,value:v[key]})).filter(x=>Number.isFinite(x.value));
- if(!good.length)return '<p class="muted">No measured NASA Diviner samples for this site and local times.</p>';
- const min=Math.min(...good.map(x=>x.value)),max=Math.max(...good.map(x=>x.value));
- const lo=Math.floor(min/10)*10,hi=Math.max(lo+1,Math.ceil(max/10)*10);
- const dots=good.map(({i,value})=>[10+320*i/(samples.length-1),93-81*(value-lo)/(hi-lo)]);
- return '<svg viewBox="0 0 340 122" role="img" aria-label="Historical measured Diviner temperature">'+
- '<path d="M10 6 V105 H330" stroke="#c8d8e0" fill="none"/>'+
- dots.map(([x,y])=>'<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="1.8" fill="'+color+'"/>').join("")+
- svgText(10,119,"Landing")+svgText(275,119,"Mission end")+
- svgText(10,14,hi+"°C")+svgText(10,101,lo+"°C")+'</svg>';
+function chart(name,rows,key,color,maxVal){
+ const unit=key==="soc"?"%":key==="rf_margin_db"?"dB":key.includes("temperature")?"°C":
+  key==="heater_w"||key==="power_w"?"W":"";
+ return chartMarkup(name,rows,key,{unit,color,percent:key==="soc",zero:key==="power_w"||key==="heater_w",
+  subtitle:key==="temperature_proxy_c"?"Projected regolith temperature, not spacecraft temperature":
+  key==="lander_temperature_c"?"One-node lander model, assumed hardware; unvalidated":
+  key==="rf_margin_db"?"NASA Earth range + assumed RF equipment":"NASA-backed physical estimate and engineering assumptions"});
 }
-function chart(name,samples,key,color,maxVal){return '<div class="chart"><div class="chart-title">'+name+'</div>'+plot(samples,key,color,maxVal)+'</div>'}
-function windows(samples){const ss=samples.filter((r,i)=>i%Math.max(1,Math.ceil(samples.length/140))===0);return '<div class="chart"><div class="chart-title">Geometric Earth visibility (teal = visible)</div><div class="windows">'+ss.map(s=>'<span style="flex:1;background:'+(s.earth_visible?"#4fbea6":"#c8d4df")+'"></span>').join("")+'</div></div>'}
+function plotMeasured(samples,key,color){
+ return chartMarkup("NASA Diviner measured historical TBOL — 2009–2015",samples,key,
+  {unit:"°C",color,kind:"observed",subtitle:"Discrete historic observations at selected lunar local time; not a 2026 forecast."});
+}
+function timeRibbon(title,samples,key){
+ const subs=samples.slice(0,-1).filter((_,i)=>i%Math.max(1,Math.ceil(samples.length/180))===0);
+ const marks=utcTicks(Date.parse(samples[0].time),Date.parse(samples.at(-1).time),5);
+ return '<div class="chart ribbon-chart"><div class="chart-head"><strong>'+escapeHtml(title)+'</strong><span>UTC</span></div>'+
+ '<div class="windows">'+subs.map(s=>'<span title="'+escapeHtml(s.time+" UTC")+
+ '" style="flex:1;background:'+(s[key]?"#32a994":"#dbe2e8")+'"></span>').join("")+'</div>'+
+ '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
+}
+function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
 function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Projected regolith temperature (°C) · screening model",s,"temperature_proxy_c","#b46b6b")+
 (s.some(x=>Number.isFinite(x.diviner_observed_c))?
- '<div class="chart"><div class="chart-title">NASA Diviner measured historic bolometric temperatures (°C) · 2009–2015 local-time bins</div>'+
- plotMeasured(s,"diviner_observed_c","#8052aa")+
- '<p class="muted">Historical observational reference at local lunar time, NOT a 2026 temperature observation or spacecraft measurement.</p></div>':
+ plotMeasured(s,"diviner_observed_c","#8052aa")':
  '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
-'<div class="chart"><div class="chart-title">Power conservation advisory (amber = threshold)</div><div class="windows">'+s.filter((r,i)=>i%Math.max(1,Math.ceil(s.length/140))===0).map(x=>'<span title="'+escapeHtml(x.time)+'" style="flex:1;background:'+(x.power_conservation_advisory?"#dfaa49":"#a5cfca")+'"></span>').join("")+'</div><p class="muted">Projected energy conservation only: SOC within 10 percentage points of reserve and solar power below load. NOT a command to hibernate or a thermal survival prediction.</p></div>'+windows(s)+
+timeRibbon("Power-conservation advisory · teal = no advisory",s,"power_conservation_advisory")+windows(s)+
 '<div class="note">PROJECTED regolith equilibrium using NASA Diviner observed range as context; albedo 0.12, emissivity 0.95, baseline 95 K; lacks thermal inertia, near-field heat exchange, and spacecraft thermal hardware. No site-specific Diviner lookup.</div>'+'<div class="note">'+(data.terrain?.coverage?('NASA LOLA measured regional elevation: '+data.terrain.elevation_km.toFixed(3)+' km; 8 px/degree (~3.8 km N–S). · '):'LOLA elevation unavailable. · ')+(data.regional_horizon?(
  'Maximum modeled skyline obstruction: '+data.regional_horizon.max_obstruction_deg+'°; '+
  (data.regional_horizon.near_field_resolved?
@@ -216,11 +222,28 @@ function card(data,label){const m=data.metrics,s=data.samples;return '<div class
    ' — NOT certified rover traversability. · '):'')+escapeHtml(data.quality.ephemeris)+' · <b>Independent JPL site check:</b> '+escapeHtml(data.quality.horizons_direct_validation||"Unavailable")+' · <b>Diviner:</b> '+escapeHtml(data.quality.diviner_observations||"Historical reference not loaded")+
  (data.quality.thermal_model_mean_abs_error_c!==undefined&&data.quality.thermal_model_mean_abs_error_c!==null?
  ' · Mean absolute difference vs historical climatology: '+data.quality.thermal_model_mean_abs_error_c+' °C (NOT forecast validation)':'')+
- ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No rover traversal or seismic forecast.</div></div>'}
-function render(){let html=lastResult?'<div class="quality">NASA DATA: JPL Horizons ephemeris and LOLA global elevation. PROJECTED: power, battery SOC, regolith temperature, Earth visibility, regional skyline, and power-conservation advisory. ASSUMED: hardware efficiency, panel area/tilt, load, battery, and thresholds. No site-calibrated Diviner temperature, link budget, rover hazards, seismic forecast, or certified landing assessment.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;}
+ ' · <b>NASA references:</b> <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener noreferrer">JPL Horizons</a> · <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener noreferrer">LOLA</a> · <a href="https://www.diviner.ucla.edu/science" target="_blank" rel="noopener noreferrer">Diviner thermal reference</a> · <a href="https://pds-geosciences.wustl.edu/missions/apollo/seismic.htm" target="_blank" rel="noopener noreferrer">Apollo seismic archive (not a local hazard forecast)</a> · <b>Projected engineering outputs, not mission-validated.</b> No certified rover path or seismic risk rating.</div>'+
+'<section class="terrain-panel" data-site-lat="'+data.site.latitude+'" data-site-lon="'+data.site.longitude+'">'+
+'<div class="terrain-heading"><h3>3D local lunar terrain</h3><small>NASA LOLA DEM · drag to rotate · scroll to zoom</small></div>'+
+'<p class="muted">Loading elevation grid...</p></section></div>'}
+function render(){resetCharts();let html=lastResult?'<div class="quality">NASA DATA: JPL Horizons ephemeris and LOLA global elevation. PROJECTED: power, battery SOC, regolith temperature, Earth visibility, regional skyline, and power-conservation advisory. ASSUMED: hardware efficiency, panel area/tilt, load, battery, and thresholds. No site-calibrated Diviner temperature, link budget, rover hazards, seismic forecast, or certified landing assessment.</div>':'';if(comparison){html+='<div class="note">'+escapeHtml(comparison.search)+' · '+escapeHtml(comparison.comparison_note)+'</div><div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+(comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>'}else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>'; $("results").innerHTML=html;attachChartInteractions($("results"));}
+let terrainInstances=[];
+async function mountTerrainViews(){
+ terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
+ const places=[...$("results").querySelectorAll(".terrain-panel")];
+ if(!places.length)return;
+ const globeDEM=await loadLolaGlobal().catch(()=>null);
+ for(const node of places){
+  if(!node.isConnected)continue;
+  const latitude=Number(node.dataset.siteLat),longitude=Number(node.dataset.siteLon);
+  const patch=await loadPolarPatch(latitude,longitude).catch(()=>null);
+  if(!node.isConnected)continue;
+  terrainInstances.push(initTerrain3D(node,{latitude,longitude,patch,global:globeDEM}));
+ }
+}
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
-$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();}));
-$("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults()})});
+$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
+$("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults();await mountTerrainViews()})});
 $("back").addEventListener("click",showGlobe);$("focus").addEventListener("click",()=>{globe.focus();position={latitude:-89.5,longitude:0};globe.setSite(position.latitude,position.longitude);showCoords();refreshPreview()});
 $("time").addEventListener("input",()=>{let t=Number($("time").value)*10;$("timeLabel").textContent=String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")+" UTC";refreshPreview()});
 for(const id of ["date","mode"])$(id).addEventListener("change",refreshPreview);
