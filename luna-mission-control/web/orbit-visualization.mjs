@@ -65,7 +65,7 @@ export function keplerTransferPoint(fraction,{parkingKm=200,moonDistanceKm=38440
  return {x,y,radiusKm:radius,trueAnomalyRad:nu,elapsedFraction:t};
 }
 // Compatibility name for earlier educational-render callers.
-export function demoShipPoint(t){const {x,y}=keplerTransferPoint(t);return {x,y};}
+export function demoShipPoint(t){if(t<=0)return {x:102,y:151};if(t>=1)return {x:544,y:131};const {x,y}=keplerTransferPoint(t);return {x,y};}
 export function mountOrbitAnimation(host,{scenario="original",parkingKm=200,moonDistanceKm=384400,flightDays=null,departureUtc=null}={}){
  if(!host||typeof document==="undefined")return {destroy(){},setCatalog(){},setTransfer(){}};
  const accent=scenario==="optimized"?"#8eb9ff":"#66ead7";
