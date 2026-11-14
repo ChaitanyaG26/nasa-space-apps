@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {verifyReferenceDataset,atUtc,localAngles,geometryAtUtc,referencePreview,geometrySeries,centerPositionsAtUtc,vectorsForSite,surfacePosition} from "../web/horizons-static.mjs";
+import {readFileSync} from "node:fs";
+import {simulateWithGeometry} from "../web/static-engine.mjs";
+import {regionalTerrain} from "../web/lola-terrain.mjs";
+import {verifyReferenceDataset,atUtc,localAngles,geometryAtUtc,referencePreview,geometrySeries,centerPositionsAtUtc,vectorsForSite,surfacePosition,utcMillis} from "../web/horizons-static.mjs";
 const T=Date.parse("2026-11-20T12:00:00Z");
 // Synthetic distances in km, consistent with a Moon-centered position dataset.
 const EX={schema_version:2,reference:{latitude_deg:0,longitude_deg_east:0},step_hours:3,start_utc:"2026-11-20T12:00:00Z",end_utc:"2026-11-21T00:00:00Z",samples:[
@@ -53,4 +56,38 @@ test("NASA LOLA height alters site-specific parallax",()=>{
  const a=vectorsForSite(p,-89.5,0,0);
  const b=vectorsForSite(p,-89.5,0,3.5);
  assert.notEqual(a.earth.z,b.earth.z);
+});
+
+test("Timestamp normalizer accepts numeric milliseconds, Date and ISO UTC",()=>{
+  const instant="2026-12-09T03:20:00Z";
+  const ms=Date.parse(instant);
+  assert.equal(utcMillis(ms),ms);
+  assert.equal(utcMillis(new Date(instant)),ms);
+  assert.equal(utcMillis(instant),ms);
+  assert.throws(()=>utcMillis("12/09/2026 03:20"),/ISO-8601/);
+});
+test("Real NASA Horizons cache simulates December 9 2026 at 53.716 S 64.389 W",()=>{
+  const json=readFileSync(new URL("../web/assets/horizons-moon-reference.json",import.meta.url),"utf8");
+  const cached=verifyReferenceDataset(JSON.parse(json));
+  const request={
+    latitude:-53.716,longitude:-64.389,landing_time:"2026-12-09T03:20:00Z",
+    duration_days:7,area_m2:1.6,panel_tilt_deg:60,panel_az_deg:0,
+    battery_wh:5000,load_w:75,reserve_percent:20,data_mode:"horizons"
+  };
+  const series=geometrySeries(cached,request,0);
+  assert.equal(series.length,169);
+  assert.equal(series[0].time,request.landing_time.replace(".000",""));
+  assert.equal(series.at(-1).time,"2026-12-16T03:20:00.000Z");
+  assert.ok(series.every(row=>Number.isFinite(row.sun_el)&&Number.isFinite(row.earth_el)));
+  const result=simulateWithGeometry(request,series,"NASA JPL Horizons, simulated regression");
+  assert.equal(result.samples.length,169);
+  assert.ok(result.samples.every(row=>Number.isFinite(row.power_w)&&Number.isFinite(row.soc)));
+  assert.ok(result.metrics.earth_hours>=0&&result.metrics.earth_hours<=168);
+  assert.ok(result.metrics.total_energy_wh>=0);
+});
+test("NASA LOLA data is explicitly unavailable at 53.716 S rather than fabricated",()=>{
+  const json=readFileSync(new URL("../web/assets/lola-south-025deg.json",import.meta.url),"utf8");
+  const terrain=regionalTerrain(JSON.parse(json),-53.716,-64.389);
+  assert.equal(terrain.coverage,false);
+  assert.equal(terrain.elevation_km,null);
 });
