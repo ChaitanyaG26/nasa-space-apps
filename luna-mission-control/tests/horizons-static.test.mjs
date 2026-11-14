@@ -75,12 +75,12 @@ test("Real NASA Horizons cache simulates December 9 2026 at 53.716 S 64.389 W",(
     battery_wh:5000,load_w:75,reserve_percent:20,data_mode:"horizons"
   };
   const series=geometrySeries(cached,request,0);
-  assert.equal(series.length,169);
+  assert.equal(series.length,337);
   assert.equal(series[0].time,"2026-12-09T03:20:00.000Z");
   assert.equal(series.at(-1).time,"2026-12-16T03:20:00.000Z");
   assert.ok(series.every(row=>Number.isFinite(row.sun_el)&&Number.isFinite(row.earth_el)));
   const result=simulateWithGeometry(request,series,"NASA JPL Horizons, simulated regression");
-  assert.equal(result.samples.length,169);
+  assert.equal(result.samples.length,337);
   assert.ok(result.samples.every(row=>Number.isFinite(row.power_w)&&Number.isFinite(row.soc)));
   assert.ok(result.metrics.earth_hours>=0&&result.metrics.earth_hours<=168);
   assert.ok(result.metrics.total_energy_wh>=0);
@@ -96,4 +96,32 @@ test("NASA JPL position result carries physical Sun and Earth distance",()=>{
  const g=geometryAtUtc(EX,0,0,"2026-11-20T12:00:00Z");
  assert.ok(g.sun_distance_km>1.3e8);
  assert.ok(g.earth_distance_km>3e5);
+});
+
+test("JPL 15-minute interpolations cover a 21-day mission without inventing source observations",()=>{
+ const ref=verifyReferenceDataset(JSON.parse(readFileSync(new URL("../web/assets/horizons-moon-reference.json",import.meta.url),"utf8")));
+ const req={latitude:-89.5,longitude:0,landing_time:"2026-12-01T00:20:00Z",duration_days:21,sample_minutes:15};
+ const timeline=geometrySeries(ref,req);
+ assert.equal(timeline.length,21*24*4+1);
+ assert.equal(timeline[0].time,req.landing_time.replace(":00Z",":00.000Z"));
+ assert.equal(timeline.at(-1).time,"2026-12-22T00:20:00.000Z");
+ assert.ok(timeline.every(x=>Number.isFinite(x.sun_el)&&Number.isFinite(x.earth_el)));
+});
+
+
+test("35-day NASA Horizons-backed mission keeps real hourly provenance and finite 30-minute battery/thermal forecasts",()=>{
+ const ref=verifyReferenceDataset(JSON.parse(readFileSync(new URL("../web/assets/horizons-moon-reference.json",import.meta.url),"utf8")));
+ const req={latitude:-53.033,longitude:-99.811,landing_time:"2026-11-20T03:20:00Z",duration_days:35,
+   sample_minutes:30,area_m2:1.6,panel_tilt_deg:60,panel_az_deg:0,battery_wh:5000,
+   load_w:75,reserve_percent:20,data_mode:"horizons"};
+ assert.equal(ref.step_hours,1);
+ const samples=geometrySeries(ref,req,0);
+ assert.equal(samples.length,1681);
+ const result=simulateWithGeometry(req,samples,"NASA/JPL Horizons 1-hour reference, 30-minute interpolated model");
+ assert.equal(result.samples.length,1681);
+ assert.equal(result.samples.at(-1).time,"2026-12-25T03:20:00.000Z");
+ assert.ok(result.samples.every(x=>Number.isFinite(x.power_w)&&Number.isFinite(x.lander_temperature_c)&&Number.isFinite(x.soc)));
+ assert.ok(result.samples.every(x=>x.soc>=0&&x.soc<=100));
+ assert.ok(result.metrics.total_energy_wh>=0);
+ assert.ok(result.metrics.max_darkness_h<=35*24);
 });

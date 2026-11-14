@@ -38,6 +38,8 @@ jobs:
           node --test luna-mission-control/tests/launch-window.test.mjs
           node --check luna-mission-control/web/launch-window.mjs
           node --test luna-mission-control/tests/rover-screen.test.mjs
+          node --test luna-mission-control/tests/science-charts.test.mjs
+          node --test luna-mission-control/tests/terrain-3d.test.mjs
           node --test luna-mission-control/tests/diviner-gcp.test.mjs
           node --test luna-mission-control/tests/horizons-site-validation.test.mjs
           node --input-type=module --check < luna-mission-control/web/app.js
