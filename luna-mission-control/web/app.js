@@ -256,7 +256,12 @@ function setupScienceInformation(){
  panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","true");
  panel.setAttribute("aria-labelledby","scienceInfoTitle");
  panel.innerHTML='<header class="science-info-header"><div><small>SIMULATION REFERENCE</small><h2 id="scienceInfoTitle">Information &amp; sources</h2><p>Data provenance, engineering assumptions and limitations</p></div><button id="scienceInfoClose" type="button" aria-label="Close information panel">✕</button></header><div id="scienceInfoBody" class="science-info-body"></div>';
- page.append(overlay,panel);
+ const edge=document.createElement("button");
+ edge.type="button";edge.id="scienceInfoEdge";edge.className="science-info-edge";
+ edge.setAttribute("aria-label","Open simulation information and sources");
+ edge.textContent="ⓘ Information";
+ page.append(edge,overlay,panel);
+ edge.addEventListener("click",openScienceInformation);
  trigger.addEventListener("click",openScienceInformation);
  $("scienceInfoClose").addEventListener("click",closeScienceInformation);
  overlay.addEventListener("click",closeScienceInformation);
