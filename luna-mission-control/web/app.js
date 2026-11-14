@@ -4,7 +4,7 @@ import {loadJplReference,referencePreview,geometrySeries} from "./horizons-stati
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {loadPolarPatch,localPatchXY,samplePolarHeightKm,polarSiteSlopeDeg,refinePolarHorizon} from "./lola-polar-detail.mjs";
 import {THERMAL_PROVENANCE} from "./thermal-projection.mjs";
-import {loadDivinerAtLatitude,divinerObservedReference} from "./diviner-gcp.mjs";
+import {loadDivinerAtLatitude,divinerObservedReference} from "./diviner-gcp.mjs?v=gcp2-global-20261114";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
 let siteValidationReport=null;
 async function getHorizonsValidation(){
