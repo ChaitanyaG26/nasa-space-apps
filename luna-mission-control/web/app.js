@@ -1,7 +1,8 @@
 import {renderScientificInformation} from "./science-info.mjs";
 import "./launch-window.mjs?v=20261114-orbit-ui-v3";
 import {initGlobe} from "./globe.js";
-import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs";
+import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-extent500-1";
@@ -172,18 +173,33 @@ function updateDiagrams(p){
    svgText(176,55,"Moon")+
    svgText(Math.min(265,sx+8),Math.max(11,Math.min(100,sy-4)),"Sun","#f3c56b")+
    svgText(Math.min(265,ex+7),Math.max(11,Math.min(100,ey+12)),"Earth","#56b2df");
- const hx=az=>20+280*(az%360)/360,hy=el=>88-Math.max(-25,Math.min(90,el))*.54;
- $("horizon").innerHTML='<line x1="12" y1="88" x2="308" y2="88" stroke="#83a5b8"/>'+
-   svgText(12,103,"N")+svgText(87,103,"E")+svgText(159,103,"S")+
-   svgText(232,103,"W")+svgText(296,103,"N")+
-   '<circle cx="'+hx(p.sun_az)+'" cy="'+hy(p.sun_el)+'" r="7" fill="#ffc979"/>'+
-   '<circle cx="'+hx(p.earth_az)+'" cy="'+hy(p.earth_el)+'" r="6" fill="#68caff"/>';
- $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° elevation · Earth "+p.earth_el.toFixed(1)+"° elevation"+
- (p.terrain?.coverage?" · LOLA elevation "+p.terrain.elevation_km.toFixed(3)+" km":"");
+ // Preview actual site skyline rather than a nominal flat-horizon line.
+ const terrain=p.regional_horizon?.coverage&&Array.isArray(p.regional_horizon.horizon)?p.regional_horizon.horizon:null;
+ const heights=terrain?.filter(Number.isFinite)||[],high=Math.max(12,p.sun_el+4,p.earth_el+4,...heights.map(v=>v+3));
+ const low=Math.min(-8,p.sun_el-4,p.earth_el-4);
+ const hx=az=>20+280*((az%360+360)%360)/360,hy=el=>86-(el-low)/(high-low)*69;
+ const terrainAt=az=>{
+  if(!terrain?.length)return null;
+  const x=((az%360+360)%360)*terrain.length/360,i=Math.floor(x)%terrain.length,f=x-Math.floor(x);
+  return terrain[i]*(1-f)+terrain[(i+1)%terrain.length]*f;
+ };
+ const path=terrain?.length?'<path d="'+Array.from({length:terrain.length+1},(_,i)=>
+  (i?"L":"M")+hx(i*360/terrain.length).toFixed(2)+","+hy(terrain[i%terrain.length]).toFixed(2)).join(" ")+
+  '" stroke="#60d8d0" stroke-width="2" fill="none"/>':
+  '<line x1="20" y1="'+hy(0)+'" x2="300" y2="'+hy(0)+'" stroke="#809cad" stroke-dasharray="5 4"/>';
+ const marker=(az,el,r,c)=>'<circle cx="'+hx(az)+'" cy="'+hy(el)+'" r="'+r+'" fill="'+c+'" stroke="#102637" stroke-width="2"/>';
+ $("horizon").innerHTML=
+  '<line x1="20" y1="'+hy(0)+'" x2="300" y2="'+hy(0)+'" stroke="#536c7a" stroke-dasharray="2 4"/>'+
+  path+marker(p.sun_az,p.sun_el,6,"#ffc979")+marker(p.earth_az,p.earth_el,5,"#68caff")+
+  svgText(12,103,"N")+svgText(87,103,"E")+svgText(159,103,"S")+svgText(232,103,"W")+svgText(292,103,"N");
+ const clearance=(v,az)=>{const h=terrainAt(az);return h===null?"unknown":(v-h).toFixed(1)+"°";};
+ $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° el (clearance "+clearance(p.sun_el,p.sun_az)+") · Earth "+
+  p.earth_el.toFixed(1)+"° el (clearance "+clearance(p.earth_el,p.earth_az)+")"+
+  (terrain?" · NASA LOLA skyline":" · terrain coverage unavailable");
  $("source").textContent=p.source+" · "+p.global_source+(p.regional_horizon?.coverage?" · NASA LOLA coarse regional skyline":" · Regional horizon unavailable");
  globe.setSun(fixed.sun.x,fixed.sun.y,fixed.sun.z);
 }
-async function refreshPreview(){let id=++previewSeq;try{let p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p)}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message; $("angles").textContent="No verified ephemeris for this selection";}}}
+async function refreshPreview(){const id=++previewSeq;try{const p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p);return true;}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message;$("angles").textContent="No verified ephemeris for this selection";}return false;}}
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
 function showGlobe(){ closeScienceInformation(); $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -325,8 +341,28 @@ function busy(button,fn){button.disabled=true;const old=button.textContent;butto
 $("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
 $("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults();await mountTerrainViews()})});
 $("back").addEventListener("click",showGlobe);$("focus").addEventListener("click",()=>{globe.focus();position={latitude:-89.5,longitude:0};globe.setSite(position.latitude,position.longitude);showCoords();refreshPreview()});
-$("time").addEventListener("input",()=>{let t=Number($("time").value)*10;$("timeLabel").textContent=String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")+" UTC";refreshPreview()});
-for(const id of ["date","mode"])$(id).addEventListener("change",refreshPreview);
+// Time animation evaluates the ephemeris at exact UTC steps: source vectors
+// are hourly NASA/JPL samples; intermediate positions are interpolated.
+const controls=document.createElement("div");controls.className="ephemeris-playback";
+controls.innerHTML='<button type="button" id="playEphemeris" aria-pressed="false">▶ Play Sun / Earth</button>'+
+ '<label>Step<select id="playStep"><option value="1">10 min</option><option value="3" selected>30 min</option><option value="6">1 hour</option></select></label>'+
+ '<small id="playbackStatus">Hourly JPL data · interpolated frames</small>';
+$("time").closest("label").insertAdjacentElement("afterend",controls);
+let playing=false,timer=null;
+function stopPlayback(){playing=false;if(timer!==null)clearTimeout(timer);timer=null;$("playEphemeris").textContent="▶ Play Sun / Earth";$("playEphemeris").setAttribute("aria-pressed","false");}
+async function animateFrame(){
+ if(!playing)return;
+ const n=advancePlaybackUtc($("date").value,Number($("time").value),Number($("playStep").value));
+ $("date").value=n.date;$("time").value=n.slot;$("timeLabel").textContent=formatPlaybackUtc(n.slot);
+ setChartsCursor($("results"),n.iso);
+ const available=await refreshPreview();
+ if(!playing)return;
+ if(!available){stopPlayback();$("playbackStatus").textContent="Stopped: NASA ephemeris unavailable at selected UTC";return;}
+ timer=setTimeout(animateFrame,280);
+}
+$("playEphemeris").addEventListener("click",()=>{if(playing){stopPlayback();return;}playing=true;$("playEphemeris").textContent="Ⅱ Pause animation";$("playEphemeris").setAttribute("aria-pressed","true");$("playbackStatus").textContent="UTC · hourly NASA vectors, sub-hour interpolation";animateFrame();});
+$("time").addEventListener("input",()=>{stopPlayback();$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
+for(const id of ["date","mode"])$(id).addEventListener("change",()=>{stopPlayback();refreshPreview()});
 showCoords();refreshPreview();
 if(IS_PAGES){
  $("mode").value="horizons";
