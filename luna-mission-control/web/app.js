@@ -1,6 +1,6 @@
 import {initGlobe} from "./globe.js";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs";
-import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs";
+import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b";
 import {loadLola,regionalTerrain} from "./lola-terrain.mjs";
 const IS_PAGES = window.LUNA_STATIC_SITE === true;
 const $=id=>document.getElementById(id);
