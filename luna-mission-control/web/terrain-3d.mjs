@@ -41,10 +41,14 @@ export function slopeClass(deg){
  if(!Number.isFinite(deg))return "missing";
  return deg<8?"green":deg<15?"amber":"red";
 }
-export function buildTerrainMesh({latitude,longitude,patch=null,global=null,size=55}){
+export function buildTerrainMesh({latitude,longitude,patch=null,global=null,size=55,footprintKm=null}){
  if(!(size>=9&&size<=95))throw Error("Invalid terrain mesh size");
+ if(footprintKm!==null&&(!Number.isFinite(footprintKm)||footprintKm<0.25||footprintKm>300))
+  throw Error("Invalid terrain footprint");
  const detailed=Boolean(patch);
- const spacingKm=detailed ? 0.02 : 4;
+ // Interpolated display vertices may be denser than the original LOLA
+ // samples. 500 m view is NOT better than 20 m underlying DEM resolution.
+ const spacingKm=footprintKm===null?(detailed?0.02:4):footprintKm/(size-1);
  const pxy=detailed?localPatchXY(patch.entry.latitude,patch.entry.longitude,latitude,longitude):null;
  const vertices=[];
  for(let y=0;y<size;y++){
@@ -82,7 +86,7 @@ export function buildTerrainMesh({latitude,longitude,patch=null,global=null,size
   slopes.push(line);
  }
  return {latitude,longitude,vertices,slopes,size,spacingKm,source:detailed?"NASA LOLA 20-m DEM patch":"NASA LOLA global 8-ppd DEM",
-  detail:detailed,range:{min:zMin,max:zMax},distribution:{green,amber,red,missing}};
+  detail:detailed,footprintKm:(size-1)*spacingKm,range:{min:zMin,max:zMax},distribution:{green,amber,red,missing}};
 }
 const shade=(hex,f)=>{
  const v=hex.slice(1),cs=[0,2,4].map(i=>parseInt(v.slice(i,i+2),16));
@@ -102,12 +106,22 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
   const option=document.createElement("option");option.value=value;option.textContent=label;select.append(option);
  }
  layerLabel.append(select);
+ const footprintLabel=document.createElement("label");footprintLabel.textContent="Area shown";
+ const footprintSelect=document.createElement("select");footprintSelect.setAttribute("aria-label","Lunar terrain footprint");
+ const footprints=patch?[[.5,"500 m × 500 m"],[1,"1 km × 1 km"],[2,"2 km × 2 km"],[5,"5 km × 5 km"]]:
+   [[50,"50 km × 50 km"],[100,"100 km × 100 km"],[200,"200 km × 200 km"]];
+ for(const [value,label] of footprints){
+  const option=document.createElement("option");option.value=String(value);option.textContent=label;
+  if(value===(patch?.5:100))option.selected=true;
+  footprintSelect.append(option);
+ }
+ footprintLabel.append(footprintSelect);
  const exaggerationLabel=document.createElement("label");exaggerationLabel.textContent="Vertical exaggeration";
  const exaggeration=document.createElement("input");exaggeration.type="range";exaggeration.min="1";exaggeration.max="15";exaggeration.step="1";exaggeration.value="6";exaggeration.setAttribute("aria-label","Vertical exaggeration");
  const numeric=document.createElement("span");numeric.textContent="6×";
  exaggerationLabel.append(exaggeration,numeric);
  const reset=document.createElement("button");reset.type="button";reset.textContent="Reset view";reset.className="terrain-reset";
- view.append(layerLabel,exaggerationLabel,reset);
+ view.append(layerLabel,footprintLabel,exaggerationLabel,reset);
  const canvas=document.createElement("canvas");canvas.className="terrain-3d-canvas";
  canvas.setAttribute("aria-label","Interactive rotatable three-dimensional NASA LOLA local topography; slope classes or unassessed seismic evidence");
  canvas.tabIndex=0;
@@ -115,7 +129,8 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
  const legend=document.createElement("div");legend.className="terrain-legend";
  const source=document.createElement("p");source.className="terrain-caption";
  const evidence=seismicEvidence(latitude,longitude);
- const mesh=buildTerrainMesh({latitude,longitude,patch,global});
+ let footprintKm=patch?.5:100;
+ let mesh=buildTerrainMesh({latitude,longitude,patch,global,size:65,footprintKm});
  container.append(heading,view,canvas,legend,status,source);
  let yaw=.65,tilt=.63,zoom=1,active=false,lastX=0,lastY=0;
  let layer="slope",exag=6,frame=null,disposed=false;
@@ -133,15 +148,21 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
    ctx.fillText("NASA elevation samples unavailable for this view",20,height/2);return;
   }
   const {size,vertices,slopes,spacingKm}=mesh;
-  const span=(size-1)*spacingKm,scale=Math.min(width*.73,height*.92)/Math.max(.1,span)*zoom;
   const hRef=(mesh.range.min+mesh.range.max)/2;
   const angleC=Math.cos(yaw),angleS=Math.sin(yaw),tC=Math.cos(tilt),tS=Math.sin(tilt);
-  const project=p=>{
-   const xx=p.x*angleC-p.y*angleS,yy=p.x*angleS+p.y*angleC;
-   const zz=(p.z-hRef)*exag;
-   return {x:width*.5+xx*scale,y:height*.54+(yy*tS-zz*tC)*scale,depth:yy*tC+zz*tS};
-  };
-  const ps=vertices.map(row=>row.map(v=>v===null?null:project(v)));
+  const raw=vertices.map(row=>row.map(p=>{
+   if(p===null)return null;
+   const xx=p.x*angleC-p.y*angleS,yy=p.x*angleS+p.y*angleC,zz=(p.z-hRef)*exag;
+   return {x:xx,y:yy*tS-zz*tC,depth:yy*tC+zz*tS};
+  }));
+  const points=raw.flat().filter(Boolean);
+  const minX=Math.min(...points.map(p=>p.x)),maxX=Math.max(...points.map(p=>p.x));
+  const minY=Math.min(...points.map(p=>p.y)),maxY=Math.max(...points.map(p=>p.y));
+  const scale=Math.min((width-28)/Math.max(.001,maxX-minX),
+    (height-40)/Math.max(.001,maxY-minY))*.95*zoom;
+  const centerX=(minX+maxX)/2,centerY=(minY+maxY)/2;
+  const ps=raw.map(row=>row.map(p=>p===null?null:
+   {x:width*.5+(p.x-centerX)*scale,y:height*.50+(p.y-centerY)*scale,depth:p.depth}));
   const polygons=[];
   for(let y=0;y<size-1;y++)for(let x=0;x<size-1;x++){
    const p=[ps[y][x],ps[y][x+1],ps[y+1][x+1],ps[y+1][x]];
@@ -162,7 +183,8 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
   ctx.fillStyle="#eef8fc";ctx.font="600 12px system-ui";
   ctx.fillText(mesh.detail?"20-m NASA LOLA / LOCAL TERRAIN":"8-PPD NASA LOLA / REGIONAL TERRAIN",26,35);
   ctx.fillStyle="#4b6675";ctx.font="12px system-ui";
-  ctx.fillText("Drag to rotate  •  Scroll to zoom",17,height-15);
+  ctx.fillText((mesh.footprintKm<1?Math.round(mesh.footprintKm*1000)+" m":mesh.footprintKm+" km")+
+    " square  •  Drag to rotate  •  Scroll to zoom",17,height-15);
  };
  const draw=()=>{if(frame===null)frame=requestAnimationFrame(()=>{frame=null;update();});};
  const setLabels=()=>{
@@ -177,7 +199,8 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
   }
   status.textContent=(mesh.detail?"NASA LOLA detailed site patch · 20 m pixels":
     "NASA LOLA regional terrain · ~3.8 km source pixels")+
-    " · "+((mesh.size-1)*mesh.spacingKm).toFixed(mesh.detail?2:0)+" km wide"+
+    " · "+(mesh.footprintKm<1?Math.round(mesh.footprintKm*1000)+" × "+Math.round(mesh.footprintKm*1000)+" m":
+       mesh.footprintKm+" × "+mesh.footprintKm+" km")+" footprint"+
     (mesh.range.min===null?" · No valid elevation":' · height '+(mesh.range.min*1000).toFixed(0)+" to "+(mesh.range.max*1000).toFixed(0)+" m relative to lunar reference radius");
   source.textContent=layer==="seismic"?
    "SEISMIC EVIDENCE — "+evidence.researchConcern+
@@ -193,6 +216,11 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
  canvas.addEventListener("wheel",wheel,{passive:false});
  canvas.addEventListener("keydown",e=>{if(e.key==="ArrowLeft")yaw-=.1;else if(e.key==="ArrowRight")yaw+=.1;else if(e.key==="ArrowUp")tilt=Math.min(1.45,tilt+.1);else if(e.key==="ArrowDown")tilt=Math.max(.1,tilt-.1);else return;e.preventDefault();draw();});
  select.addEventListener("change",()=>{layer=select.value;setLabels();draw();});
+ footprintSelect.addEventListener("change",()=>{
+  footprintKm=Number(footprintSelect.value);
+  mesh=buildTerrainMesh({latitude,longitude,patch,global,size:65,footprintKm});
+  zoom=1;setLabels();draw();
+ });
  exaggeration.addEventListener("input",()=>{exag=Number(exaggeration.value);numeric.textContent=exag+"×";draw();});
  reset.addEventListener("click",()=>{yaw=.65;tilt=.63;zoom=1;exag=6;exaggeration.value="6";numeric.textContent="6×";draw();});
  const resize=typeof ResizeObserver!=="undefined"?new ResizeObserver(draw):null;
