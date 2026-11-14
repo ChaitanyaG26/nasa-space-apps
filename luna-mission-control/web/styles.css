@@ -303,3 +303,23 @@ main{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
  .sidebar-layout .map-page{height:58dvh;min-height:340px;}
  .sidebar-layout .results-page{height:auto;min-height:80dvh;}
 }
+
+
+/* Accurate ephemeris playback toolbar and improved science plots. */
+.ephemeris-playback{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 9px;margin:8px 0 10px}
+.ephemeris-playback button{border:1px solid #4e9fa5;background:#164654;color:#d9fffa;font-weight:750;border-radius:8px;padding:9px 11px;text-align:center;min-height:37px}
+.ephemeris-playback button:hover,.ephemeris-playback button:focus-visible{background:#1d5d66;outline-offset:3px}
+.ephemeris-playback label{margin:0!important;font-size:10px!important;white-space:nowrap}
+.ephemeris-playback select{width:auto!important;min-width:91px;max-width:120px;margin:3px 0 0!important;padding:6px!important}
+.ephemeris-playback small{grid-column:1/-1;color:#9fc0c9;line-height:1.45;font-size:10px}
+.science-plot{background:#fff;border:1px solid #cfdee6;box-shadow:0 2px 12px #1834490a;border-radius:12px}
+.science-plot .chart-head strong{font-size:14px;color:#163f51}
+.science-plot .chart-subtitle{font-size:11px;color:#607987}
+.science-plot .plot-wrap svg{cursor:crosshair}
+.plot-series{vector-effect:non-scaling-stroke}
+.plot-extrema{vector-effect:non-scaling-stroke}
+.plot-timecursor{stroke:#168b96;stroke-width:1.6;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;pointer-events:none}
+.science-plot .plot-foot{align-items:center;justify-content:space-between;font-size:10px;line-height:1.5;gap:7px 14px}
+.science-plot .plot-foot span:nth-child(2){font-weight:750;color:#326679}
+@media(max-width:1200px){.ephemeris-playback{grid-template-columns:1fr}.ephemeris-playback label{display:flex;align-items:center;gap:6px;justify-content:space-between}.ephemeris-playback select{margin:0!important}}
+@media(max-width:560px){.ephemeris-playback{grid-template-columns:1fr 1fr}.ephemeris-playback label{display:block}.ephemeris-playback small{grid-column:1/-1}}
