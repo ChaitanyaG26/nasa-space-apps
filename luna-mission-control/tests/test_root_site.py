@@ -18,7 +18,7 @@ def test_root_github_pages_homepage():
     assert page.index("window.LUNA_STATIC_SITE = true")<page.index('src="./luna-mission-control/web/app.js?v=20261114-extent500-1"')
     parser=Assets()
     parser.feed(page)
-    assert "./luna-mission-control/web/styles.css" in parser.urls
+    assert any(urlsplit(url).path == "./luna-mission-control/web/styles.css" for url in parser.urls)
     assert any(urlsplit(src).path == "./luna-mission-control/web/app.js" for src in parser.urls)
     for url in parser.urls:
         assert not url.startswith("/"), "Absolute asset URL breaks project Pages"
