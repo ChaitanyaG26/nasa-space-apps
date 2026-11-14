@@ -1,8 +1,8 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-orbit-ui-v3";
-import {initGlobe} from "./globe.js";
-import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs";
-import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs";
+import "./launch-window.mjs?v=20261114-kepler-v4";
+import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
+import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-extent500-1";
