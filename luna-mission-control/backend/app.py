@@ -44,3 +44,7 @@ def js():return FileResponse(WEB/'app.js',media_type='application/javascript')
 
 @app.get('/globe.js')
 def globe():return FileResponse(WEB/'globe.js',media_type='application/javascript')
+
+@app.get("/static-engine.mjs")
+def static_engine():
+    return FileResponse(WEB/"static-engine.mjs",media_type="application/javascript")

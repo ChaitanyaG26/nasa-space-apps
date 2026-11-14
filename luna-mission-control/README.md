@@ -1,5 +1,8 @@
 # LUNA Mission Control — GitHub prototype
 
+**GitHub Pages:** A static, browser-only version of LUNA is published from `web/` by the GitHub Actions workflow in `.github/workflows/luna-pages.yml` once Pages is enabled. It runs the offline demonstrator without a Python server. See [GitHub Pages and Porkbun deployment](DEPLOY_GITHUB_PAGES.md). Live JPL Horizons API calls require separate backend hosting.
+
+
 Interactive Moon landing-site explorer with a **sidebar-only** Sun/Earth viewer, date/time controls, and mission parameters. The right side shows the Moon globe until **Simulate mission** is clicked; it then switches to results, and **Optimize & compare** displays original and alternative scenarios side by side.
 
 ## Run locally

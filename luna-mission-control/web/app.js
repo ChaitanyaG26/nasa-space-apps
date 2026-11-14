@@ -1,10 +1,12 @@
 import {initGlobe} from "./globe.js";
+import {staticApi} from "./static-engine.mjs";
+const IS_PAGES = window.LUNA_STATIC_SITE === true;
 const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
 function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("coords").textContent=text;$("mapCoords").textContent=text}
 function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),data_mode:$("mode").value}}
-async function api(path,data){let r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});let body=await r.json();if(!r.ok)throw Error(typeof body.detail==="string"?body.detail:JSON.stringify(body.detail));return body}
+async function api(path,data){if(IS_PAGES) return staticApi(path,data);let r=await fetch("/api/"+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});let body=await r.json();if(!r.ok)throw Error(typeof body.detail==="string"?body.detail:JSON.stringify(body.detail));return body}
 function alertUser(text){$("toast").textContent=text;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),6500)}
 const R=Math.PI/180;
 function svgText(x,y,text,color="#c5d6e3"){return '<text x="'+x+'" y="'+y+'" font-size="10" fill="'+color+'">'+text+'</text>'}
@@ -30,3 +32,4 @@ $("back").addEventListener("click",showGlobe);$("focus").addEventListener("click
 $("time").addEventListener("input",()=>{let t=Number($("time").value)*10;$("timeLabel").textContent=String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")+" UTC";refreshPreview()});
 for(const id of ["date","mode"])$(id).addEventListener("change",refreshPreview);
 showCoords();refreshPreview();
+if(IS_PAGES){const live=$("mode").querySelector("option[value=\"horizons\"]");if(live){live.disabled=true;live.textContent="JPL Horizons — requires Python backend";}$("mode").value="demo";$("mode").title="Static GitHub Pages deployment uses offline illustrative calculations; live NASA queries need the FastAPI backend.";}
