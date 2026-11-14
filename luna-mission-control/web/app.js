@@ -189,6 +189,7 @@ function chart(name,rows,key,color,maxVal){
  const unit=key==="soc"?"%":key==="rf_margin_db"?"dB":key.includes("temperature")?"°C":
   key==="heater_w"||key==="power_w"?"W":"";
  return chartMarkup(name,rows,key,{unit,color,percent:key==="soc",zero:key==="power_w"||key==="heater_w",
+  threshold:key==="soc"?lastMission?.reserve_percent:key==="rf_margin_db"?lastMission?.rf_required_margin_db:null,
   subtitle:key==="temperature_proxy_c"?"Projected regolith temperature, not spacecraft temperature":
   key==="lander_temperature_c"?"One-node lander model, assumed hardware; unvalidated":
   key==="rf_margin_db"?"NASA Earth range + assumed RF equipment":"NASA-backed physical estimate and engineering assumptions"});

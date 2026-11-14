@@ -79,8 +79,12 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
   grid+='<text x="'+xx.toFixed(2)+'" y="'+(H-19)+'" text-anchor="middle">'+esc(t.label)+'</text>';
  }
  grid+='</g>';
- if(Number.isFinite(threshold)&&threshold>=dom.min&&threshold<=dom.max)
-  grid+='<line class="plot-threshold" x1="'+M.left+'" x2="'+(W-M.right)+'" y1="'+y(threshold)+'" y2="'+y(threshold)+'"/>';
+ if(Number.isFinite(threshold)&&threshold>=dom.min&&threshold<=dom.max){
+  const cy=y(threshold);
+  grid+='<line class="plot-threshold" x1="'+M.left+'" x2="'+(W-M.right)+'" y1="'+cy+'" y2="'+cy+'"/>';
+  grid+='<text x="'+(W-M.right-7)+'" y="'+(cy-5).toFixed(2)+'" class="plot-threshold-label" text-anchor="end">'+
+   esc(Number(threshold.toFixed(2))+" "+unit+" target")+'</text>';
+ }
  let series="";
  if(kind==="observed"){
   const sampled=points.length>550?points.filter((p,i)=>i%Math.ceil(points.length/550)===0):points;
