@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-three-sites";
+import "./launch-window.mjs?v=20261114-scenarios-v2";
 import {initGlobe} from "./globe.js";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
@@ -293,7 +293,17 @@ function render(){
    '<div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+
    (comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>';
  }else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>';
+ window.lunaLaunchScenarios = [
+  {id:"original",label:"Original mission",data:comparison?.original||lastResult},
+  ...(comparison?.recommended?[{id:"optimized",label:"Optimized alternative",data:comparison.recommended}]:[])
+ ].filter(s=>s.data).map(s=>({
+  id:s.id,label:s.label,
+  arrival_time:s.data.landing_time,
+  latitude:s.data.site?.latitude,
+  longitude:s.data.site?.longitude
+ }));
  $("results").innerHTML=html;
+ window.dispatchEvent(new CustomEvent("luna:scenarios-updated",{detail:window.lunaLaunchScenarios}));
  $("scienceInfoBody").innerHTML=renderScientificInformation(lastResult,comparison);
  attachChartInteractions($("results"));
 }

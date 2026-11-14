@@ -51,7 +51,7 @@ export function renderScenarioInfo(data,label){
     infoRow("Independent JPL Horizons check",q.horizons_direct_validation||"Independent site-specific validation unavailable")
   ];
   return '<article class="science-info-scenario">'+
-    '<h3>'+escapeHTML(label)+' <small>'+escapeHTML(at)+'</small></h3>'+
+    '<h3>'+escapeHTML(label)+'</h3><p class="science-info-site">'+escapeHTML(at)+'</p>'+
     group("NASA sources and validation",ephemRows)+
     group("Terrain and rover screening",terrainRows)+
     group("Temperatures and historical observations",thermalRows)+
@@ -70,7 +70,7 @@ export function renderScientificInformation(result,comparison){
     '<section class="science-info-group"><h4>Comparison method</h4><p>'+
     escapeHTML(comparison.search||"Alternative scenario comparison")+'</p><p>'+
     escapeHTML(comparison.comparison_note||"")+'</p></section>':"";
-  return '<div class="science-info-intro"><p><b>Measured or NASA-derived:</b> JPL Horizons geometry, NASA LOLA elevation and historical Diviner references when available.</p>'+
+  return '<div class="science-info-intro"><p><b>NASA-derived data:</b> JPL Horizons geometry, NASA LOLA elevation and historical Diviner references when available.</p>'+
     '<p><b>Modeled:</b> power, battery charge, terrain-dependent visibility, thermal and RF estimates. Inputs describe an illustrative spacecraft, not a certified mission.</p></div>'+
     compare+
     renderScenarioInfo(comparison?.original||result,comparison?"Original selection":"Selected site")+
