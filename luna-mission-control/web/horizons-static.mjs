@@ -8,7 +8,7 @@
  * queried at that exact site, particularly near Earthrise and Earthset.
  */
 const DEG=Math.PI/180;
-const DATA_URL=new URL("./assets/horizons-moon-reference.json",import.meta.url).href;
+const DATA_URL=new URL("./assets/horizons-moon-reference.json?schema=2&sampling=1h&v=20261114b",import.meta.url).href;
 let cached=null;
 const norm=(v)=>{const m=Math.hypot(v.x,v.y,v.z);if(!(m>0))throw Error("Invalid ephemeris vector");return {x:v.x/m,y:v.y/m,z:v.z/m};};
 const vec=(row,start)=>({x:row[start],y:row[start+1],z:row[start+2]});
@@ -17,6 +17,16 @@ const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 
 const MOON_RADIUS_KM=1737.4;
+// The UI supplies ISO UTC timestamps; the hourly integrator supplies integer
+// milliseconds. Date.parse(number) returns NaN, so normalize explicitly.
+export function utcMillis(value){
+  let result;
+  if(typeof value==="number") result=value;
+  else if(value instanceof Date) result=value.getTime();
+  else if(typeof value==="string" && /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) result=Date.parse(value);
+  if(!Number.isFinite(result)) throw Error("Invalid UTC date/time for JPL Horizons: supply an ISO-8601 UTC timestamp or Unix milliseconds.");
+  return result;
+}
 export function verifyReferenceDataset(data){
   if(data?.schema_version!==2||!Array.isArray(data.samples)||data.samples.length<2)
     throw Error("NASA Horizons center-position dataset v2 is missing. Check the NASA cache job before using JPL mode.");
@@ -44,7 +54,7 @@ export async function loadJplReference(){
 }
 
 export function centerPositionsAtUtc(data,when){
-  const millis=typeof when==='number' ? when : Date.parse(when);
+  const millis=utcMillis(when);
   if(!Number.isFinite(millis))throw Error("Invalid Horizons UTC timestamp");
   const rows=data.samples,first=rows[0][0],last=rows.at(-1)[0];
   if(millis<first||millis>last)throw Error("NASA Horizons cache covers "+data.start_utc.slice(0,10)+" through "+data.end_utc.slice(0,10)+" UTC. Select a supported time.");
@@ -83,11 +93,11 @@ export function geometryAtUtc(data,lat,lon,when,heightKm=0){
   const local=vectorsForSite(centers,lat,lon,heightKm);
   const [sun_az,sun_el]=localAngles(local.sun,lat,lon);
   const [earth_az,earth_el]=localAngles(local.earth,lat,lon);
-  return {time:new Date(when).toISOString(),sun_az,sun_el,earth_az,earth_el,global};
+  return {time:new Date(utcMillis(when)).toISOString(),sun_az,sun_el,earth_az,earth_el,global};
 }
 
 export function geometrySeries(data,req,heightKm=0){
-  const start=Date.parse(req.landing_time),steps=req.duration_days*24;
+  const start=utcMillis(req.landing_time),steps=req.duration_days*24;
   // Date range checks apply to the entire mission, not just landing instant.
   atUtc(data,new Date(start));
   atUtc(data,new Date(start+steps*3600000));
@@ -98,7 +108,7 @@ export function referencePreview(data,req,heightKm=0){
   const g=geometryAtUtc(data,req.latitude,req.longitude,req.landing_time,heightKm);
   return {
     source:"NASA JPL Horizons — measured az/el + target range, site parallax corrected",
-    global_source:"JPL Horizons Sun/Earth Moon-centered positions, 3-hour interpolation (site az/el computed by parallax)",
+    global_source:"JPL Horizons Sun/Earth Moon-centered positions, "+data.step_hours+"-hour interpolation (site az/el computed by parallax)",
     global:g.global,
     coverage:data.start_utc.slice(0,10)+" through "+data.end_utc.slice(0,10)+" UTC",
     sun_az:Number(g.sun_az.toFixed(2)),sun_el:Number(g.sun_el.toFixed(2)),
