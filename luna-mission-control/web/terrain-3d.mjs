@@ -90,6 +90,11 @@ const shade=(hex,f)=>{
 };
 export function initTerrain3D(container,{latitude,longitude,patch=null,global=null}){
  container.replaceChildren();
+ const heading=document.createElement("div");heading.className="terrain-heading";
+ const headingTitle=document.createElement("h3");headingTitle.textContent="3D lunar terrain explorer";
+ const headingSub=document.createElement("small");
+ headingSub.textContent="NASA LOLA measured elevation · rotatable DEM, not photographed street view";
+ heading.append(headingTitle,headingSub);
  const view=document.createElement("div");view.className="terrain-controls";
  const layerLabel=document.createElement("label");layerLabel.textContent="Terrain layer";
  const select=document.createElement("select");select.setAttribute("aria-label","3D terrain layer");
@@ -111,7 +116,7 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
  const source=document.createElement("p");source.className="terrain-caption";
  const evidence=seismicEvidence(latitude,longitude);
  const mesh=buildTerrainMesh({latitude,longitude,patch,global});
- container.append(view,canvas,legend,status,source);
+ container.append(heading,view,canvas,legend,status,source);
  let yaw=.65,tilt=.63,zoom=1,active=false,lastX=0,lastY=0;
  let layer="slope",exag=6,frame=null,disposed=false;
  const update=()=>{
