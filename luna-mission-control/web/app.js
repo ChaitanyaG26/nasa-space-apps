@@ -1,9 +1,9 @@
 import "./launch-window.mjs?v=20261114-three-sites";
 import {initGlobe} from "./globe.js";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks} from "./science-charts.mjs";
-import {initTerrain3D} from "./terrain-3d.mjs";
-import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-charts-terrain-1";
-import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-charts-terrain-1";
+import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
+import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
+import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-extent500-1";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {loadPolarPatch,localPatchXY,samplePolarHeightKm,polarSiteSlopeDeg,refinePolarHorizon} from "./lola-polar-detail.mjs";
 import {THERMAL_PROVENANCE} from "./thermal-projection.mjs";

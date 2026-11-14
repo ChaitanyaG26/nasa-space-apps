@@ -40,3 +40,21 @@ test("Missing terrain remains missing, not made green/safe",()=>{
  assert.equal(m.distribution.missing,20*20);
  assert.equal(localSampleKm(null,0,0),null);
 });
+
+test("Selected local landing area is 500 m square at verified underlying LOLA resolution",()=>{
+ const raw=new Int16Array(512*512).fill(1200);
+ const patch=unpackPolarPatch(raw.buffer,{id:"test",latitude:-89.5,longitude:0},
+  {schema_version:1,cell_size_m:20,width:512,height:512});
+ const detail=buildTerrainMesh({latitude:-89.5,longitude:0,patch,size:65,footprintKm:0.5});
+ assert.equal(detail.footprintKm,0.5);
+ assert.ok(Math.abs(detail.spacingKm-0.5/64)<1e-9);
+ assert.equal(detail.vertices.length,65);
+ assert.ok(Math.abs(detail.range.max-1.2)<1e-9);
+ const wider=buildTerrainMesh({latitude:-89.5,longitude:0,patch,size:65,footprintKm:2});
+ assert.equal(wider.footprintKm,2);
+ assert.ok(wider.spacingKm>detail.spacingKm);
+});
+test("Footprint dimensions cannot falsely exceed lunar terrain mapping limits",()=>{
+ assert.throws(()=>buildTerrainMesh({latitude:0,longitude:0,footprintKm:0.1}),/Invalid terrain footprint/);
+ assert.throws(()=>buildTerrainMesh({latitude:0,longitude:0,footprintKm:301}),/Invalid terrain footprint/);
+});
