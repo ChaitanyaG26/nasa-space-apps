@@ -11,7 +11,7 @@ for asset in ('styles.css','app.js'):
     html=html.replace('="/'+asset+'"','="./'+asset+'"')
 entry='<script type="module" src="./app.js"></script>'
 assert entry in html, 'App entry point not found'
-html=html.replace(entry,'<script>window.LUNA_STATIC_SITE = true;</script>\n'+entry.replace('src="./app.js"','src="./app.js?v=20261114-charts-terrain-1"'))
+html=html.replace(entry,'<script>window.LUNA_STATIC_SITE = true;</script>\n'+entry.replace('src="./app.js"','src="./app.js?v=20261114-extent500-1"'))
 (DEST/'index.html').write_text(html,encoding='utf-8')
 (DEST/'.nojekyll').touch()
 assert (DEST/'static-engine.mjs').exists()
