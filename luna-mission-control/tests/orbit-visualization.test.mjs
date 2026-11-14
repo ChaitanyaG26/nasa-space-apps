@@ -19,7 +19,7 @@ test("Schematic ship path has finite endpoints and intermediate positions",()=>{
 test("Catalog display never asserts an operational avoidance solution",()=>{
  const source=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
  assert.match(source,/NOT COLA screening/);
- assert.match(source,/not real-time propagated coordinates/);
+ assert.match(source,/NOT real-time propagated coordinates/);
  assert.match(source,/CACHE_MS=2\*60\*60\*1000/);
 });
 test("Top-of-globe mission toolbar has unique simulation and comparison controls",()=>{
