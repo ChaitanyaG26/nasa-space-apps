@@ -58,7 +58,12 @@ def process_band(band: str):
                 raise ValueError(f"Diviner bin index outside {band} grid: {(lon,lat,local_time)} -> {(x,y,slot)}")
             if tbol in (-9999.,-9998.) or not math.isfinite(tbol):
                 continue
-            if not (30 <= tbol <= 500):
+            # Diviner measured permanently shadowed polar cold traps colder
+            # than 30 K; the previous >=30 K filter incorrectly discarded
+            # genuine NASA measurements. Keep physical positive temperatures.
+            if tbol <= 0:
+                continue  # non-physical/negative radiance retrieval, not TBOL
+            if tbol > 500:
                 raise ValueError(f"Implausible Diviner bolometric temperature: {tbol} K")
             q = round(tbol * 10)
             idx = (y * WIDTH + x) * TIMES + slot
