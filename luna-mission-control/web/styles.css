@@ -177,3 +177,62 @@
  #luna-launch-cola .launch-cola-target{grid-template-columns:1fr;}
  #luna-launch-cola .launch-cola-scenario .launch-cola-summary{grid-template-columns:1fr;}
 }
+
+
+/* Mission Control: move all simulation settings into a readable top toolbar, without a scrollable left rail. */
+.shell{display:flex;flex-direction:column;height:100dvh;min-height:0}
+.sidebar{flex:0 0 auto;min-height:0;border-right:0;border-bottom:1px solid #2e4051}
+.sidebar header{padding:12px 24px;min-height:62px}
+.sidebar footer{display:none}
+main{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.mission-toolbar{background:#0e2031;border-bottom:1px solid #305065;position:relative;z-index:11;flex:none;padding:10px 18px 12px;overflow:visible}
+.mission-toolbar .fields{display:grid;grid-template-columns:1.15fr 1.15fr 1fr 1.18fr;gap:12px;padding:0;overflow:visible;align-items:stretch}
+.mission-toolbar .control-group{position:relative;min-width:0;padding:9px 14px 10px;background:#142a3c;border:1px solid #304e60;border-radius:11px}
+.mission-toolbar h3{font-size:10px;margin:0 0 9px;color:#60d8d1;letter-spacing:1.25px}
+.mission-toolbar label{font-size:11px;margin:7px 0;color:#b2cbd4}
+.mission-toolbar .fields input:not([type=range]),.mission-toolbar .fields select{margin-top:4px;padding:7px 9px;font-size:12px}
+.mission-toolbar .fields input[type=range]{margin:6px 0 3px}
+.mission-toolbar .site{padding:8px 10px;margin:0 0 6px;background:#102232}
+.mission-toolbar .site b{font-size:11px}
+.mission-toolbar .site div{font-size:12px}
+.mission-toolbar .site button{margin-top:4px;font-size:11px;padding:5px 8px}
+.mission-toolbar .control-engineering details{margin:7px 0}
+.mission-toolbar .toolbar-disclosure{position:relative;background:#112538;border:1px solid #375367;border-radius:8px;padding:0;margin:7px 0;min-width:0}
+.mission-toolbar .toolbar-disclosure summary{padding:9px 11px;color:#d7eaf1;font-size:12px;font-weight:650;line-height:1.35;list-style-position:inside}
+.mission-toolbar .toolbar-disclosure[open]{z-index:20;border-color:#5ccdc9}
+.mission-toolbar .toolbar-flyout{position:absolute;top:calc(100% + 5px);left:0;width:min(400px,calc(100vw - 36px));max-height:min(65dvh,540px);overflow-y:auto;overscroll-behavior:contain;padding:14px;background:#102638;border:1px solid #447386;box-shadow:0 16px 42px #0009;border-radius:10px;z-index:30}
+.mission-toolbar .toolbar-flyout .mini{margin:7px 0}
+.mission-toolbar .toolbar-flyout label{margin:9px 0}
+.mission-toolbar .toolbar-flyout .muted{color:#a8c1cb}
+.mission-toolbar .control-actions .primary,.mission-toolbar .control-actions .secondary{padding:12px;margin:2px 0 8px;text-align:center;font-size:13px}
+.mission-toolbar .comparison-label{margin:4px 0 5px;font-size:10px}
+.map-page{flex:1;min-height:0;height:auto}
+.results-page{flex:1;min-height:0;height:auto;overflow:auto}
+.map-top{top:16px}
+.map-bottom{bottom:17px}
+@media(max-width:1150px){
+ .mission-toolbar .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .mission-toolbar .control-group{padding:9px 12px}
+ .mission-toolbar .control-engineering,.mission-toolbar .control-actions{min-height:115px}
+}
+@media(max-width:800px){
+ .shell{display:flex;height:auto;min-height:100dvh}
+ .sidebar{height:auto}
+ .mission-toolbar{padding:10px}
+ .mission-toolbar .fields{max-height:none;overflow:visible;padding:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .mission-toolbar .control-group{min-height:0}
+ .map-page{height:58dvh;min-height:360px;flex:none}
+ .results-page{min-height:80dvh;height:auto}
+ main{overflow:visible}
+}
+@media(max-width:560px){
+ .sidebar header{padding:12px 15px}
+ .mission-toolbar .fields{grid-template-columns:1fr}
+ .mission-toolbar .control-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+ .mission-toolbar .control-actions>h3{grid-column:1/-1}
+ .mission-toolbar .control-actions .comparison-label{grid-column:1/-1}
+ .mission-toolbar .control-actions label{grid-column:1/-1}
+ .mission-toolbar .control-actions .primary,.mission-toolbar .control-actions .secondary{width:100%;grid-column:1/-1;margin:2px 0}
+ .mission-toolbar .toolbar-flyout{width:min(400px,calc(100vw - 36px))}
+ .map-page{min-height:340px}
+}
