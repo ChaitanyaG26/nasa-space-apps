@@ -78,3 +78,5 @@
 .launch-cola-provenance a{color:#126d85}
 @media(max-width:1000px){.launch-cola-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.launch-cola{padding:14px}.launch-cola-head{display:block}.launch-cola-tag{display:inline-block;margin:4px 0 10px}.launch-cola-form,.launch-cola-summary{grid-template-columns:1fr}}
+
+.launch-cola-scope-note{margin:18px 0 0;background:#edf6f9;border-left:4px solid #19758b;border-radius:8px;padding:13px 15px;color:#274b5e;font-size:12px;line-height:1.6}
