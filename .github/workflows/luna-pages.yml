@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'luna-mission-control/**'
+      - 'index.html'
+      - '.nojekyll'
       - '.github/workflows/luna-pages.yml'
   workflow_dispatch:
 permissions:
