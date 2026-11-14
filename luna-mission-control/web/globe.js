@@ -1,5 +1,5 @@
-// Self-contained WebGL lunar sphere with procedural crater shading.
-// This is a visual prototype, not an elevation-resolved LOLA surface.
+// NASA Lunar Reconnaissance Orbiter color mosaic (CGI Moon Kit), displayed on a globe.
+// https://svs.gsfc.nasa.gov/4720/ . Visual reference, not LOLA terrain hazards.
 export function initGlobe(canvas,onSelect) {
  const gl=canvas.getContext("webgl2",{antialias:true}) || canvas.getContext("webgl",{antialias:true});
  if(!gl){const ctx=canvas.getContext("2d");ctx.fillStyle="#425a69";ctx.fillRect(0,0,canvas.width,canvas.height);return {setSun(){},focus(){},setSite(){}}}
@@ -7,7 +7,7 @@ export function initGlobe(canvas,onSelect) {
  gl.shaderSource(vs,"attribute vec3 pos;uniform float yaw,pitch,aspect,zoom;varying vec3 normal;varying vec3 cameraNormal;void main(){float c=cos(yaw),s=sin(yaw),a=cos(pitch),b=sin(pitch);vec3 p=vec3(c*pos.x+s*pos.z,pos.y,-s*pos.x+c*pos.z);vec3 q=vec3(p.x,a*p.y-b*p.z,b*p.y+a*p.z);normal=pos;cameraNormal=q;gl_Position=vec4(q.x*zoom/aspect,q.y*zoom,q.z*.5,1.);}");
  gl.compileShader(vs);
  const fs=gl.createShader(gl.FRAGMENT_SHADER);
- gl.shaderSource(fs,"precision mediump float;varying vec3 normal;varying vec3 cameraNormal;uniform vec3 sun;void main(){if(cameraNormal.z<0.)discard;vec3 n=normalize(normal);float grain=sin(n.x*84.)*sin(n.y*110.)*sin(n.z*92.);float craters=0.;for(int i=0;i<18;i++){float t=float(i);vec3 c=normalize(vec3(sin(t*17.9),cos(t*13.4),sin(t*9.2+1.)));float d=acos(clamp(dot(n,c),-1.,1.));float r=.06+mod(t,5.)*.027;craters+=.25*exp(-pow((d-r)/.014,2.))-.19*exp(-pow(d/(r*.72),4.));}float albedo=clamp(.57+grain*.052+craters,.17,.86);float lit=.10+.9*max(0.,dot(n,normalize(sun)));float edge=pow(1.-max(0.,cameraNormal.z),2.);vec3 col=vec3(.67,.73,.77)*albedo*lit+edge*vec3(.02,.07,.1);gl_FragColor=vec4(col,1.);}");
+ gl.shaderSource(fs,"precision mediump float;\nvarying vec3 normal;\nvarying vec3 cameraNormal;\nuniform vec3 sun;\nuniform sampler2D moonColor;\nconst float PI = 3.141592653589793;\nvoid main() {\n  if (cameraNormal.z < 0.0) discard;\n  vec3 n=normalize(normal);\n  // NASA image is centered on longitude zero, north up.\n  // The image upload uses UNPACK_FLIP_Y_WEBGL=true.\n  float u=0.5+atan(n.x,n.z)/(2.0*PI);\n  float v=0.5+asin(clamp(n.y,-1.0,1.0))/PI;\n  vec3 albedo=texture2D(moonColor,vec2(u,v)).rgb;\n  float daylight=smoothstep(-0.30,0.55,dot(n,normalize(sun)));\n  // Keep at least 50% of albedo visible on the dark side.\n  float brightness=0.50+0.50*daylight;\n  gl_FragColor=vec4(albedo*brightness,1.0);\n}");
  gl.compileShader(fs);const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);gl.useProgram(prog);
  const vertices=[],indexes=[],R=60,C=110;
  for(let j=0;j<=R;j++){const lat=-Math.PI/2+Math.PI*j/R;for(let i=0;i<=C;i++){const lon=-Math.PI+2*Math.PI*i/C;vertices.push(Math.cos(lat)*Math.sin(lon),Math.sin(lat),Math.cos(lat)*Math.cos(lon));}}
@@ -15,6 +15,37 @@ export function initGlobe(canvas,onSelect) {
  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.STATIC_DRAW);const pos=gl.getAttribLocation(prog,"pos");gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0);
  const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(indexes),gl.STATIC_DRAW);
  const u=(s)=>gl.getUniformLocation(prog,s);let yaw=.4,pitch=-.67,zoom=.75,sun=[.8,.15,.5],selected={lat:-89.5,lon:0};
+
+ // Use a local NASA texture for reliable Pages hosting; remote URL is fallback.
+ const NASA_URL="https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg";
+ // Resolve relative to JS module (root Pages and Actions Pages have different bases).
+ const LOCAL_URL=new URL("./assets/lroc_color_2k.jpg",import.meta.url).href;
+ const texture=gl.createTexture();
+ gl.activeTexture(gl.TEXTURE0);
+ gl.bindTexture(gl.TEXTURE_2D,texture);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([170,170,170,255]));
+ gl.uniform1i(u("moonColor"),0);
+ const moonImage=new Image();
+ moonImage.crossOrigin="anonymous";
+ moonImage.onload=()=>{
+   gl.activeTexture(gl.TEXTURE0);
+   gl.bindTexture(gl.TEXTURE_2D,texture);
+   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,moonImage);
+   gl.generateMipmap(gl.TEXTURE_2D);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+   draw();
+ };
+ moonImage.onerror=()=>{
+   if(moonImage.src!==NASA_URL){moonImage.src=NASA_URL;return;}
+   console.warn("Could not load lunar texture, showing a neutral fallback sphere.");
+ };
+ moonImage.src=LOCAL_URL;
+
  function draw(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);gl.clearColor(.018,.043,.076,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);gl.uniform3fv(u("sun"),sun);gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);projectMarker()}
  function view(p){let c=Math.cos(yaw),s=Math.sin(yaw),a=Math.cos(pitch),b=Math.sin(pitch);let x=c*p[0]+s*p[2],z=-s*p[0]+c*p[2];return [x,a*p[1]-b*z,b*p[1]+a*z]}
  function world(q){let a=Math.cos(pitch),b=Math.sin(pitch);let py=a*q[1]+b*q[2],pz=-b*q[1]+a*q[2];let c=Math.cos(yaw),s=Math.sin(yaw);return [c*q[0]-s*pz,py,s*q[0]+c*pz]}
