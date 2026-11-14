@@ -27,7 +27,7 @@ test("a Diviner plot renders only actual observations, with measured bins not in
  const out=chartMarkup("Diviner",rows,"t",{kind:"observed",unit:"°C"});
  assert.ok(out.includes("observed-dots"));
  assert.ok(!out.includes("<path d=\"M"));
- assert.ok(out.includes("3 archival bins"));
+ assert.ok(out.includes("4 archival bins"));
  assert.ok(out.includes("UTC"));
 });
 test("model curves keep actual 30-minute samples and UTC marks",()=>{
