@@ -85,21 +85,63 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
   grid+='<text x="'+(W-M.right-7)+'" y="'+(cy-5).toFixed(2)+'" class="plot-threshold-label" text-anchor="end">'+
    esc(Number(threshold.toFixed(2))+" "+unit+" target")+'</text>';
  }
- let series="";
- if(kind==="observed"){
-  const sampled=points.length>550?points.filter((p,i)=>i%Math.ceil(points.length/550)===0):points;
-  series='<g class="observed-dots">'+sampled.map(p=>'<circle cx="'+x(p.time).toFixed(2)+'" cy="'+y(p.value).toFixed(2)+'" r="2.2" fill="'+color+'"/>').join("")+'</g>';
- }else{
-  // Polylines connect actual 15/30/60-minute computed values; no fake spline
-  // overshoot or extra NASA resolution is implied.
-  let path="";
-  for(let i=0;i<points.length;i++){
-   const p=points[i];path+=(i===0?"M":"L")+x(p.time).toFixed(2)+","+y(p.value).toFixed(2)+" ";
-  }
-  series='<path d="'+path.trim()+'" fill="none" stroke="'+color+'" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
- }
  const id="luna-graph-"+(++counter);
  registry.set(id,{points,start,end,unit,title,color,key,dom});
+ const minimum=points.reduce((a,b)=>b.value<a.value?b:a,points[0]);
+ const maximum=points.reduce((a,b)=>b.value>a.value?b:a,points[0]);
+ let series="";
+ if(kind==="observed"){
+  // Archive bins must remain unconnected; never infer missing NASA measurements.
+  const sampled=points.length>550?points.filter((p,i)=>i%Math.ceil(points.length/550)===0):points;
+  series='<g class="observed-dots">'+sampled.map(p=>'<circle cx="'+x(p.time).toFixed(2)+'" cy="'+y(p.value).toFixed(2)+'" r="2.3" fill="'+color+'"/>').join("")+'</g>';
+ }else{
+  // Break discontinuities and missing model samples rather than implying a valid bridge.
+  // Simplify only the RENDERED path by retaining first/last and per-pixel extrema;
+  // interactions and statistics still reference all original calculated samples.
+  const segments=[];let run=[];
+  const maxGap=(end-start)/Math.max(1,rows.length-1)*1.7;
+  for(const row of rows){
+   const t=Date.parse(row.time),v=typeof row[key]==="number"?row[key]:null;
+   if(!Number.isFinite(t)||!Number.isFinite(v)){
+    if(run.length)segments.push(run);
+    run=[];continue;
+   }
+   if(run.length&&t-run.at(-1).time>maxGap){segments.push(run);run=[];}
+   run.push({time:t,value:v});
+  }
+  if(run.length)segments.push(run);
+  function extremaPath(segment){
+   if(segment.length<2)return segment;
+   const bins=new Map();
+   for(const p of segment){
+    const k=Math.floor((p.time-start)/(end-start)*pw);
+    let group=bins.get(k);
+    if(!group){group={first:p,last:p,min:p,max:p};bins.set(k,group);}
+    else{group.last=p;if(p.value<group.min.value)group.min=p;if(p.value>group.max.value)group.max=p;}
+   }
+   const kept=[];
+   for(const g of bins.values()){
+    for(const p of [g.first,g.min,g.max,g.last].sort((a,b)=>a.time-b.time)){
+     if(kept.at(-1)!==p)kept.push(p);
+    }
+   }
+   return kept;
+  }
+  const paths=segments.map(segment=>{
+   const kept=extremaPath(segment);
+   return kept.map((p,i)=>(i?"L":"M")+x(p.time).toFixed(2)+","+y(p.value).toFixed(2)).join(" ");
+  }).filter(Boolean);
+  const background=zero&&dom.min<=0&&dom.max>=0?segments.map(segment=>{
+   if(segment.length<2)return "";
+   const kept=extremaPath(segment);
+   return '<path d="'+kept.map((p,i)=>(i?"L":"M")+x(p.time).toFixed(2)+","+y(p.value).toFixed(2)).join(" ")+
+    ' L'+x(kept.at(-1).time).toFixed(2)+','+y(0).toFixed(2)+
+    ' L'+x(kept[0].time).toFixed(2)+','+y(0).toFixed(2)+' Z" fill="url(#fill-'+id+')" stroke="none"/>';
+  }).join(""):"";
+  series='<defs><linearGradient id="fill-'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".20"/><stop offset="100%" stop-color="'+color+'" stop-opacity=".02"/></linearGradient></defs>'+
+   background+paths.map(path=>'<path d="'+path+'" fill="none" class="plot-series" stroke="'+color+'" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>').join("")+
+   [minimum,maximum].map(point=>'<circle class="plot-extrema" cx="'+x(point.time).toFixed(2)+'" cy="'+y(point.value).toFixed(2)+'" r="3.7" fill="white" stroke="'+color+'" stroke-width="2"/>').join("");
+ }
  const periodLabel=kind==="observed"?"Historical NASA observations · discrete bins":"Physics model · connected computed samples";
  return '<div class="chart science-plot"><div class="chart-head"><strong>'+esc(title)+'</strong><span>'+esc(unit)+'</span></div>'+
  '<div class="chart-subtitle">'+esc(subtitle||periodLabel)+'</div><div class="plot-wrap">'+
@@ -107,12 +149,12 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
  '<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+ph+'" fill="#f8fbfc"/>'+
  grid+series+
- '<line class="plot-hoverline" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+
+ '<line class="plot-timecursor" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+ '<line class="plot-hoverline" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+
  '<circle class="plot-hoverdot" cx="'+M.left+'" cy="'+M.top+'" r="5" fill="'+color+'" stroke="white" stroke-width="2" visibility="hidden"/>'+
  '<text x="'+M.left+'" y="'+(H-2)+'" class="plot-axis-label">UTC</text></svg>'+
  '<div class="plot-tooltip" role="status" hidden></div></div>'+
  '<div class="plot-foot"><span>'+points.length.toLocaleString("en-US")+' '+(kind==="observed"?"archival bins":"computed samples")+
- '</span><span>UTC · '+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+
+ '</span><span>Min '+esc(fmt(minimum.value,unit))+' · Max '+esc(fmt(maximum.value,unit))+'</span><span>UTC · '+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+
  ' to '+esc(new Date(end).toISOString().slice(0,16).replace("T"," "))+'</span></div></div>';
 }
 export function resetCharts(){registry.clear();counter=0;}
@@ -150,5 +192,23 @@ export function attachChartInteractions(root){
    tooltip.textContent=new Date(p.time).toISOString().slice(0,16).replace("T"," ")+" UTC · "+fmt(p.value,plot.unit);
    tooltip.style.left=Math.min(76,Math.max(8,cx/W*100))+"%";
   });
+ }
+}
+
+/** Move the vertical playback reference line to the exact requested UTC.
+ * This does not interpolate chart values; markers/hover use original samples.
+ */
+export function setChartsCursor(root,when){
+ if(!root)return;
+ const utc=Date.parse(when);
+ for(const svg of root.querySelectorAll("svg[data-plot-id]")){
+  const series=registry.get(svg.dataset.plotId),line=svg.querySelector(".plot-timecursor");
+  if(!line||!series)continue;
+  if(!Number.isFinite(utc)||utc<series.start||utc>series.end){
+   line.setAttribute("visibility","hidden");continue;
+  }
+  const xx=M.left+(utc-series.start)/(series.end-series.start)*pw;
+  line.setAttribute("x1",xx);line.setAttribute("x2",xx);
+  line.setAttribute("visibility","visible");
  }
 }
