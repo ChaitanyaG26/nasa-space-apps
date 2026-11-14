@@ -1,9 +1,9 @@
-# NASA Space Apps — LUNA
+# LUNA — Moon Mission Control
 
-LUNA is an interactive lunar landing site mission-planning prototype.
+**Launch the interactive website at https://lunacontrol.earth/**
 
-Open [the LUNA Mission Control application folder](luna-mission-control/README.md) for installation instructions, scientific limitations, and next development tasks.
+The root index.html now displays the lunar globe and simulation controls, with its application code in luna-mission-control/web/. This supports GitHub Pages source main / (root), in addition to the GitHub Actions Pages deployment workflow.
 
-Current interface: a selectable lunar globe with date/time and Sun/Earth geometry views in the left sidebar; simulation results and an optional two-scenario comparison replace the globe in the main panel.
+[App setup and science limitations](luna-mission-control/README.md) · [Domain and Pages guide](luna-mission-control/DEPLOY_GITHUB_PAGES.md)
 
-**Scientific caveat:** the offline mode is illustrative and assumes a flat terrain horizon. NASA LOLA terrain and validated thermal/traversal analysis remain future work.
+The public site currently uses illustrative offline simulation with a flat-horizon assumption. NASA LOLA terrain, validated thermal models, and a certified site assessment are not included.
