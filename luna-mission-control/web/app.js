@@ -217,12 +217,29 @@ function plotMeasured(samples,key,color){
   {unit:"°C",color,kind:"observed",subtitle:"Discrete historic observations at selected lunar local time; not a 2026 forecast."});
 }
 function timeRibbon(title,samples,key){
- const subs=samples.slice(0,-1).filter((_,i)=>i%Math.max(1,Math.ceil(samples.length/180))===0);
- const marks=utcTicks(Date.parse(samples[0].time),Date.parse(samples.at(-1).time),5);
+ const first=Date.parse(samples[0]?.time),last=Date.parse(samples.at(-1)?.time);
+ if(!Number.isFinite(first)||!Number.isFinite(last)||last<=first)return '<div class="chart"><p class="muted">Insufficient timeline data</p></div>';
+ // Run-length encoding retains every computed visibility transition. The old
+ // 180-cell sampling lost short events and could misrepresent blackout lengths.
+ const intervals=[];
+ for(let i=0;i<samples.length-1;i++){
+  const from=Date.parse(samples[i].time),to=Date.parse(samples[i+1].time);
+  if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from)continue;
+  const active=!!samples[i][key],prior=intervals.at(-1);
+  if(prior&&prior.active===active&&prior.end===from)prior.end=to;
+  else intervals.push({from,end:to,active});
+ }
+ const marks=utcTicks(first,last,5);
+ const ribbons=intervals.map(v=>{
+  const percent=(v.end-v.from)/(last-first)*100;
+  const color=v.active?(key==="power_conservation_advisory"?"#dba748":"#32a994"):"#dbe2e8";
+  return '<span role="img" aria-label="'+(v.active?"Active":"Inactive")+' '+escapeHtml(key)+
+   '" title="'+escapeHtml(new Date(v.from).toISOString()+" to "+new Date(v.end).toISOString())+
+   '" style="flex:0 0 '+percent.toFixed(6)+'%;background:'+color+'"></span>';
+ }).join("");
  return '<div class="chart ribbon-chart"><div class="chart-head"><strong>'+escapeHtml(title)+'</strong><span>UTC</span></div>'+
- '<div class="windows">'+subs.map(s=>'<span title="'+escapeHtml(s.time+" UTC")+
- '" style="flex:1;background:'+(s[key]?(key==="power_conservation_advisory"?"#dba748":"#32a994"):"#dbe2e8")+'"></span>').join("")+'</div>'+
- '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
+  '<div class="windows">'+ribbons+'</div>'+
+  '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
 }
 function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
 function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Projected regolith temperature (°C) · screening model",s,"temperature_proxy_c","#b46b6b")+
