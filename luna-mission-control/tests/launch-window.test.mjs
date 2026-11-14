@@ -8,12 +8,10 @@ import {
 const KSC = LAUNCH_SITES.find(s => s.id === "ksc");
 const TARGET = Date.parse("2026-11-25T12:00:00Z");
 
-test("Representative NASA and NASA-used launch ranges are present", () => {
-  assert.ok(LAUNCH_SITES.length >= 10);
+test("Only the three selected primary U.S. launch ranges are available", () => {
+  assert.deepEqual(LAUNCH_SITES.map(s => s.id), ["ksc", "ccsfs", "vandenberg"]);
   assert.ok(KSC);
-  assert.ok(LAUNCH_SITES.some(s => s.id === "wallops"));
-  assert.ok(LAUNCH_SITES.some(s => s.id === "vandenberg"));
-  assert.ok(LAUNCH_SITES.some(s => s.category.includes("sounding")));
+  assert.equal(LAUNCH_SITES.length, 3);
   for (const s of LAUNCH_SITES) {
     assert.ok(s.lat >= -90 && s.lat <= 90);
     assert.ok(s.lon >= -180 && s.lon <= 180);
