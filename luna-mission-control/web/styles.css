@@ -86,3 +86,46 @@
 @media(max-width:700px){.terrain-3d-canvas{height:360px}}
 
 
+
+
+/* Simulation clarity: compact results summary and right-side Information tab */
+.results-top{gap:12px;flex-wrap:wrap}
+.results-top>div:first-child{margin-right:auto}
+.results-top .science-info-trigger{background:#eff8fa;border:1px solid #b9d4dc;border-radius:8px;color:#1c6275;padding:10px 14px;font-weight:700}
+.science-info-trigger:hover,.science-info-trigger:focus-visible{background:#dff2f4}
+.science-overview{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid #d6e5e9;background:#f6fafb;color:#385769;border-radius:10px;padding:12px 15px;margin-bottom:16px;font-size:12px;line-height:1.5}
+.science-overview p{flex:1;min-width:190px;margin:0}
+.science-overview-tag{font-size:10px;letter-spacing:.65px;font-weight:800;color:#1c6e77;white-space:nowrap}
+.science-overview-link,.science-compare-heading button,.science-card-info{border:0;background:none;padding:5px 2px;color:#176c82;font-size:12px;font-weight:750;text-decoration:underline;text-underline-offset:2px}
+.science-overview-link:hover,.science-compare-heading button:hover,.science-card-info:hover{text-decoration-thickness:2px}
+.science-compare-heading{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:3px 2px 13px;font-size:13px;font-weight:700;color:#3a5d6e}
+.science-card-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid #e2ebef;margin-top:16px;padding-top:13px;color:#647f8e;font-size:11px}
+.science-info-edge{position:fixed;top:46%;right:0;z-index:19;writing-mode:vertical-rl;transform:rotate(180deg);border:1px solid #1c6f79;border-right:0;border-radius:0 10px 10px 0;background:#166c76;color:#fff;padding:15px 9px;font-size:12px;font-weight:800;box-shadow:0 2px 14px #0f304132}
+.science-info-edge:hover,.science-info-edge:focus-visible{background:#0e525d}
+.science-info-overlay{position:fixed;inset:0;background:rgba(8,22,35,.47);z-index:30}
+.science-info-drawer{position:fixed;top:0;right:0;bottom:0;width:min(480px,100vw);z-index:31;background:#f5f9fb;color:#253f50;box-shadow:-9px 0 32px #06192733;display:flex;flex-direction:column;overflow:hidden}
+.science-info-overlay[hidden],.science-info-drawer[hidden]{display:none!important}
+.science-info-header{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:24px 24px 18px;background:#103045;color:#eef8fc}
+.science-info-header small{color:#83d5dc;font-size:10px;letter-spacing:1.4px;font-weight:700}
+.science-info-header h2{font-size:22px;margin:6px 0}
+.science-info-header p{font-size:12px;color:#c2d6e1;line-height:1.5;margin:4px 0}
+.science-info-header button{flex-shrink:0;border:1px solid #6f929c;background:#25495d;color:#fff;width:34px;height:34px;border-radius:8px;font-size:15px}
+.science-info-body{padding:21px 24px 32px;overflow-y:auto;overscroll-behavior:contain;line-height:1.5}
+.science-info-intro{padding:14px 16px;background:#e7f3f6;border-left:3px solid #20859a;border-radius:7px;font-size:12px}
+.science-info-intro p{margin:0 0 8px}
+.science-info-intro p:last-child{margin-bottom:0}
+.science-info-scenario>h3{font-size:14px;letter-spacing:normal;color:#214f65;margin:24px 0 8px}
+.science-info-scenario>h3 small{font-weight:500;color:#58788a}
+.science-info-group{background:#fff;border:1px solid #dce8ed;border-radius:10px;padding:15px 16px;margin:12px 0}
+.science-info-group h4{font-size:13px;color:#224b5f;margin:0 0 12px}
+.science-info-group p{color:#476476;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.science-info-group dl{margin:0}
+.science-info-row{border-top:1px solid #ecf1f3;padding:10px 0}
+.science-info-row:first-child{border-top:0;padding-top:0}
+.science-info-row:last-child{padding-bottom:0}
+.science-info-row dt{font-size:11px;font-weight:750;color:#31566b}
+.science-info-row dd{font-size:12px;color:#526c7b;margin:5px 0 0;overflow-wrap:anywhere}
+.science-info-sources ul{padding-left:17px;margin:0}
+.science-info-sources li{font-size:12px;line-height:1.5;margin:8px 0}
+.science-info-sources a{color:#137087}
+@media(max-width:650px){.science-info-edge{top:54%;font-size:10px;padding:10px 6px}.science-info-header{padding:18px}.science-info-body{padding:15px}.science-overview{margin-bottom:12px}.science-overview p{min-width:100%}.science-info-trigger{order:2}}
