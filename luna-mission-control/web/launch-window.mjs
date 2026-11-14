@@ -90,7 +90,7 @@ function goal(){
  const ten=Number(document.getElementById("time")?.value??72);
  const fallback=new Date(date+"T00:00:00Z").getTime()+ten*600000;
  const summary=document.querySelector("#results .card .muted")?.textContent||"";
- const resultTime=summary.match(/Landing\\s+(\\d{4}-\\d{2}-\\d{2}T[^\\s]+)/)?.[1];
+ const resultTime=summary.match(/Landing\s+(\d{4}-\d{2}-\d{2}T[^\s]+)/)?.[1];
  const parsed=resultTime?Date.parse(resultTime):NaN;
  const time=Number.isFinite(parsed)?parsed:fallback;
  const coords=document.querySelector("#results .card h2")?.textContent||"";
