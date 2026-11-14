@@ -41,6 +41,8 @@ jobs:
           node --check luna-mission-control/web/launch-window.mjs
           node --test luna-mission-control/tests/rover-screen.test.mjs
           node --test luna-mission-control/tests/science-charts.test.mjs
+          node --test luna-mission-control/tests/playback-graphics.test.mjs
+          node --check luna-mission-control/web/playback-clock.mjs
           node --test luna-mission-control/tests/terrain-3d.test.mjs
           node --test luna-mission-control/tests/diviner-gcp.test.mjs
           node --test luna-mission-control/tests/horizons-site-validation.test.mjs
