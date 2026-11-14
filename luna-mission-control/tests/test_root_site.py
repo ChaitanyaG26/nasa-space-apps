@@ -15,7 +15,7 @@ def test_root_github_pages_homepage():
     page=(ROOT/"index.html").read_text(encoding="utf-8")
     assert '<canvas id="globe"' in page
     assert "window.LUNA_STATIC_SITE = true" in page
-    assert page.index("window.LUNA_STATIC_SITE = true")<page.index('src="./luna-mission-control/web/app.js?v=20261114-extent500-1"')
+    assert page.index("window.LUNA_STATIC_SITE = true")<page.index('src="./luna-mission-control/web/app.js?')
     parser=Assets()
     parser.feed(page)
     assert any(urlsplit(url).path == "./luna-mission-control/web/styles.css" for url in parser.urls)

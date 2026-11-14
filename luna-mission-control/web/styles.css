@@ -277,3 +277,29 @@ main{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 #luna-launch-cola .orbit-catalog li{font-size:10px;}
 #luna-launch-cola .orbit-catalog li::before{content:"●";color:#84c9eb;margin-right:5px;}
 #luna-launch-cola .orbit-legend{font-size:10px;color:#afd1dc;margin-top:7px;}
+
+
+/* Root entry point: compact left rail; field list scrolls behind anchored Simulate action. */
+.sidebar-layout .shell{display:grid;grid-template-columns:290px minmax(0,1fr);height:100dvh;min-height:0;}
+.sidebar-layout .sidebar{display:flex;flex-direction:column;height:100dvh;min-height:0;min-width:0;border-bottom:0;border-right:1px solid #304c5f;}
+.sidebar-layout .sidebar header{flex:none;padding:16px 18px;min-height:62px;}
+.sidebar-layout .sidebar .fields{display:block;flex:1;min-height:0;max-height:none;overflow-y:auto;padding:8px 15px 16px;}
+.sidebar-layout .sidebar .control-group{margin:0 0 8px;padding:9px 2px 11px;border-bottom:1px solid #2d4757;}
+.sidebar-layout .sidebar .control-group h3{font-size:10px;color:#65d5d1;letter-spacing:1.2px;margin:6px 0 10px;}
+.sidebar-layout .sidebar .control-group label{display:block;margin:8px 0;color:#aac5d0;font-size:11px;}
+.sidebar-layout .sidebar .control-group .site{padding:10px;margin:0 0 9px;}
+.sidebar-layout .sidebar .toolbar-disclosure{position:relative;background:#142c3c;border:1px solid #365264;border-radius:9px;padding:9px;margin:10px 0;}
+.sidebar-layout .sidebar .toolbar-disclosure summary{font-size:12px;color:#dbf1f8;cursor:pointer;}
+.sidebar-layout .sidebar .toolbar-disclosure .toolbar-flyout{position:static;width:auto;max-height:none;overflow:visible;background:transparent;border:0;box-shadow:none;padding:9px 0 0;}
+.sidebar-layout .sidebar .toolbar-flyout label{margin:9px 0;}
+.sidebar-layout .sidebar footer.sidebar-actions{display:block;flex:none;margin:0;padding:12px 16px 16px;}
+.sidebar-layout main{height:100dvh;min-height:0;overflow:hidden;}
+.sidebar-layout .results-page{min-height:0;height:100%;overflow-y:auto;}
+.sidebar-layout .map-page{flex:1;min-height:0;}
+@media(max-width:800px){
+ .sidebar-layout .shell{display:flex;flex-direction:column;height:auto;min-height:100dvh;}
+ .sidebar-layout .sidebar{height:min(74dvh,670px);min-height:390px;border-right:0;border-bottom:1px solid #304c5f;}
+ .sidebar-layout main{min-height:60dvh;height:auto;overflow:visible;}
+ .sidebar-layout .map-page{height:58dvh;min-height:340px;}
+ .sidebar-layout .results-page{height:auto;min-height:80dvh;}
+}
