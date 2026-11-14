@@ -26,7 +26,7 @@ def test_root_github_pages_homepage():
 def test_static_simulator_modules_present():
     app=(ROOT/"luna-mission-control/web/app.js").read_text(encoding="utf-8")
     assert 'import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-projections-1"' in app
-    assert 'import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-projections-1"' in app
+    assert 'import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114b"' in app
     assert 'if(IS_PAGES){' in app
     assert 'return staticApi(path,data)' in app
     assert 'if(selected==="horizons")' in app
