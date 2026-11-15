@@ -2,10 +2,10 @@ import {renderScientificInformation} from "./science-info.mjs";
 import "./launch-window.mjs?v=20261114-phone-scenarios-v18";
 import {initGlobe} from "./globe.js?v=20261114-smooth-halo-v19";
 import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-data-ui-v14";
-import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261115-screening-v25";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261115-optimize-progress-v26";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-data-ui-v14";
-import {staticApi,simulateWithGeometry,optimizeWithEngineAsync} from "./static-engine.mjs?v=20261115-screening-v25";
+import {staticApi,simulateWithGeometry,optimizeWithEngineAsync} from "./static-engine.mjs?v=20261115-optimize-progress-v26";
 import {roverRouteScreen} from "./rover-screen.mjs";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-extent500-1";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
@@ -83,7 +83,7 @@ function showCoords(){const lat=position.latitude,lon=position.longitude;const t
 function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:30,data_mode:"horizons",
  rover_east_m:Number($("roverEast").value),rover_north_m:Number($("roverNorth").value),
  rover_max_slope_deg:Number($("roverSlope").value)}}
-async function api(path,data){
+async function api(path,data,onProgress){
  if(IS_PAGES){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
    if(selected==="horizons"){
@@ -152,7 +152,7 @@ async function api(path,data){
        const output=await optimizeWithEngineAsync(data,req=>
          simulateWithGeometry(req,geometrySeries(reference,req,height(req)),
            "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",
-           terrain(req),horizon(req)),{supported,yieldEvery:10});
+           terrain(req),horizon(req)),{supported,yieldEvery:10,onProgress});
        attachRover(output.original,data.mission);
        await attachDivinerClimatology(output.original,data.mission,
          geometrySeries(reference,data.mission,height(data.mission)));
@@ -427,18 +427,59 @@ async function mountTerrainViews(){
  }
 }
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
+// Transient status card under the existing button. Absolutely positioned: no reflow.
+const optimizeProgress=$("optimizeProgress");
+const optimizeProgressBar=$("optimizeProgressBar");
+const optimizeProgressText=$("optimizeProgressText");
+const optimizeProgressCount=$("optimizeProgressCount");
+let optimizeStages=null;
+function setOptimizeProgress(){
+ if(!optimizeStages)return;
+ const {sites,dates}=optimizeStages;
+ if(!sites||!dates){
+  optimizeProgressBar.removeAttribute("value");
+  optimizeProgressText.textContent="Loading NASA reference data…";
+  optimizeProgressCount.textContent="";
+  return;
+ }
+ const completed=sites.completed+dates.completed,total=sites.total+dates.total;
+ const percent=Math.min(100,Math.round(100*completed/Math.max(1,total)));
+ optimizeProgressBar.value=percent;
+ const label=p=>p.phase==="complete"?"done":
+  p.phase==="refining"?"refining "+p.refined+"/"+p.finalists:
+  p.phase==="screening"?"screened "+p.screened+"/"+p.candidates:"loading";
+ optimizeProgressText.textContent="Sites: "+label(sites)+" · Dates: "+label(dates);
+ optimizeProgressCount.textContent=percent+"%";
+}
+function beginOptimizeProgress(){
+ optimizeStages={sites:null,dates:null};optimizeProgress.hidden=false;setOptimizeProgress();
+}
+function reportOptimizeProgress(kind){
+ return progress=>{if(!optimizeStages)return;optimizeStages[kind]=progress;setOptimizeProgress();};
+}
+function endOptimizeProgress(){
+ optimizeStages=null;optimizeProgress.hidden=true;
+ optimizeProgressBar.removeAttribute("value");
+ optimizeProgressText.textContent="";optimizeProgressCount.textContent="";
+}
 $("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
 $("optimize").addEventListener("click",()=>{if(!lastMission)return;
  busy($("optimize"),async()=>{
-  const [fixedDate,fixedSite]=await Promise.all([
-   api("optimize",{mission:lastMission,preserve:"time"}),
-   api("optimize",{mission:lastMission,preserve:"site"})
-  ]);
-  comparison={original:lastResult,dateFixed:fixedDate.recommended,siteFixed:fixedSite.recommended,
-   variants:[fixedDate,fixedSite],
-   search:fixedDate.search+" "+fixedSite.search,
-   comparison_note:"Candidates are screened against model assumptions, not landing safety requirements."};
-  render();showResults();await mountTerrainViews();
+  beginOptimizeProgress();
+  try{
+   const [fixedDate,fixedSite]=await Promise.all([
+    api("optimize",{mission:lastMission,preserve:"time"},reportOptimizeProgress("sites")),
+    api("optimize",{mission:lastMission,preserve:"site"},reportOptimizeProgress("dates"))
+   ]);
+   optimizeProgressText.textContent="Preparing comparison charts…";
+   comparison={original:lastResult,dateFixed:fixedDate.recommended,siteFixed:fixedSite.recommended,
+    variants:[fixedDate,fixedSite],
+    search:fixedDate.search+" "+fixedSite.search,
+    comparison_note:"Candidates are screened against model assumptions, not landing safety requirements."};
+   render();showResults();await mountTerrainViews();
+  }finally{
+   endOptimizeProgress();
+  }
  });
 });
 $("restartMission").addEventListener("click",()=>{
