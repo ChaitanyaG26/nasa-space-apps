@@ -1,4 +1,5 @@
 import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-solar-3d-v13";
+import {arrangeScenarioPanels,PHONE_SCENARIO_MEDIA} from "./mobile-scenario-layout.mjs";
 import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-gold-ui-v15";
 import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 /* LUNA Earth-to-Moon launch-window teaching model.
@@ -188,6 +189,9 @@ function installPanel(){
  });
 }
 function renderScenarioPanels(el){
+ // Revert a previous phone layout before resetting live scenario articles.
+ // Desktop remains unchanged; no cloned canvas/animation controllers.
+ arrangeScenarioPanels(el,false);
  orbitControllers.forEach(c=>c.destroy());orbitControllers=[];
  sequenceControllers.forEach(c=>c.destroy());sequenceControllers=[];
  const list=el.querySelector("[data-cola-list]");
@@ -215,10 +219,16 @@ function renderScenarioPanels(el){
   orbitControllers.push(controller);
   loadCatalogContext().then(data=>controller.setCatalog(data));
  }
+ // Reparent the EXISTING cards and orbit/launch/lander nodes only on phones.
+ // This ensures original graphs + terrain -> original animations -> next site.
+ const viewport=typeof window!=="undefined"&&window.matchMedia
+  ?window.matchMedia(PHONE_SCENARIO_MEDIA):null;
+ arrangeScenarioPanels(el,Boolean(viewport?.matches));
  loadGeocentricVectors().then(data=>{
   officialVectors=data;
   if(!list.isConnected)return;
-  for(const article of list.querySelectorAll("[data-cola-scenario]")){
+  // Articles may now live inside their phone-sized scenario cards.
+  for(const article of el.querySelectorAll("[data-cola-scenario]")){
    const destination=scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario));
    if(!destination)continue;
    const parkingKm=Number(controls.parking)||200;
@@ -291,6 +301,13 @@ if(typeof document!=="undefined"){
   if(!root)return;
   const observer=new MutationObserver(installPanel);
   observer.observe(root,{childList:true});
+  // Responsive reparenting uses the same DOM nodes and restores them
+  // on desktop without restarting or duplicating any animation.
+  const phoneMedia=window.matchMedia?.(PHONE_SCENARIO_MEDIA);
+  phoneMedia?.addEventListener?.("change",()=>{
+   const panel=document.getElementById("luna-launch-cola");
+   if(panel)arrangeScenarioPanels(panel,phoneMedia.matches);
+  });
   installPanel();
   window.addEventListener("luna:scenarios-updated",event=>{
    const panel=document.getElementById("luna-launch-cola");
