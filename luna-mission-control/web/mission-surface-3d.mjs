@@ -9,6 +9,7 @@
 import {destination,elevationGlobalKm} from "./lola-global.mjs";
 import {samplePolarHeightKm} from "./lola-polar-detail.mjs";
 import {sunENU,sunLight,terrainNormal,sunShadowOffset} from "./solar-geometry.mjs";
+import {loadUSGS3DEPGrid} from "./usgs-3dep.mjs";
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 export const LAUNCH_RANGE_COORDS={
  ksc:{lat:28.627,lon:-80.621,name:"Kennedy Space Center (reference range)"},
@@ -84,8 +85,15 @@ export async function loadEarthSiteGrid(siteId,{size=41,footprintM=600}={}){
  const key=[siteId,size,footprintM].join(":");
  if(!earthGridCache.has(key)){
   const promise=(async()=>{
-   // z15 exposes finer raster sampling, but does not imply the native DEM
-   // itself has this resolution. z14 is a network/service fallback.
+   // Prefer USGS 3DEP's best-available DEM for these U.S. orbital ranges.
+   // Its actual native precision varies by site. CORS or unsupported TIFF
+   // compression may fail: safely use pre-existing public Terrarium tiles.
+   try{
+    const usgs=await loadUSGS3DEPGrid(siteId,LAUNCH_RANGE_COORDS[siteId],
+     {size:65,footprintM,timeoutMs:4500});
+    if(usgs&&usgs.coverage>=.85)return usgs;
+   }catch{/* Optional 3DEP service unavailable. */}
+   // z15 exposes finer output sampling, NOT guaranteed native DEM detail.
    for(const z of [15,14,13]){
     try{
      const grid=await getEarthGridAtZoom(siteId,{size,footprintM},z);
@@ -233,6 +241,7 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
  const size=cells?.length||17,footprint=grid?.footprintM||440;
  // Region-scale fallback exaggerates spacecraft size, never DEM precision.
  const viewCamera={...camera,worldScale:Math.min(1,440/footprint)};
+ const terrainExaggeration=grid?.detail===false?4.5:kind==="launch"?2.0:1.25;
  const exaggeration=Math.max(1,footprint/440);
  const get=(j,i)=>{
   if(cells)return cells[j]?.[i]||null;
@@ -242,7 +251,8 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
  for(let j=0;j<size-1;j++)for(let i=0;i<size-1;i++){
   const cells=[get(j,i),get(j,i+1),get(j+1,i+1),get(j+1,i)];
   if(cells.some(p=>!p||!Number.isFinite(p.h)))continue;
-  const vertices=cells.map(p=>projectTerrainPoint(p.e,p.n,p.h-center,viewCamera,width,height));
+  const vertices=cells.map(p=>projectTerrainPoint(p.e,p.n,
+   (p.h-center)*terrainExaggeration,viewCamera,width,height));
   const normal=terrainNormal(cells);
   const intensity=sunLight(normal,validSun,
    {ambient:kind==="landing"?.16:.30,diffuse:kind==="landing"?.84:.70});
