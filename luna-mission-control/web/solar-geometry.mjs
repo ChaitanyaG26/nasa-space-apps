@@ -58,7 +58,9 @@ export function sunLight(normal,sun,{ambient=.19,diffuse=.81}={}){
 export function sunShadowOffset(heightM,sun,maxLengthM=3000){
  if(!sun||sun.elevationDeg<=0||!Number.isFinite(heightM)||heightM<=0)
   return null;
- const direction=sunENU(sun);
+ const bearing=sun.azimuthDeg*DEG;
  const length=Math.min(maxLengthM,heightM/Math.max(.008,Math.tan(sun.elevationDeg*DEG)));
- return {e:-direction.e*length,n:-direction.n*length,lengthM:length};
+ // Shadow has horizontal length h/tan(elevation); normalize the ENU
+ // horizontal projection rather than shortening it by cos(elevation).
+ return {e:-Math.sin(bearing)*length,n:-Math.cos(bearing)*length,lengthM:length};
 }
