@@ -173,56 +173,73 @@ function nearestAt(series,t){
  if(l>0&&Math.abs(pts[l-1].time-t)<Math.abs(pts[l].time-t))l--;
  return pts[l];
 }
-// Move the active chart's entire metric slot to the document top level.
-// This prevents its original horizontally scrolling comparison pane from
-// clipping or offsetting the fullscreen graph on smaller displays.
-let fullscreenSlot=null,fullscreenPlaceholder=null;
+// The expanded plot is displayed in a dedicated body-level dialog, outside
+// clipping, scrolling and transformed comparison panes on mobile and desktop.
+let fullscreenSlot=null,fullscreenPlaceholder=null,fullscreenOverlay=null,fullscreenTrigger=null;
 export function closeExpandedChart(){
  if(!fullscreenSlot)return;
  const slot=fullscreenSlot,placeholder=fullscreenPlaceholder;
  const panel=slot.querySelector(".science-plot");
  panel?.classList.remove("chart-expanded");
  const button=panel?.querySelector(".plot-expand");
- if(button){button.textContent="⤢";button.setAttribute("aria-label","Expand chart");}
+ if(button){button.textContent="⤢";button.setAttribute("aria-label","Expand chart");button.setAttribute("aria-expanded","false");}
  slot.classList.remove("fullscreen-slot");
  if(placeholder?.parentNode)placeholder.replaceWith(slot);
  else slot.remove();
- fullscreenSlot=null;fullscreenPlaceholder=null;
+ fullscreenOverlay?.remove();
+ fullscreenSlot=null;fullscreenPlaceholder=null;fullscreenOverlay=null;
  document.body.classList.remove("luna-chart-modal-open");
+ if(fullscreenTrigger?.isConnected)fullscreenTrigger.focus({preventScroll:true});
+ fullscreenTrigger=null;
 }
 function openExpandedChart(panel){
  closeExpandedChart();
- const slot=panel.closest(".metric-slot");
+ const slot=panel?.closest(".metric-slot");
  if(!slot)return;
  const placeholder=document.createComment("expanded chart original location");
+ const overlay=document.createElement("div");
+ overlay.className="luna-chart-overlay";
+ overlay.setAttribute("role","dialog");
+ overlay.setAttribute("aria-modal","true");
+ overlay.setAttribute("aria-label",panel.querySelector(".chart-head strong")?.textContent+" expanded chart");
  slot.parentNode.replaceChild(placeholder,slot);
- document.body.appendChild(slot);
- fullscreenSlot=slot;fullscreenPlaceholder=placeholder;
+ document.body.appendChild(overlay);
+ overlay.appendChild(slot);
+ fullscreenSlot=slot;fullscreenPlaceholder=placeholder;fullscreenOverlay=overlay;
+ fullscreenTrigger=panel.querySelector(".plot-expand");
  slot.classList.add("fullscreen-slot");
  panel.classList.add("chart-expanded");
  const button=panel.querySelector(".plot-expand");
- if(button){button.textContent="×";button.setAttribute("aria-label","Close expanded chart");}
+ if(button){button.textContent="×";button.setAttribute("aria-label","Close expanded chart");button.setAttribute("aria-expanded","true");}
  document.body.classList.add("luna-chart-modal-open");
+ button?.focus({preventScroll:true});
 }
 export function attachChartInteractions(root){
- // A re-render must never strand an old fullscreen chart in <body>.
+ // Close before updating charts so there is never an orphaned portal.
  closeExpandedChart();
  if(!root.dataset.lunaExpandEnabled){
   root.dataset.lunaExpandEnabled="1";
-  root.addEventListener("click",event=>{
-   const button=event.target.closest(".plot-expand");
-   if(!button||!root.contains(button))return;
-   event.stopPropagation();
-   openExpandedChart(button.closest(".science-plot"));
-  });
-  // The expanded metric slot is portaled outside root, so closing it is
-  // deliberately handled at document level.
+  // Handle all expand/close actions at document scope because a chart moves
+  // out of the results subtree while expanded.
   document.addEventListener("click",event=>{
-   const button=event.target.closest(".plot-expand");
-   if(button&&fullscreenSlot?.contains(button))closeExpandedChart();
+   const button=event.target.closest?.(".plot-expand");
+   if(button){
+    if(fullscreenSlot?.contains(button)){closeExpandedChart();return;}
+    if(root.contains(button))openExpandedChart(button.closest(".science-plot"));
+    return;
+   }
+   if(fullscreenOverlay&&event.target===fullscreenOverlay)closeExpandedChart();
   });
   document.addEventListener("keydown",event=>{
-   if(event.key==="Escape"&&fullscreenSlot){event.preventDefault();closeExpandedChart();}
+   if(!fullscreenSlot)return;
+   if(event.key==="Escape"){event.preventDefault();closeExpandedChart();}
+   else if(event.key==="Tab"){
+    const focusable=[...fullscreenSlot.querySelectorAll('button:not([disabled]),a[href],input:not([disabled])')];
+    if(!focusable.length)return;
+    const first=focusable[0],last=focusable.at(-1);
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+   }
   });
  }
  for(const svg of root.querySelectorAll("svg[data-plot-id]")){
@@ -242,8 +259,6 @@ export function attachChartInteractions(root){
    setChartsCursor(root,new Date(p.time).toISOString());
    const cx=M.left+(p.time-plot.start)/(plot.end-plot.start)*pw;
    const dom=plot.dom;
-   // Read exact plotted y from nearest path value rather than interpolate
-   // between archived measurements.
    const cy=M.top+(dom.max-p.value)/(dom.max-dom.min)*ph;
    line.setAttribute("x1",cx);line.setAttribute("x2",cx);line.setAttribute("visibility","visible");
    dot.setAttribute("cx",cx);dot.setAttribute("cy",cy);dot.setAttribute("visibility","visible");
