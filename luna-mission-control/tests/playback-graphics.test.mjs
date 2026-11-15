@@ -23,8 +23,8 @@ test("science graphs preserve time, real extremes and missing-data breaks",()=>{
  rows[900].power=null;
  const html=chartMarkup("Solar power",rows,"power",{unit:"W",zero:true});
  assert.match(html,/plot-timecursor/);
- assert.match(html,/Min /);
- assert.match(html,/Max /);
+ assert.match(html,/Minimum: /);
+ assert.match(html,/Maximum: /);
  assert.match(html,/190 W/);
  assert.equal((html.match(/class="plot-series"/g)||[]).length,2,
   "missing model values must not be joined");
