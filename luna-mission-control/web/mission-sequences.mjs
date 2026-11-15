@@ -3,7 +3,9 @@ import {destination,loadLolaGlobal} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
 import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
-import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid} from "./mission-surface-3d.mjs?v=20261114-compact-terrain-v12";
+import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid,LAUNCH_RANGE_COORDS} from "./mission-surface-3d.mjs?v=20261114-solar-3d-v13";
+import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs";
+import {earthSunAngles} from "./solar-geometry.mjs";
 /* LUNA scenario-specific launch and landing cinematic visualizations.
  * Drawings show selectable historical vehicle/lander silhouettes, not actual
  * vehicle performance, compatibility, descent navigation or flight clearance.
@@ -50,12 +52,40 @@ export function illustratedSurfaceHeight(lat,lon,x=300){
 export const rocketFraction=t=>ease((t-.08)/.84);
 export const landerFraction=t=>ease((t-.02)/.96);
 
-export function mountMissionSequences(host,{scenario="original",site="ksc",latitude=-89.5,longitude=0,landingUtc=null,rocket=null,lander=null,payloadKg=500}={}){
+export function mountMissionSequences(host,{scenario="original",site="ksc",latitude=-89.5,longitude=0,landingUtc=null,departureUtc=null,rocket=null,lander=null,payloadKg=500}={}){
  if(!host||typeof document==="undefined")return {destroy(){},setSite(){},setTarget(){},selection(){}};
- const state={site,latitude,longitude,landingUtc,rocket,lander,payloadKg};
+ const state={site,latitude,longitude,landingUtc,departureUtc,rocket,lander,payloadKg};
  const descent=descentParameters({altitudeM:180,entryDownSpeedMS:14,touchDownSpeedMS:.8});
  let measuredTerrain=null,terrainStatus="Loading NASA LOLA terrain…",sunElevationDeg=null,terrainRequest=0;
  let earthGrid=null,moonGrid=null,earthStatus="Loading elevation tile…",earthRequest=0;
+ let earthSolarCache=null,lunarSolarCache=null,solarRequest=0;
+ async function loadSolarSources(){
+  const request=++solarRequest;
+  const [earth,lunar]=await Promise.allSettled([loadGeocentricVectors(),loadJplReference()]);
+  if(!alive||request!==solarRequest)return;
+  earthSolarCache=earth.status==="fulfilled"?earth.value:null;
+  lunarSolarCache=lunar.status==="fulfilled"?lunar.value:null;
+  draw();
+ }
+ function sunAtLaunch(fraction){
+  if(!earthSolarCache||!Number.isFinite(state.departureUtc))return null;
+  const range=LAUNCH_RANGE_COORDS[state.site];
+  if(!range)return null;
+  const utc=state.departureUtc+Math.max(0,Math.min(1,fraction))*110000;
+  try{return earthSunAngles(geocentricAt(earthSolarCache,utc).sun,utc,range.lat,range.lon);}
+  catch{return null;}
+ }
+ function sunAtLanding(fraction){
+  if(!lunarSolarCache||!Number.isFinite(state.landingUtc))return null;
+  const utc=state.landingUtc-(1-Math.max(0,Math.min(1,fraction)))*descent.seconds*1000;
+  try{
+   const g=geometryAtUtc(lunarSolarCache,state.latitude,state.longitude,utc);
+   return {azimuthDeg:g.sun_az,elevationDeg:g.sun_el,source:"JPL Horizons lunar local solar geometry"};
+  }catch{return null;}
+ }
+ const solarDescription=(v,label)=>v?
+  label+" · Sun "+v.azimuthDeg.toFixed(1)+"° az / "+v.elevationDeg.toFixed(1)+"° el":
+  "Sun unavailable · neutral display fill";
  const cameras={launch:{yaw:.58,pitch:.68,zoom:1},landing:{yaw:.48,pitch:.68,zoom:1}};
  async function loadEarthScience(){
   const token=++earthRequest;earthGrid=null;earthStatus="Loading open elevation tile…";
@@ -213,9 +243,10 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    Math.max(0,assessment.thrustN/assessment.massProxyKg-9.80665):10;
   const kin=genericAscentAt(progress.launch,{netAccelerationMS2:netA});
   ctx.clearRect(0,0,W,H);
+  const sun=sunAtLaunch(progress.launch);
   drawMissionSurface3D(ctx,{grid:earthGrid,kind:"launch",camera:cameras.launch,
-   altitudeM:kin.altitudeM,vehicle,progress:progress.launch,width:W,height:H});
-  query("[data-launch-terrain]").textContent=earthStatus+" · drag to orbit";
+   altitudeM:kin.altitudeM,vehicle,progress:progress.launch,width:W,height:H,sun});
+  query("[data-launch-terrain]").textContent=earthStatus+" · "+solarDescription(sun,"JPL Earth/Sun");
   query("[data-launch-telemetry]").textContent=
    "T+"+kin.elapsedS.toFixed(0)+" s · model altitude "+(kin.altitudeM/1000).toFixed(2)+" km · vertical speed "+
    kin.verticalSpeedMS.toFixed(0)+" m/s · altitude display compressed";
@@ -224,10 +255,11 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const ctx=contexts.landing;if(!ctx)return;
   const t=progress.landing,flight=descentAt(t,descent),probe=chooseLander(state.lander,state.rocket);
   ctx.clearRect(0,0,W,H);
+  const sun=sunAtLanding(t);
   drawMissionSurface3D(ctx,{grid:moonGrid?.coverage>=.7?moonGrid:null,kind:"landing",camera:cameras.landing,
-   altitudeM:flight.heightM,lander:probe,progress:t,width:W,height:H});
+   altitudeM:flight.heightM,lander:probe,progress:t,width:W,height:H,sun});
   query("[data-landing-terrain]").textContent=terrainStatus+
-   (moonGrid&&!moonGrid.detail?" · lander enlarged for visibility":"")+" · drag to rotate";
+   (moonGrid&&!moonGrid.detail?" · lander enlarged":"")+" · "+solarDescription(sun,"JPL lunar Sun");
   query("[data-landing-telemetry]").textContent=
    "Altitude "+flight.heightM.toFixed(1)+" m · descent "+flight.downSpeedMS.toFixed(2)+" m/s · "+
    "T+"+flight.elapsedS.toFixed(1)+" s · model T/W "+descent.thrustToWeight.toFixed(2);
@@ -269,9 +301,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    progress[kind]=Number(e.target.value)/1000;playing[kind]=false;draw();
   });
  }
- syncOptions();renderVehicleAssessment();draw();loadScience();loadEarthScience();raf=requestAnimationFrame(frame);
+ syncOptions();renderVehicleAssessment();draw();loadScience();loadEarthScience();loadSolarSources();raf=requestAnimationFrame(frame);
  return{
-  destroy(){alive=false;terrainRequest++;earthRequest++;cancelAnimationFrame(raf);observer?.disconnect();},
+  destroy(){alive=false;terrainRequest++;earthRequest++;solarRequest++;cancelAnimationFrame(raf);observer?.disconnect();},
   setSite(id){
    if(!VEHICLES[id])return;
    state.site=id;syncOptions();progress.launch=0;renderVehicleAssessment();loadEarthScience();draw();
@@ -280,6 +312,11 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    if(Number.isFinite(lat)&&Number.isFinite(lon)){
     state.latitude=lat;state.longitude=lon;syncNames();progress.landing=0;loadScience();draw();
    }
+  },
+  setTimeline({departureUtc:depart,landingUtc:arrive}={}){
+   if(Number.isFinite(depart))state.departureUtc=depart;
+   if(Number.isFinite(arrive))state.landingUtc=arrive;
+   draw();
   },
   selection(){return {rocket:state.rocket,lander:state.lander,payloadKg:state.payloadKg};}
  };
