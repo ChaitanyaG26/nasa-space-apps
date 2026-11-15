@@ -98,7 +98,7 @@ export async function loadUSGS3DEPGrid(siteId,site,{size=65,footprintM=600,timeo
   f:"image",bbox:bbox.map(v=>v.toFixed(9)).join(","),
   bboxSR:"4326",imageSR:"4326",size:size+","+size,
   format:"tiff",pixelType:"F32",compression:"NONE",
-  interpolation:"+RSP_BilinearInterpolation"
+  interpolation:"RSP_BilinearInterpolation"
  });
  let timer;
  const controller=new AbortController();
