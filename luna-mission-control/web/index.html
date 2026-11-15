@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-lander-sequence-v8"></head>
+<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-physics-ui-v10"></head>
 <body class="sidebar-layout">
 <div class="shell">
 <aside class="sidebar">
 <header><strong class="logo">◐ LUNA<span>.</span></strong><small>LUNAR MISSION CONTROL</small></header>
 <div class="fields" id="missionFields" aria-label="Mission parameters">
-<div class="control-group"><h3>01 / MISSION TIME</h3>
+<div class="control-group"><h3>Mission timing</h3>
 
 <label>Landing date (UTC)<input id="date" type="date" value="2026-11-20"></label>
 <label>Landing time: <b id="timeLabel">12:00 UTC</b><input id="time" type="range" min="0" max="143" value="72"></label>
@@ -16,7 +16,7 @@
 
 </div>
 <section class="sky-stack" aria-label="Celestial positions and lunar horizon">
-<h3>02 / SKY &amp; HORIZON</h3>
+<h3>Sun, Earth &amp; terrain</h3>
 <div class="sky-stack-card">
 <div class="sky-caption"><span>☀ Sun</span><span>◉ Earth</span><span>◐ Moon</span></div>
 <section class="sky-mini"><strong>Moon-centered directions</strong><svg id="orbital" viewBox="0 0 320 110" role="img" aria-label="Sun and Earth directions from the Moon"></svg></section>
@@ -24,7 +24,7 @@
 <div id="angles" class="sky-angles">Loading JPL reference…</div>
 <small id="source" class="sky-source">JPL Horizons reference · local horizon loading</small>
 </div></section>
-<div class="control-group control-engineering"><h3>03 / SPACECRAFT &amp; ENGINEERING</h3>
+<div class="control-group control-engineering"><h3>Spacecraft &amp; engineering</h3>
 <details class="toolbar-disclosure spacecraft-assumptions"><summary>Spacecraft assumptions</summary><div class="toolbar-flyout">
 <label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option><option value="28">28 days</option><option value="35">35 days</option></select></label>
 <label>Solar array (m²)<input id="area" type="number" value="1.6" step="0.1" min="0.1"></label>
@@ -62,24 +62,24 @@
 </aside>
 <main>
 <nav class="mission-toolbar" aria-label="Simulation actions">
-<button id="simulate" class="primary" type="button">▶ Simulate mission</button>
+<button id="simulate" class="primary" type="button">Simulate mission</button>
 <div class="optimize-trigger">
-<button id="optimize" class="secondary" disabled type="button" aria-expanded="false" aria-controls="optimizeMenu">◇ Optimize &amp; compare</button>
+<button id="optimize" class="secondary" disabled type="button" aria-expanded="false" aria-controls="optimizeMenu">Optimize &amp; compare</button>
 <div id="optimizeMenu" class="optimize-menu" role="group" aria-label="Optimization comparison options" hidden>
 <label>Compare by changing<select id="preserve"><option value="time">Landing site · keep date</option><option value="site">Landing date · keep site (±14 days)</option></select></label>
 <button id="runOptimize" class="optimize-run" type="button">Run comparison</button>
 </div></div>
 </nav>
 <div id="mapPage" class="map-page">
-<div class="map-top">EXPLORE THE MOON <span>3D LUNAR GLOBE · SELECT A SITE</span></div>
+<div class="map-top">Select a lunar site <span>Drag the Moon to explore</span></div>
 <canvas id="globe" aria-label="Drag to rotate lunar globe, scroll to zoom, click to select a location"></canvas>
-<div class="map-bottom"><span>DRAG TO ROTATE · SCROLL TO ZOOM · CLICK TO SELECT</span><span id="mapCoords">89.500° S · 0.000° E</span></div>
+<div class="map-bottom"><span>Drag to rotate · Scroll to zoom · Click to select</span><span id="mapCoords">89.500° S · 0.000° E</span></div>
 </div>
 <div id="resultsPage" class="results-page hidden">
-<div class="results-top"><div><small>MISSION INTELLIGENCE</small><h1>Scenario analysis</h1></div>
+<div class="results-top"><div><small>MISSION ANALYSIS</small><h1>Scenario analysis</h1></div>
 <button id="back">← Return to globe</button></div>
 <div id="results"></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
 </main>
-</div><script type="module" src="/app.js?v=20261114-lander-sequence-v8"></script>
+</div><script type="module" src="/app.js?v=20261114-physics-ui-v10"></script>
 </body></html>
