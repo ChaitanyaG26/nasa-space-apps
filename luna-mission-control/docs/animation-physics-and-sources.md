@@ -186,3 +186,47 @@ shadows and a physically correct shadow-length relationship.
 
 The transfer, ascent and landing models remain educational and do not provide
 a certified trajectory, safe landing guidance, or formal COLA clearance.
+
+
+## Launch and landing terrain quality, visual exaggeration, and compact controls (v14)
+
+The Earth launch scenes now attempt the USGS National Map 3DEP
+ImageServer as their preferred source of bare-earth elevation, using a
+small uncompressed floating-point TIFF export. If the endpoint does not
+permit browser CORS, returns unsupported TIFF compression, or has
+insufficient valid samples, the scene falls back to public Mapzen/AWS
+Terrarium tiles. Requested output-grid spacing is NOT evidence of
+underlying DEM accuracy; source resolution varies from site to site and
+can be much coarser than the requested 9 m sample spacing. Reference
+range coordinates are not a surveyed launch pad, and the generic
+scaffolding/tower and pad ring are illustrative, not real structures.
+
+USGS source: https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer
+
+Lunar landing scenes retain local 20 m LOLA polar patches where
+available. The 8 pixels/degree regional fallback instead displays a
+40 km terrain footprint with roughly 3.8 km sample spacing: it does
+not resolve 500 m-scale hazards. Display relief is exaggerated by
+4.5 times in the coarse fallback and the probe is enlarged for
+visibility. Green/amber rings mark a conceptual target and outer
+vicinity only and must never be interpreted as certified safe zones.
+The separate regional terrain explorer defaults to 50 km and
+10-times adjustable vertical exaggeration (display only).
+
+At night both scenes use artificial fill illumination to expose terrain,
+lander and rocket geometry. This is clearly described in the hoverable
+information controls and is not physical sunlight, solar power or
+thermal prediction. Sun azimuth and elevation remain derived from
+JPL reference data where available.
+
+The Moon-centered direction canvas and local skyline now keep their
+intrinsic aspect ratios rather than being height-compressed. The
+graph information control is a simple icon with no global dark details
+background, positioned next to expand. When a graph is enlarged,
+unrelated graph controls are hidden until it closes. Scene information
+icons explain DEM source, exaggeration, uncertain terrain coverage,
+lighting limits and conceptual infrastructure.
+
+The first-source USGS service is network dependent; successful local
+source retrieval and browser CORS support require live testing beyond
+the automated decoder and Pages file verification.
