@@ -30,8 +30,8 @@ if cname.is_file():
 assert 'class="mission-toolbar"' in html, "Top toolbar missing from staged page"
 for control in ("date", "time", "simulate", "optimize", "preserve", "globe"):
     assert html.count(f'id="{control}"') == 1, f"Missing or duplicate {control} control"
-style_version = re.search(r'href="\\./styles\\.css\\?v=([^"]+)"', html)
-app_version = re.search(r'src="\\./app\\.js\\?v=([^"]+)"', html)
+style_version = re.search(r'href="\./styles\.css\?v=([^"]+)"', html)
+app_version = re.search(r'src="\./app\.js\?v=([^"]+)"', html)
 assert style_version and app_version, "Missing cache-busting asset version"
 assert style_version.group(1) == app_version.group(1), "Staged asset versions do not match"
 for module in ("static-engine.mjs", "globe.js", "science-charts.mjs",
