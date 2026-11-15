@@ -9,7 +9,7 @@ export function initGlobe(canvas,onSelect) {
  const fs=gl.createShader(gl.FRAGMENT_SHADER);
  gl.shaderSource(fs,"precision mediump float;\nvarying vec3 normal;\nvarying vec3 cameraNormal;\nuniform vec3 sun;\nuniform sampler2D moonColor;\nconst float PI = 3.141592653589793;\nvoid main() {\n  if (cameraNormal.z < 0.0) discard;\n  vec3 n=normalize(normal);\n  // NASA image is centered on longitude zero, north up.\n  // The image upload uses UNPACK_FLIP_Y_WEBGL=true.\n  float u=0.5+atan(n.x,n.z)/(2.0*PI);\n  float v=0.5+asin(clamp(n.y,-1.0,1.0))/PI;\n  vec3 albedo=texture2D(moonColor,vec2(u,v)).rgb;\n  float incidence=max(dot(n,normalize(sun)),0.0);\n  // Astronomical terminator still follows Sun geometry; fill light is display-only, not illumination model.\n  float brightness=0.29+0.71*sqrt(incidence);\n  gl_FragColor=vec4(albedo*brightness,1.0);\n}");
  gl.compileShader(fs);const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);gl.useProgram(prog);
- const vertices=[],indexes=[],R=60,C=110;
+ const vertices=[],indexes=[],R=112,C=224;
  for(let j=0;j<=R;j++){const lat=-Math.PI/2+Math.PI*j/R;for(let i=0;i<=C;i++){const lon=-Math.PI+2*Math.PI*i/C;vertices.push(Math.cos(lat)*Math.sin(lon),Math.sin(lat),Math.cos(lat)*Math.cos(lon));}}
  for(let j=0;j<R;j++)for(let i=0;i<C;i++){const a=j*(C+1)+i,b=a+C+1;indexes.push(a,b,a+1,b,b+1,a+1);}
  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.STATIC_DRAW);const pos=gl.getAttribLocation(prog,"pos");gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0);
@@ -38,6 +38,10 @@ export function initGlobe(canvas,onSelect) {
    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,moonImage);
    gl.generateMipmap(gl.TEXTURE_2D);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+   if(gl.getExtension("EXT_texture_filter_anisotropic")){
+     const ext=gl.getExtension("EXT_texture_filter_anisotropic");
+     gl.texParameterf(gl.TEXTURE_2D,ext.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(8,gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+   }
    draw();
  };
  moonImage.onerror=()=>{
