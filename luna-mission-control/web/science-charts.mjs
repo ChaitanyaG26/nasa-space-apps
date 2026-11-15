@@ -212,6 +212,7 @@ export function attachChartInteractions(root){
   root.addEventListener("click",event=>{
    const button=event.target.closest(".plot-expand");
    if(!button||!root.contains(button))return;
+   event.stopPropagation();
    openExpandedChart(button.closest(".science-plot"));
   });
   // The expanded metric slot is portaled outside root, so closing it is
