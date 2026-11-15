@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-compact-sky-v7"
+RELEASE = "20261114-lander-sequence-v8"
 
 
 class Assets(html.parser.HTMLParser):
