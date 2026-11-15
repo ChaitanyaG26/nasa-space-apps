@@ -9,20 +9,22 @@ import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} fro
 const W=600,H=278,clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const ease=t=>{const u=clamp(t,0,1);return u*u*(3-2*u);};
 const escapeHTML=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Published dimensions control geometric proportions only, not flight dynamics.
+// SpaceX, NASA SLS, ULA and Firefly manufacturer data as of 2026.
 export const VEHICLES={
  ksc:[
-  {id:"falcon9",name:"Falcon 9",width:14,height:86,boosters:0,paint:"#f1f5fc"},
-  {id:"falconheavy",name:"Falcon Heavy",width:15,height:88,boosters:2,paint:"#e3edf8"},
-  {id:"sls",name:"Space Launch System",width:23,height:92,boosters:2,paint:"#f79d38"}
+  {id:"falcon9",name:"Falcon 9",heightM:70,diameterM:3.7,boosters:0,paint:"#f1f5fc",source:"SpaceX Falcon 9"},
+  {id:"falconheavy",name:"Falcon Heavy",heightM:70,diameterM:3.7,boosters:2,paint:"#e3edf8",source:"SpaceX Falcon Heavy"},
+  {id:"sls",name:"Space Launch System",heightM:98.3,diameterM:8.4,boosters:2,paint:"#f79d38",source:"NASA SLS Block 1"}
  ],
  ccsfs:[
-  {id:"falcon9",name:"Falcon 9",width:14,height:86,boosters:0,paint:"#f1f5fc"},
-  {id:"vulcan",name:"Vulcan Centaur",width:19,height:84,boosters:2,paint:"#ece5d9"},
-  {id:"atlas",name:"Atlas V",width:17,height:84,boosters:0,paint:"#f6e9d9"}
+  {id:"falcon9",name:"Falcon 9",heightM:70,diameterM:3.7,boosters:0,paint:"#f1f5fc",source:"SpaceX Falcon 9"},
+  {id:"vulcan",name:"Vulcan Centaur",heightM:61.6,diameterM:5.4,boosters:2,paint:"#ece5d9",source:"ULA Vulcan, standard fairing"},
+  {id:"atlas",name:"Atlas V",heightM:62.5,diameterM:3.81,boosters:0,paint:"#f6e9d9",source:"NASA Atlas V"}
  ],
  vandenberg:[
-  {id:"falcon9",name:"Falcon 9",width:14,height:86,boosters:0,paint:"#f1f5fc"},
-  {id:"alpha",name:"Firefly Alpha",width:12,height:77,boosters:0,paint:"#e2edf5"}
+  {id:"falcon9",name:"Falcon 9",heightM:70,diameterM:3.7,boosters:0,paint:"#f1f5fc",source:"SpaceX Falcon 9"},
+  {id:"alpha",name:"Firefly Alpha",heightM:31.7,diameterM:1.8,boosters:0,paint:"#e2edf5",source:"Firefly Alpha 2026"}
  ]
 };
 export const LANDERS=[
@@ -159,7 +161,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   }
  }
  function drawRocket(ctx,vehicle,x,y,phase){
-  const w=vehicle.width,h=vehicle.height;
+  const w=vehicle.diameterM*2.45,h=vehicle.heightM*1.16,fairingH=Math.max(12,h*.16);
   ctx.save();ctx.translate(x,y);
   if(phase>.08&&phase<1){
    const flare=(16+8*Math.sin(phase*83))*(.7+.3*phase);
@@ -169,10 +171,13 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(-w*.22,0);ctx.lineTo(0,flare*.6);ctx.lineTo(w*.22,0);
    ctx.fillStyle="#fff5b4";ctx.fill();
   }
-  rect(ctx,-w/2,-h,w,h,vehicle.paint);
+  const coreGradient=ctx.createLinearGradient(-w/2,0,w/2,0);
+  coreGradient.addColorStop(0,"#738ba4");coreGradient.addColorStop(.24,vehicle.paint);
+  coreGradient.addColorStop(.65,vehicle.paint);coreGradient.addColorStop(1,"#788ca0");
+  rect(ctx,-w/2,-h+fairingH,w,h-fairingH,coreGradient);
   rect(ctx,-w/2,-h*.56,w,h*.07,"#101e31");
-  ctx.beginPath();ctx.moveTo(-w/2,-h);ctx.lineTo(0,-h-21);
-  ctx.lineTo(w/2,-h);ctx.fillStyle="#e8f0f6";ctx.fill();
+  ctx.beginPath();ctx.moveTo(-w/2,-h+fairingH);ctx.quadraticCurveTo(-w*.39,-h+2,0,-h);
+  ctx.quadraticCurveTo(w*.39,-h+2,w/2,-h+fairingH);ctx.fillStyle="#e8f0f6";ctx.fill();
   for(const x0 of [-1,1].slice(0,vehicle.boosters?2:0)){
    const bx=x0*(w*.95);
    rect(ctx,bx-w*.29,-h*.79,w*.58,h*.79,"#dce6ef");
@@ -210,6 +215,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   write(ctx,coastal?"COASTAL LAUNCH RANGE":"PACIFIC LAUNCH RANGE",14,25,"#b8d7ee",11);
   write(ctx,up>=1?"ASCENT SEGMENT COMPLETE":up>.03?"ASCENT · GENERIC KINEMATICS":"ON THE PAD",14,48,tone,12);
   write(ctx,"T+"+kin.elapsedS.toFixed(0)+"s  ·  "+(kin.altitudeM/1000).toFixed(1)+" km",14,67,"#e4f1f8",11);
+  write(ctx,vehicle.heightM.toFixed(1)+" m tall · "+vehicle.diameterM.toFixed(2)+" m core",14,85,"#aecde0",10);
  }
  const terrainSeed=(lat,lon)=>Math.sin(lat*.042+lon*.018)*.5;
  function drawProbe(ctx,probe,x,y,t){
