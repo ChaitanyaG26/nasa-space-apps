@@ -3,7 +3,7 @@ import {destination,loadLolaGlobal} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
 import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
-import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid} from "./mission-surface-3d.mjs";
+import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid} from "./mission-surface-3d.mjs?v=20261114-compact-terrain-v12";
 /* LUNA scenario-specific launch and landing cinematic visualizations.
  * Drawings show selectable historical vehicle/lander silhouettes, not actual
  * vehicle performance, compatibility, descent navigation or flight clearance.
