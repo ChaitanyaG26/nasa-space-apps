@@ -135,7 +135,7 @@ export function thrusterPhaseAt(f){
 }
 export function mountOrbitAnimation(host,{
  scenario="original",parkingKm=200,moonDistanceKm=384400,flightDays=null,
- departureUtc=null,moonEphemeris=null
+ departureUtc=null,moonEphemeris=null,sunEphemeris=null
 }={}){
  if(!host||typeof document==="undefined")return{destroy(){},setCatalog(){},setTransfer(){}};
  const accent=scenario==="optimized"?"#59abff":"#f7d45c";
@@ -143,6 +143,7 @@ export function mountOrbitAnimation(host,{
   '<div class="orbit-scene-top"><div><div class="orbit-title">Interactive 3D transfer concept</div>'+
   '<p class="orbit-subtitle">Rotate by dragging · Shift+drag to pan · wheel to zoom · Kepler time-of-flight</p></div>'+
   '<span class="orbit-data-flag">NOT COLA CLEARED</span></div>'+
+  '<div class="orbit-source-tag" data-orbit-source>Moon/Sun: analytic ephemeris · updating JPL cache</div>'+
   '<canvas class="orbit-3d-canvas" width="560" height="540" tabindex="0" aria-label="Interactive 3D Earth-Moon transfer diagram with Sun direction, rotating Earth, changing Moon location and Kepler-timed spacecraft; not a trajectory solution."></canvas>'+
   '<div class="orbit-controls"><button data-orbit-toggle type="button">Pause</button>'+
   '<button data-orbit-reset type="button">Reset camera</button>'+
@@ -219,7 +220,14 @@ export function mountOrbitAnimation(host,{
   ctx.globalAlpha=1;
   const when=scene.departureUtc+t*scene.flightDays*DAY;
   const atArrival=ephemAt(scene.departureUtc+scene.flightDays*DAY);
-  const source=sunDirection(when);
+  let source=sunDirection(when);
+  if(typeof sunEphemeris==="function"){
+   try{
+    const officialSun=sunEphemeris(when);
+    if(officialSun&&Number.isFinite(officialSun.ra)&&Number.isFinite(officialSun.dec))
+     source=skyDirection(officialSun.ra,officialSun.dec);
+   }catch{/* UTC outside JPL coverage: lower-precision fallback */}
+  }
   // Thin parking-orbit reference near Earth. It is not an ascent path.
   drawLine(Array.from({length:97},(_,i)=>{
    const theta=i*Math.PI*2/96;return [23*Math.cos(theta),23*Math.sin(theta),0];
@@ -291,6 +299,13 @@ export function mountOrbitAnimation(host,{
   host.dataset.catalogRecords=String(data?.records?.length||0);
   host.dataset.catalogSource=data?.source||"Unavailable";
  }
+ function setEphemerides(moon,sun){
+  if(typeof moon==="function")moonEphemeris=moon;
+  if(typeof sun==="function")sunEphemeris=sun;
+  cachedTrack=null;fitCamera();draw();
+  qs("[data-orbit-source]").textContent=
+   "Moon/Sun: NASA JPL Horizons geocentric ICRF state vectors · Hermite";
+ }
  function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,departureUtc:launch}={}){
   if(Number.isFinite(alt)&&alt>=160&&alt<=2000)scene.parkingKm=alt;
   if(Number.isFinite(distance)&&distance>300000&&distance<450000)scene.moonDistanceKm=distance;
@@ -323,5 +338,5 @@ export function mountOrbitAnimation(host,{
  toggle.addEventListener("click",()=>{if(t>=1)t=0;playing=!playing;last=0;pauseText();draw();});
  scrub.addEventListener("input",()=>{t=Number(scrub.value)/1000;playing=false;pauseText();draw();});
  pauseText();draw();raf=requestAnimationFrame(frame);
- return{setCatalog,setTransfer,destroy(){alive=false;observer?.disconnect();cancelAnimationFrame(raf);}};
+ return{setCatalog,setTransfer,setEphemerides,destroy(){alive=false;observer?.disconnect();cancelAnimationFrame(raf);}};
 }
