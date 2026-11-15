@@ -47,5 +47,6 @@ test("time axes remain real UTC ticks on long simulation windows",()=>{
 test("globe illumination terminator follows geometric sun incidence",()=>{
  const shader=readFileSync(new URL("../web/globe.js",import.meta.url),"utf8");
  assert.match(shader,/max\(dot\(n,normalize\(sun\)\),0\.0\)/);
+ assert.match(shader,/0\.29\+0\.71\*sqrt\(incidence\)/);
  assert.doesNotMatch(shader,/smoothstep\(-0\.30,0\.55/);
 });
