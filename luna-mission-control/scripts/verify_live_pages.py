@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-sidebar-actions-v6"
+RELEASE = "20261114-compact-sky-v7"
 
 
 class Assets(html.parser.HTMLParser):
@@ -64,13 +64,13 @@ def verify(base_url):
     if '<nav class="mission-toolbar"' not in page:
         raise AssertionError("Missing top simulation action bar")
     actions = page.split('<nav class="mission-toolbar"', 1)[1].split("</nav>", 1)[0]
-    if actions.count("<button ") != 2 or "<select" in actions or "<input" in actions:
-        raise AssertionError("Top bar must contain only the Simulate and Optimize buttons")
-    for name in ("date", "time", "duration", "sampleMinutes", "mode", "preserve",
+    if actions.count("<button ") != 3 or 'id="optimizeMenu"' not in actions:
+        raise AssertionError("Top bar must include the hidden comparison chooser")
+    for name in ("date", "time", "duration", "orbital", "horizon",
                  "area", "battery", "load", "reserve"):
         if f'id="{name}"' not in aside:
             raise AssertionError(f"{name} must remain in left sidebar")
-    for name in ("simulate", "optimize"):
+    for name in ("simulate", "optimize", "runOptimize", "preserve"):
         if f'id="{name}"' not in actions:
             raise AssertionError(f"{name} must remain in top action bar")
     parser = Assets()

@@ -22,32 +22,25 @@ test("Catalog display never asserts an operational avoidance solution",()=>{
  assert.match(source,/NOT real-time propagated coordinates/);
  assert.match(source,/CACHE_MS=2\*60\*60\*1000/);
 });
-test("Mission parameters stay in a scrollable left sidebar while only two actions remain above the globe",()=>{
+test("Compact sidebar keeps sky/horizon while hiding removed controls",()=>{
  const html=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
  const root=readFileSync(new URL("../../index.html",import.meta.url),"utf8");
  const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");
  for(const page of [html,root]){
-  assert.match(page,/<body class="sidebar-layout">/);
-  assert.match(page,/<div class="fields" id="missionFields"/);
-  const aside=page.split("</aside>")[0],toolbar=page.match(/<nav class="mission-toolbar"[\s\S]*?<\/nav>/)?.[0];
-  assert.ok(toolbar,"top action bar missing");
-  assert.equal((toolbar.match(/<button\b/g)||[]).length,2,"action bar must contain exactly two buttons");
-  assert.equal((toolbar.match(/<select\b|<label\b|<input\b/g)||[]).length,0,"no parameters allowed in action bar");
-  for(const id of ["date","time","duration","sampleMinutes","mode","preserve",
-                   "area","tilt","az","battery","load","reserve","thermalCap","rfTx","roverSlope"]){
-   assert.ok(aside.includes('id="'+id+'"'),id+" should be in left sidebar");
+  assert.match(page,/class="sky-stack"/);
+  assert.match(page,/id="orbital"/);
+  assert.match(page,/id="horizon"/);
+  assert.match(page,/class="spacecraft-assumptions" open/);
+  assert.match(page,/id="optimizeMenu"[^>]*hidden/);
+  assert.ok(page.indexOf('id="duration"')>page.indexOf("Spacecraft assumptions"));
+  assert.ok(page.indexOf('id="preserve"')>page.indexOf('id="optimize"'));
+  for(const gone of ["mode","sampleMinutes","coords","focus"])
+   assert.doesNotMatch(page,new RegExp('id="'+gone+'"'));
+  for(const id of ["date","time","duration","preserve","simulate","optimize","runOptimize"])
    assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+" unique");
-  }
-  for(const id of ["simulate","optimize"]){
-   assert.ok(toolbar.includes('id="'+id+'"'),id+" should be in top action bar");
-   assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+" unique");
-   assert.ok(!aside.includes('id="'+id+'"'),id+" must not be in left sidebar");
-  }
-  assert.ok(page.indexOf('<nav class="mission-toolbar"')<page.indexOf('id="mapPage"'));
  }
- assert.match(css,/\.sidebar-layout \.sidebar \.fields\{/);
- assert.match(css,/overflow-y:auto/);
- assert.match(css,/\.sidebar-layout \.mission-toolbar button\{/);
+ assert.match(css,/sky-stack-card/);
+ assert.match(css,/scrollbar-width:none/);
 });
 test("Idealized transfer solves Kepler time-of-flight and slows near apogee",()=>{
  const duration=idealTransferDays(200,384400);

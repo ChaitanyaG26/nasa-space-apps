@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-sidebar-actions-v6"></head>
+<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-compact-sky-v7"></head>
 <body class="sidebar-layout">
 <div class="shell">
 <aside class="sidebar">
@@ -12,25 +12,21 @@
 <label>Landing date (UTC)<input id="date" type="date" value="2026-11-20"></label>
 <label>Landing time: <b id="timeLabel">12:00 UTC</b><input id="time" type="range" min="0" max="143" value="72"></label>
 
-<label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option><option value="28">28 days</option><option value="35">35 days</option></select></label>
-<label>Simulation time step<select id="sampleMinutes"><option value="15">15 minutes (interpolated)</option><option value="30" selected>30 minutes (recommended)</option><option value="60">60 minutes</option></select></label>
+
+
 </div>
-<div class="control-group"><h3>02 / LANDING SITE</h3>
-
-<section class="site"><b>⌖ Selected location</b><div id="coords">89.500° S, 0.000° E</div><button id="focus">Focus south pole</button></section>
-<label>Ephemeris source<select id="mode"><option value="horizons" selected>NASA JPL Horizons (cached reference)</option><option value="demo">Offline illustrative geometry</option></select></label>
-
-
-
-
-<details class="toolbar-disclosure"><summary>Celestial geometry preview</summary><div class="toolbar-flyout">
-<section class="mini"><strong>Moon-centered directions <small>MOON-FIXED</small></strong><svg id="orbital" viewBox="0 0 320 110"></svg></section>
-<section class="mini"><strong>Local horizon <small>AZ / EL</small></strong><svg id="horizon" viewBox="0 0 320 110"></svg><div id="angles">Select a location</div></section>
-<p class="muted" id="source">Offline illustrative positions · not NASA ephemerides</p>
-</div></details>
-</div>
+<section class="sky-stack" aria-label="Celestial positions and lunar horizon">
+<h3>02 / SKY &amp; HORIZON</h3>
+<div class="sky-stack-card">
+<div class="sky-caption"><span>☀ Sun</span><span>◉ Earth</span><span>◐ Moon</span></div>
+<section class="sky-mini"><strong>Moon-centered directions</strong><svg id="orbital" viewBox="0 0 320 110" role="img" aria-label="Sun and Earth directions from the Moon"></svg></section>
+<section class="sky-mini"><strong>Local terrain horizon</strong><svg id="horizon" viewBox="0 0 320 110" role="img" aria-label="Sun and Earth angles against the selected site's terrain horizon"></svg></section>
+<div id="angles" class="sky-angles">Loading JPL reference…</div>
+<small id="source" class="sky-source">JPL Horizons reference · local horizon loading</small>
+</div></section>
 <div class="control-group control-engineering"><h3>03 / SPACECRAFT &amp; ENGINEERING</h3>
-<details class="toolbar-disclosure"><summary>Spacecraft assumptions</summary><div class="toolbar-flyout">
+<details class="toolbar-disclosure spacecraft-assumptions" open><summary>Spacecraft assumptions</summary><div class="toolbar-flyout">
+<label>Mission duration<select id="duration"><option value="1">1 day</option><option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="21">21 days</option><option value="28">28 days</option><option value="35">35 days</option></select></label>
 <label>Solar array (m²)<input id="area" type="number" value="1.6" step="0.1" min="0.1"></label>
 <label>Panel tilt (°)<input id="tilt" type="number" value="60" min="0" max="90"></label>
 <label>Panel azimuth (°)<input id="az" type="number" value="0" min="0" max="360"></label>
@@ -61,15 +57,18 @@
 
 <details class="toolbar-disclosure"><summary>Data &amp; model notes</summary><div class="toolbar-flyout"><p class="muted">NASA Horizons data are hourly; shorter steps interpolate positions and recalculate engineering models, not additional NASA observations.</p></div></details>
 </div>
-<div class="control-group control-comparison"><h3>04 / COMPARISON</h3>
-<label>Preserve<select id="preserve"><option value="time">Landing date/time — optimize site</option><option value="site">Landing site — optimize time ±14 days</option></select></label>
-</div>
+
 </div>
 </aside>
 <main>
 <nav class="mission-toolbar" aria-label="Simulation actions">
 <button id="simulate" class="primary" type="button">▶ Simulate mission</button>
-<button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
+<div class="optimize-trigger">
+<button id="optimize" class="secondary" disabled type="button" aria-expanded="false" aria-controls="optimizeMenu">◇ Optimize &amp; compare</button>
+<div id="optimizeMenu" class="optimize-menu" role="group" aria-label="Optimization comparison options" hidden>
+<label>Compare by changing<select id="preserve"><option value="time">Landing site · keep date</option><option value="site">Landing date · keep site (±14 days)</option></select></label>
+<button id="runOptimize" class="optimize-run" type="button">Run comparison</button>
+</div></div>
 </nav>
 <div id="mapPage" class="map-page">
 <div class="map-top">EXPLORE THE MOON <span>3D LUNAR GLOBE · SELECT A SITE</span></div>
@@ -82,5 +81,5 @@
 <div id="results"></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
 </main>
-</div><script type="module" src="/app.js?v=20261114-sidebar-actions-v6"></script>
+</div><script type="module" src="/app.js?v=20261114-compact-sky-v7"></script>
 </body></html>

@@ -28,18 +28,17 @@ if cname.is_file():
 # Fail the Pages job if staging silently loses any main-screen control or
 # referenced module. Prevent a green deployment with broken/duplicate actions.
 assert 'class="mission-toolbar"' in html, "Top toolbar missing from staged page"
-for control in ("date", "time", "simulate", "optimize", "preserve", "globe"):
+for control in ("date", "time", "duration", "simulate", "optimize", "runOptimize", "preserve", "globe"):
     assert html.count(f'id="{control}"') == 1, f"Missing or duplicate {control} control"
 assert '<body class="sidebar-layout">' in html, "Missing vertical mission-sidebar layout"
 aside = html.split("</aside>", 1)[0]
 actions = re.search(r'<nav class="mission-toolbar"[^>]*>(.*?)</nav>', html, re.S)
 assert actions, "Thin top action bar missing"
-assert actions.group(1).count("<button ") == 2, "Top bar must contain exactly two buttons"
-assert "<input" not in actions.group(1) and "<select" not in actions.group(1), "Parameters leaked into top bar"
-for control in ("date", "time", "duration", "sampleMinutes", "mode", "preserve",
-                "area", "battery", "load", "reserve"):
+assert actions.group(1).count("<button ") == 3, "Top bar must include Simulate, Optimize, hidden Run"
+assert 'id="optimizeMenu"' in actions.group(1) and "hidden" in actions.group(1), "Comparison settings must stay hidden until opened"
+for control in ("date", "time", "duration", "area", "battery", "load", "reserve", "orbital", "horizon"):
     assert f'id="{control}"' in aside, f"{control} must be in left sidebar"
-for control in ("simulate", "optimize"):
+for control in ("simulate", "optimize", "runOptimize", "preserve"):
     assert f'id="{control}"' in actions.group(1), f"{control} must be in thin top bar"
 style_version = re.search(r'href="\./styles\.css\?v=([^"]+)"', html)
 app_version = re.search(r'src="\./app\.js\?v=([^"]+)"', html)

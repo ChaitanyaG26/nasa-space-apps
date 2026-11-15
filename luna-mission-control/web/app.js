@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-three-d-v5";
+import "./launch-window.mjs?v=20261114-compact-sky-v7";
 import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
@@ -76,8 +76,8 @@ async function attachDivinerClimatology(result,request,geom){
 const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
-function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("coords").textContent=text;$("mapCoords").textContent=text}
-function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:Number($("sampleMinutes").value),data_mode:$("mode").value}}
+function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("mapCoords").textContent=text;}
+function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:30,data_mode:"horizons"}}
 async function api(path,data){
  if(IS_PAGES){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
@@ -378,9 +378,27 @@ async function mountTerrainViews(){
  }
 }
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
-$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
-$("optimize").addEventListener("click",()=>{if(!lastMission)return;busy($("optimize"),async()=>{comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});render();showResults();await mountTerrainViews()})});
-$("back").addEventListener("click",showGlobe);$("focus").addEventListener("click",()=>{globe.focus();position={latitude:-89.5,longitude:0};globe.setSite(position.latitude,position.longitude);showCoords();refreshPreview()});
+$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{closeOptimizeMenu();const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
+const optimizeMenu=$("optimizeMenu");
+function closeOptimizeMenu(){optimizeMenu.hidden=true;$("optimize").setAttribute("aria-expanded","false");}
+$("optimize").addEventListener("click",()=>{
+ if(!lastMission)return;
+ const shouldOpen=optimizeMenu.hidden;
+ optimizeMenu.hidden=!shouldOpen;$("optimize").setAttribute("aria-expanded",String(shouldOpen));
+ if(shouldOpen)$("preserve").focus();
+});
+$("runOptimize").addEventListener("click",()=>{
+ if(!lastMission)return;
+ closeOptimizeMenu();
+ busy($("runOptimize"),async()=>{
+  comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});
+  render();showResults();await mountTerrainViews();
+ });
+});
+document.addEventListener("pointerdown",e=>{if(!e.target.closest(".optimize-trigger"))closeOptimizeMenu();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!optimizeMenu.hidden){closeOptimizeMenu();$("optimize").focus();}});
+
+$("back").addEventListener("click",showGlobe);
 // Time animation evaluates the ephemeris at exact UTC steps: source vectors
 // are hourly NASA/JPL samples; intermediate positions are interpolated.
 const controls=document.createElement("div");controls.className="ephemeris-playback";
@@ -402,10 +420,6 @@ async function animateFrame(){
 }
 $("playEphemeris").addEventListener("click",()=>{if(playing){stopPlayback();return;}playing=true;$("playEphemeris").textContent="Ⅱ Pause animation";$("playEphemeris").setAttribute("aria-pressed","true");$("playbackStatus").textContent="UTC · hourly NASA vectors, sub-hour interpolation";animateFrame();});
 $("time").addEventListener("input",()=>{stopPlayback();$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
-for(const id of ["date","mode"])$(id).addEventListener("change",()=>{stopPlayback();refreshPreview()});
+$("date").addEventListener("change",()=>{stopPlayback();refreshPreview()});
 showCoords();refreshPreview();
-if(IS_PAGES){
- $("mode").value="horizons";
- $("mode").title="NASA/JPL observer azimuth, elevation, and range are generated by GitHub Actions. Browser computes Moon-centered body positions and corrects surface-site parallax; local terrain shadows are not yet modeled.";
- refreshPreview();
-}
+

@@ -619,3 +619,38 @@ body{background:var(--luna-night);}
   .sidebar-layout .map-page{height:auto;min-height:0;flex:1;}
   .sidebar-layout .results-page{height:auto;min-height:0;flex:1;}
 }
+
+
+/* Compact mission controls v7: no landing-site bar or duplicate selectors. */
+.sidebar-layout .sidebar .fields{scrollbar-width:none;scrollbar-gutter:auto;padding:10px 15px 20px;}
+.sidebar-layout .sidebar .fields::-webkit-scrollbar{width:0;height:0;display:none;}
+.sidebar-layout .sidebar .control-group{border:0;padding:3px 0 11px;margin:0;}
+.sidebar-layout .sidebar .control-group h3,.sidebar-layout .sidebar .sky-stack h3{margin:9px 0 7px;color:#f9d45c;}
+.sidebar-layout .sidebar .control-group label{margin:7px 0;}
+.sidebar-layout .sidebar .control-group input:not([type=range]),.sidebar-layout .sidebar .control-group select{padding:8px 10px;margin-top:5px;font-size:12px;}
+.sky-stack{margin:5px 0 10px;display:block;}
+.sky-stack-card{background:#10273a;border:1px solid #2c4863;border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:5px;}
+.sky-stack .sky-caption{display:flex;gap:12px;color:#c9e0ed;font-size:10px;font-weight:750;}
+.sky-stack .sky-caption span:first-child{color:#f9ce4c;}
+.sky-stack .sky-caption span:nth-child(2){color:#73bfff;}
+.sky-stack .sky-caption span:last-child{color:#d5dce9;}
+.sky-mini{margin:0;padding:6px 7px;border:1px solid #284559;border-radius:8px;background:#0d2133;}
+.sky-mini strong{display:block;color:#afcadb;font-size:10px;letter-spacing:.2px;margin-bottom:2px;}
+.sky-mini svg{width:100%;height:77px;display:block;}
+.sky-stack .sky-angles{font-size:10px;line-height:1.4;color:#c3dbe6;max-height:43px;overflow:hidden;}
+.sky-stack .sky-source{display:block;font-size:9px;color:#91acbc;line-height:1.35;max-height:30px;overflow:hidden;}
+.sidebar-layout .spacecraft-assumptions[open]{border-color:#52759a;background:#142e44;}
+.sidebar-layout .spacecraft-assumptions .toolbar-flyout{padding:0 10px 9px;}
+.sidebar-layout .spacecraft-assumptions .toolbar-flyout label{margin:6px 0;}
+.sidebar-layout .spacecraft-assumptions .toolbar-flyout input,.sidebar-layout .spacecraft-assumptions .toolbar-flyout select{padding:7px 9px;}
+.sidebar-layout .mission-toolbar{gap:9px;}
+.optimize-trigger{position:relative;display:flex;align-items:center;flex:0 1 232px;min-width:170px;max-width:260px;}
+.sidebar-layout .mission-toolbar .optimize-trigger #optimize{flex:1 1 auto;width:100%;max-width:none;min-width:0;}
+.optimize-menu[hidden]{display:none!important;}
+.optimize-menu{position:absolute;right:0;top:calc(100% + 9px);width:min(300px,90vw);z-index:35;background:#10283c;border:1px solid #416487;border-radius:11px;padding:15px;box-shadow:0 16px 40px #041321b3;}
+.optimize-menu label{color:#c9dfed;font-size:11px;margin:0 0 10px;font-weight:700;}
+.optimize-menu select{width:100%;margin:7px 0 0;padding:9px;border:1px solid #567c9d;background:#193852;color:#fff;border-radius:8px;font-size:12px;}
+.sidebar-layout .mission-toolbar .optimize-menu .optimize-run{background:#f9ce4c;color:#091a2e;border:0;padding:10px 12px;font-size:12px;width:100%;max-width:none;min-width:0;min-height:38px;margin:0;font-weight:850;box-shadow:0 0 18px #f9ce4c3b;}
+.optimize-menu:focus-within{border-color:#f9ce4c;}
+@media(max-width:850px){.optimize-trigger{flex:1 1 0;min-width:0;max-width:none;}.optimize-menu{right:0;}}
+@media(max-width:640px){.sky-mini svg{height:63px;}.sidebar-layout .sidebar{flex-basis:48dvh;height:48dvh;max-height:56dvh;}.sidebar-layout .mission-toolbar .optimize-trigger{flex:1 1 50%;}.sidebar-layout .mission-toolbar .optimize-trigger #optimize{font-size:11px;padding:7px 5px;}.optimize-menu{min-width:250px;}}
