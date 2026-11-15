@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-moon-mobile-v16"
+RELEASE = "20261114-sunlit-halo-v17"
 
 
 class Assets(html.parser.HTMLParser):
@@ -102,6 +102,7 @@ def verify(base_url):
         "vehicle-performance.mjs": "assessVehicle",
         "horizons-geocentric.mjs": "geocentricAt",
         "landing-sites.mjs": "HISTORIC_LANDING_SITES",
+        "lunar-limb-halo.mjs": "haloLimbStrength",
         "moon-sky-3d.mjs": "createMoonSky3D",
         "mission-surface-3d.mjs": "loadMoonSiteGrid",
         "usgs-3dep.mjs": "decodeFloatTiff",
