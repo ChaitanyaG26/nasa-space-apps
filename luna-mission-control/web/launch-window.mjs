@@ -186,7 +186,7 @@ function renderScenarioPanels(el){
   const destination=scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario));
   const sequence=mountMissionSequences(article.querySelector("[data-sequences-host]"),{
    scenario:article.dataset.colaScenario,site:siteId,
-   latitude:destination?.lat,longitude:destination?.lon,
+   latitude:destination?.lat,longitude:destination?.lon,landingUtc:destination?.time,
    ...visualSelections[article.dataset.colaScenario]
   });
   article.sequenceController=sequence;sequenceControllers.push(sequence);
