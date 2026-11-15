@@ -134,3 +134,55 @@ The small left-sidebar Moon sky viewer uses the same NASA-derived Moon-fixed uni
 ### Chart help and additional plots
 
 Each of the original eight charts has an on-demand information icon explaining the metric, its relevance to the mission and how to read it. Subtitles and duplicate min/max captions are hidden by default for compactness. **No ninth or tenth graph has been added in this release**: the old binary Earth visibility ribbon was replaced by the continuous, 0°-threshold Earth clearance plot. Extra graphs should only be added if they introduce independent, scientifically supported decision information.
+
+
+## Scenario-specific JPL geometry and solar-lit 3D scenes
+
+The orbit viewer now samples Moon geometry **at each frame's UTC time** from
+the JPL Horizons geocentric ICRF state-vector cache. The simulated spacecraft
+uses an idealized Earth-centered two-body coast arc oriented toward the Moon's
+position **at that scenario's arrival UTC**. The Sun is a directional reference,
+not a nearby object. When the JPL vector cache is unavailable or a scenario is
+outside coverage, an analytic approximation is explicitly identified.
+
+Changing the arrival date can change the displayed Moon location, Sun
+direction, arrival-aligned transfer arc, and travel time. **Changing only the
+surface landing site at an identical UTC does not physically change the
+geocentric Earth–Moon geometry**; site-specific terrain, illumination and
+communications results differ separately. No fake geocentric trajectory
+variation is introduced merely to differentiate scenarios.
+
+### Solar lighting
+
+The launch scene uses the scenario's departure UTC plus elapsed modeled ascent
+seconds. It combines the cached NASA/JPL Earth-centered Sun ICRF vector with
+a Greenwich sidereal rotation to approximate the Sun's geometric azimuth and
+elevation at Kennedy, Cape Canaveral or Vandenberg. The technique ignores
+UT1 corrections, atmospheric refraction and local skyline occlusion and is
+**not** an operational launch-pad sunlight calculation.
+
+The descent scene uses the established NASA/JPL Moon-centered Sun geometry,
+including selected-site parallax, at the selected scenario's lunar arrival UTC
+minus the remaining seconds of the 180-meter terminal descent. The Earth
+sidereal formula is not used for the Moon.
+
+For both scenes, terrain-cell normals estimated from the elevation grid and
+vehicle-face normals determine approximate Lambertian lighting:
+
+    brightness = ambient + diffuse * max(0, dot(surfaceNormal, sunDirection))
+
+When the Sun is above the geometric horizon, an elongated object shadow is
+projected opposite its azimuth. Its horizontal length is approximately
+object height divided by tangent(solar elevation), limited to the viewport.
+A directional Sun disk/glow provides orientation. These are **visual lighting
+cues**, not a ray-traced terrain self-shadowing or hardware thermal analysis.
+A neutral fill is used when JPL data are missing; a nighttime fill does not
+mean the terrain is receiving sunlight.
+
+Launch, orbit, and landing controllers now share the scenario's departure/
+arrival UTC. Selecting a candidate departure resynchronizes all three.
+The tests cover UTC-dependent frame geometry, local solar angles, lit/unlit
+shadows and a physically correct shadow-length relationship.
+
+The transfer, ascent and landing models remain educational and do not provide
+a certified trajectory, safe landing guidance, or formal COLA clearance.
