@@ -1,5 +1,5 @@
-import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-threeway-v11";
-import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-compact-terrain-v12";
+import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-solar-3d-v13";
+import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-solar-3d-v13";
 import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
@@ -196,16 +196,17 @@ function renderScenarioPanels(el){
  for(const article of list.querySelectorAll("[data-cola-scenario]")){
   const siteId=userState[article.dataset.colaScenario]?.site||"ksc";
   const destination=scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario));
-  const sequence=mountMissionSequences(article.querySelector("[data-sequences-host]"),{
-   scenario:article.dataset.colaScenario,site:siteId,
-   latitude:destination?.lat,longitude:destination?.lon,landingUtc:destination?.time,
-   ...visualSelections[article.dataset.colaScenario]
-  });
-  article.sequenceController=sequence;sequenceControllers.push(sequence);
   const moonDistance=destination?moonPosition(destination.time).distanceKm:384400;
   const parkingKm=Number(controls.parking)||200;
   const days=idealTransferDays(parkingKm,moonDistance);
   const arrival=destination?.time||Date.parse("2026-11-20T00:00:00Z");
+  const sequence=mountMissionSequences(article.querySelector("[data-sequences-host]"),{
+   scenario:article.dataset.colaScenario,site:siteId,
+   latitude:destination?.lat,longitude:destination?.lon,landingUtc:arrival,
+    departureUtc:arrival-days*DAY,
+   ...visualSelections[article.dataset.colaScenario]
+  });
+  article.sequenceController=sequence;sequenceControllers.push(sequence);
   const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{
    scenario:article.dataset.colaScenario,moonEphemeris:moonPosition,
    parkingKm,moonDistanceKm:moonDistance,flightDays:days,departureUtc:arrival-days*DAY
@@ -226,7 +227,11 @@ function renderScenarioPanels(el){
     const days=idealTransferDays(parkingKm,moonKm);
     article.orbitController?.setTransfer?.({
      parkingKm,moonDistanceKm:moonKm,flightDays:days,
-     departureUtc:destination.time-days*DAY
+     departureUtc:destination.time-days*DAY,
+     preservePlayback:true
+    });
+    article.sequenceController?.setTimeline?.({
+     departureUtc:destination.time-days*DAY,landingUtc:destination.time
     });
    }catch{/* Outside JPL coverage: keep marked approximate ephemeris. */}
    article.orbitController?.setEphemerides?.(
@@ -274,6 +279,9 @@ function runScenario(article){
    parkingKm:parking,
    moonDistanceKm:selected.geometry.moon.distanceKm,
    departureUtc:selected.launch
+  });
+  article.sequenceController?.setTimeline?.({
+   departureUtc:selected.launch,landingUtc:selected.arrival
   });
  }
 }
