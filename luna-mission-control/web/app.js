@@ -426,5 +426,20 @@ $("restartMission").addEventListener("click",()=>{
 $("back").addEventListener("click",showGlobe);
 $("time").addEventListener("input",()=>{$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
 $("date").addEventListener("change",()=>refreshPreview());
+// Always-visible circular up-arrow: scroll the mobile document and desktop
+// results/sidebar independently. Respect reduced-motion preferences.
+$("scrollToTop")?.addEventListener("click",()=>{
+ const behavior=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+  ?"instant":"smooth";
+ const goTop=element=>{
+  if(!element)return;
+  if(typeof element.scrollTo==="function")element.scrollTo({top:0,behavior});
+  else element.scrollTop=0;
+ };
+ goTop(document.scrollingElement);
+ goTop($("resultsPage"));
+ goTop($("missionFields"));
+ window.scrollTo({top:0,behavior});
+});
 showCoords();refreshPreview();
 
