@@ -233,7 +233,7 @@ export function mountOrbitAnimation(host,{
     ' · epoch '+escapeHTML(o.epoch.slice(0,16))+
     ' · age '+catalogAgeDays(o,at).toFixed(1)+' d</li>').join("")+'</ul>':
     '<p>Public orbital metadata could not be loaded. No satellite positions are plotted.</p>')+
-   '<p>These are <b>NOT</b> real-time propagated coordinates and <b>NOT COLA screening</b>. Data updated at most once per CelesTrak two-hour cadence.</p>';
+   '<p>NOT real-time propagated coordinates, and NOT COLA screening. Data updated at most once per CelesTrak two-hour cadence.</p>';
  }
  function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,departureUtc:launch}={}){
   if(Number.isFinite(alt)&&alt>=160&&alt<=2000)scene.parkingKm=alt;
@@ -258,8 +258,8 @@ export function mountOrbitAnimation(host,{
  canvas.addEventListener("wheel",e=>{e.preventDefault();camera.zoom=clamp(camera.zoom*Math.exp(-e.deltaY*.0012),.5,2.8);draw();},{passive:false});
  canvas.addEventListener("keydown",e=>{
   if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)){
-   e.preventDefault();camera.yaw+=e.key==="ArrowLeft"?-.12:e.key==="ArrowRight"?.12:0;
-   camera.pitch=clamp(camera.pitch+(e.key==="ArrowUp"?-.12:e.key==="ArrowDown"?.12:0),-1.5,1.5);
+   e.preventDefault();camera.yaw+=(e.key==="ArrowLeft" ? -0.12 : e.key==="ArrowRight" ? 0.12 : 0);
+   camera.pitch=clamp(camera.pitch+(e.key==="ArrowUp" ? -0.12 : e.key==="ArrowDown" ? 0.12 : 0),-1.5,1.5);
    draw();
   }
  });

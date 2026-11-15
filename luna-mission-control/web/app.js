@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-kepler-v4";
+import "./launch-window.mjs?v=20261114-three-d-v5";
 import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
