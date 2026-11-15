@@ -24,7 +24,7 @@ test("Catalog display never asserts an operational avoidance solution",()=>{
 });
 test("Mission parameters stay in a scrollable left sidebar while only two actions remain above the globe",()=>{
  const html=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
- const root=readFileSync(new URL("../../../index.html",import.meta.url),"utf8");
+ const root=readFileSync(new URL("../../index.html",import.meta.url),"utf8");
  const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");
  for(const page of [html,root]){
   assert.match(page,/<body class="sidebar-layout">/);
