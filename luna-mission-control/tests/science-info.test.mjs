@@ -73,3 +73,18 @@ test("Published browser mission passes rover input through bounded LOLA screenin
  assert.match(readFileSync(new URL("../web/science-info.mjs",import.meta.url),"utf8"),
   /route\?\.status\|\|/);
 });
+
+test("Optimizer displays progress without altering idle toolbar geometry",()=>{
+ const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
+ const html=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");
+ for(const id of ["optimizeProgress","optimizeProgressText","optimizeProgressCount","optimizeProgressBar"])
+  assert.ok(html.includes('id="'+id+'"'),id);
+ assert.match(html,/id="optimizeProgress"[^>]+aria-live="polite"[^>]+hidden/);
+ assert.match(app,/reportOptimizeProgress\("sites"\)/);
+ assert.match(app,/reportOptimizeProgress\("dates"\)/);
+ assert.match(app,/const completed=sites\.completed\+dates\.completed/);
+ assert.match(app,/finally\{\s*endOptimizeProgress\(\)/);
+ assert.match(css,/\.optimize-progress\[hidden\]\{display:none!important\}/);
+ assert.match(css,/\.optimize-progress\{[\s\S]*?position:absolute/);
+});
