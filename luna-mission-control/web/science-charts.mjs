@@ -142,7 +142,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
   const highlightClip=lit?'<clipPath id="clip-'+id+'"><rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'"/></clipPath>':"";
   const pathsWithThreshold=lit?
    paths.map(path=>'<path d="'+path+'" class="plot-series" fill="none" stroke="#93a6b8" stroke-width="2.4"/>'+
-    '<path d="'+path+'" class="plot-active-series" clip-path="url(#clip-'+id+')" fill="none" stroke="#24a890" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>').join(""):
+    '<path d="'+path+'" class="plot-active-series" clip-path="url(#clip-'+id+')" fill="none" stroke="#3a9ad2" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>').join(""):
    paths.map(path=>'<path d="'+path+'" fill="none" class="plot-series" stroke="'+color+'" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>').join("");
   series='<defs><linearGradient id="fill-'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".20"/><stop offset="100%" stop-color="'+color+'" stop-opacity=".02"/></linearGradient>'+highlightClip+'</defs>'+
    background+pathsWithThreshold+
@@ -154,7 +154,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '<svg data-plot-id="'+id+'" role="img" aria-label="'+esc(title)+' from '+new Date(start).toISOString()+' to '+new Date(end).toISOString()+
  '" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
  '<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+ph+'" fill="#f8fbfc"/>'+
- (highlightAbove&&Number.isFinite(threshold)?'<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'" fill="#24a890" opacity=".07"/>':"")+
+ (highlightAbove&&Number.isFinite(threshold)?'<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'" fill="#3a9ad2" opacity=".07"/>':"")+
  grid+series+
  '<line class="plot-timecursor" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+ '<line class="plot-hoverline" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+
  '<circle class="plot-hoverdot" cx="'+M.left+'" cy="'+M.top+'" r="5" fill="'+color+'" stroke="white" stroke-width="2" visibility="hidden"/>'+
