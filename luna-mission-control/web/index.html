@@ -1,16 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-three-d-v5"></head>
-<body>
+<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-sidebar-actions-v6"></head>
+<body class="sidebar-layout">
 <div class="shell">
 <aside class="sidebar">
 <header><strong class="logo">◐ LUNA<span>.</span></strong><small>LUNAR MISSION CONTROL</small></header>
-
-</aside>
-<main>
-<section class="mission-toolbar" aria-label="Mission control parameters">
-<div class="fields">
+<div class="fields" id="missionFields" aria-label="Mission parameters">
 <div class="control-group"><h3>01 / MISSION TIME</h3>
 
 <label>Landing date (UTC)<input id="date" type="date" value="2026-11-20"></label>
@@ -65,15 +61,16 @@
 
 <details class="toolbar-disclosure"><summary>Data &amp; model notes</summary><div class="toolbar-flyout"><p class="muted">NASA Horizons data are hourly; shorter steps interpolate positions and recalculate engineering models, not additional NASA observations.</p></div></details>
 </div>
-<div class="control-group control-actions"><h3>04 / RUN &amp; COMPARE</h3>
-<button id="simulate" class="primary" type="button">▶ Simulate mission</button>
-
-<h3 class="comparison-label">COMPARISON</h3>
+<div class="control-group control-comparison"><h3>04 / COMPARISON</h3>
 <label>Preserve<select id="preserve"><option value="time">Landing date/time — optimize site</option><option value="site">Landing site — optimize time ±14 days</option></select></label>
-<button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
-
 </div>
-</div></section>
+</div>
+</aside>
+<main>
+<nav class="mission-toolbar" aria-label="Simulation actions">
+<button id="simulate" class="primary" type="button">▶ Simulate mission</button>
+<button id="optimize" class="secondary" disabled>◇ Optimize & compare</button>
+</nav>
 <div id="mapPage" class="map-page">
 <div class="map-top">EXPLORE THE MOON <span>3D LUNAR GLOBE · SELECT A SITE</span></div>
 <canvas id="globe" aria-label="Drag to rotate lunar globe, scroll to zoom, click to select a location"></canvas>
@@ -85,5 +82,5 @@
 <div id="results"></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
 </main>
-</div><script type="module" src="/app.js?v=20261114-three-d-v5"></script>
+</div><script type="module" src="/app.js?v=20261114-sidebar-actions-v6"></script>
 </body></html>
