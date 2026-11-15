@@ -2,6 +2,7 @@ import {loadPolarPatch,samplePolarHeightKm} from "./lola-polar-detail.mjs";
 import {destination} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
+import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
 /* LUNA scenario-specific launch and landing cinematic visualizations.
  * Drawings show selectable historical vehicle/lander silhouettes, not actual
  * vehicle performance, compatibility, descent navigation or flight clearance.
@@ -48,9 +49,9 @@ export function illustratedSurfaceHeight(lat,lon,x=300){
 export const rocketFraction=t=>ease((t-.08)/.84);
 export const landerFraction=t=>ease((t-.02)/.96);
 
-export function mountMissionSequences(host,{scenario="original",site="ksc",latitude=-89.5,longitude=0,landingUtc=null,rocket=null,lander=null}={}){
+export function mountMissionSequences(host,{scenario="original",site="ksc",latitude=-89.5,longitude=0,landingUtc=null,rocket=null,lander=null,payloadKg=500}={}){
  if(!host||typeof document==="undefined")return {destroy(){},setSite(){},setTarget(){},selection(){}};
- const state={site,latitude,longitude,landingUtc,rocket,lander};
+ const state={site,latitude,longitude,landingUtc,rocket,lander,payloadKg};
  const descent=descentParameters({altitudeM:180,entryDownSpeedMS:14,touchDownSpeedMS:.8});
  let measuredTerrain=null,terrainStatus="Loading NASA LOLA terrain…",sunElevationDeg=null,terrainRequest=0;
  const sampleGround=(offsetM)=>{
@@ -95,8 +96,10 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  const tone=scenario==="optimized"?"#62afff":"#f9d25c";
  host.innerHTML='<section class="mission-sequences" aria-label="Mission cinematic sequences">'+
   '<div class="sequence-panel"><div class="sequence-header"><strong>Launch animation</strong>'+
-  '<label>Rocket<select data-rocket aria-label="Select rocket illustration"></select></label></div>'+
+  '<label>Rocket<select data-rocket aria-label="Select rocket illustration"></select></label>'+
+ '<label>Payload mass (kg)<input data-payload-mass type="number" min="1" max="200000" step="50" value="500" aria-label="Mission payload mass in kilograms"></label></div>'+
   '<div class="sequence-meta" data-site-name></div>'+
+ '<div class="vehicle-readout" data-vehicle-readout aria-live="polite"></div>'+
   '<canvas data-scene="launch" width="600" height="278" aria-label="Animated rocket illustration launching from the selected range"></canvas>'+
   '<div class="sequence-playback"><button data-toggle="launch" type="button">Pause</button>'+
   '<input data-scrub="launch" type="range" min="0" max="1000" value="0" aria-label="Rocket launch animation progress"/>'+
@@ -140,6 +143,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   state.lander=chooseLander(state.lander,state.rocket).id;
   landingSelect.innerHTML=landerOptions.map(p=>'<option value="'+escapeHTML(p.id)+'">'+escapeHTML(p.name)+'</option>').join("");
   landingSelect.value=state.lander;
+  query("[data-payload-mass]").value=String(state.payloadKg);
   syncNames();
  };
  const rect=(ctx,x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
@@ -159,6 +163,16 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    const x=(i*179+37)%W,y=(i*67+13)%220;
    circle(ctx,x,y,.5+(i%3)*.34,"#e8f3ff96");
   }
+ }
+ function renderVehicleAssessment(){
+  const assessment=assessVehicle(state.rocket,state.payloadKg);
+  const node=query("[data-vehicle-readout]");
+  const mass=assessment.massProxyKg===null?"unknown":Math.round(assessment.massProxyKg).toLocaleString()+" kg";
+  const thrust=assessment.thrustN===null?"unknown":(assessment.thrustN/1000000).toFixed(1)+" MN";
+  const twr=assessment.initialTwrProxy===null?"unknown":assessment.initialTwrProxy.toFixed(2);
+  node.textContent="Launch mass (proxy) "+mass+" · thrust "+thrust+
+   " · initial T/W "+twr+" · "+assessment.preliminaryLEOCheck;
+  node.title=assessment.limitation||"Unverified launch mass and thrust.";
  }
  function drawRocket(ctx,vehicle,x,y,phase){
   const w=vehicle.diameterM*2.45,h=vehicle.heightM*1.16,fairingH=Math.max(12,h*.16);
@@ -188,8 +202,13 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  }
  function drawLaunch(){
   const ctx=contexts.launch;if(!ctx)return;
-  const p=progress.launch,kin=genericAscentAt(p),maxAltitude=genericAscentAt(1).altitudeM;
-  const up=Math.sqrt(kin.altitudeM/maxAltitude),vehicle=chooseVehicle(state.site,state.rocket);
+  const p=progress.launch,assessment=assessVehicle(state.rocket,state.payloadKg);
+  // Simplified vertical acceleration sensitivity; not an ascent trajectory.
+  const netA=assessment.initialTwrProxy!==null?
+   Math.max(0,assessment.thrustN/assessment.massProxyKg-9.80665):10;
+  const kin=genericAscentAt(p,{netAccelerationMS2:netA});
+  const up=clamp(kin.altitudeM/26000,0,1);
+  const vehicle=chooseVehicle(state.site,state.rocket);
   ctx.clearRect(0,0,W,H);sky(ctx,true);
   const coastal=state.site!=="vandenberg";
   // Site context is representational terrain, not real pad geology.
@@ -213,7 +232,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   }
   drawRocket(ctx,vehicle,x,y,p);
   write(ctx,coastal?"COASTAL LAUNCH RANGE":"PACIFIC LAUNCH RANGE",14,25,"#b8d7ee",11);
-  write(ctx,up>=1?"ASCENT SEGMENT COMPLETE":up>.03?"ASCENT · GENERIC KINEMATICS":"ON THE PAD",14,48,tone,12);
+  write(ctx,up>=1?"MODEL SEGMENT COMPLETE":up>.03?"VERTICAL MODEL · NOT FLIGHT PROFILE":"ON THE PAD",14,48,tone,12);
   write(ctx,"T+"+kin.elapsedS.toFixed(0)+"s  ·  "+(kin.altitudeM/1000).toFixed(1)+" km",14,67,"#e4f1f8",11);
   write(ctx,vehicle.heightM.toFixed(1)+" m tall · "+vehicle.diameterM.toFixed(2)+" m core",14,85,"#aecde0",10);
  }
@@ -289,7 +308,12 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  }
  launchSelect.addEventListener("change",()=>{
   state.rocket=launchSelect.value;syncOptions();
-  progress.launch=0;progress.landing=0;draw();
+  progress.launch=0;progress.landing=0;renderVehicleAssessment();draw();
+ });
+ query("[data-payload-mass]").addEventListener("change",event=>{
+  try{state.payloadKg=checkPayloadMass(event.target.value);}
+  catch{event.target.value=String(state.payloadKg);return;}
+  progress.launch=0;renderVehicleAssessment();draw();
  });
  landingSelect.addEventListener("change",()=>{state.lander=landingSelect.value;progress.landing=0;draw();});
  for(const kind of ["launch","landing"]){
@@ -301,18 +325,18 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    progress[kind]=Number(e.target.value)/1000;playing[kind]=false;draw();
   });
  }
- syncOptions();draw();loadScience();raf=requestAnimationFrame(frame);
+ syncOptions();renderVehicleAssessment();draw();loadScience();raf=requestAnimationFrame(frame);
  return{
   destroy(){alive=false;terrainRequest++;cancelAnimationFrame(raf);observer?.disconnect();},
   setSite(id){
    if(!VEHICLES[id])return;
-   state.site=id;syncOptions();progress.launch=0;draw();
+   state.site=id;syncOptions();progress.launch=0;renderVehicleAssessment();draw();
   },
   setTarget(lat,lon){
    if(Number.isFinite(lat)&&Number.isFinite(lon)){
     state.latitude=lat;state.longitude=lon;syncNames();progress.landing=0;loadScience();draw();
    }
   },
-  selection(){return {rocket:state.rocket,lander:state.lander};}
+  selection(){return {rocket:state.rocket,lander:state.lander,payloadKg:state.payloadKg};}
  };
 }
