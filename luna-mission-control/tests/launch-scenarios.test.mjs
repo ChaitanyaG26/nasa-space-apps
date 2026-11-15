@@ -19,7 +19,7 @@ test("Each scenario has its own COLA hold state and output",()=>{
  assert.match(module,/"site-fixed":\{site:"ksc",holds:""\}/);
  assert.match(module,/data-cola-scenario/);
  assert.match(module,/scenarioTarget\(scenario\)/);
- assert.match(module,/NOT VERIFIED/);
+ assert.match(module,/COLA UNVERIFIED/);
 });
 test("Simulation supplies structured original and optimized arrival dates",()=>{
  const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
