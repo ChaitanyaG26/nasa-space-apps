@@ -188,8 +188,10 @@ function cylinder(ctx,{e=0,n=0,z=0,r=5,height=65,body="#e2edf5",camera,sun=null}
    projectTerrainPoint(e+r*Math.cos(b),n+r*Math.sin(b),z+height*.88,camera),
    projectTerrainPoint(e+r*Math.cos(a),n+r*Math.sin(a),z+height*.88,camera)];
   const mid=(a+b)/2;
+  const night=Boolean(sun&&sun.elevationDeg<=0);
   faces.push({vertices,depth:vertices.reduce((t,p)=>t+p.depth,0)/4,
-   light:sunLight({e:Math.cos(mid),n:Math.sin(mid),u:0},sun,{ambient:.25,diffuse:.75})});
+   light:sunLight({e:Math.cos(mid),n:Math.sin(mid),u:0},sun,
+    {ambient:night?.69:.32,diffuse:night?0:.68})});
  }
  faces.sort((a,b)=>b.depth-a.depth);
  for(const face of faces)polygon(ctx,face.vertices,shadeColor(body,face.light),"#38546e3c");
@@ -197,7 +199,7 @@ function cylinder(ctx,{e=0,n=0,z=0,r=5,height=65,body="#e2edf5",camera,sun=null}
  ctx.beginPath();ctx.moveTo(peak.x,peak.y);
  ctx.lineTo(shoulder.x-r*.58,shoulder.y);ctx.lineTo(shoulder.x+r*.58,shoulder.y);
  ctx.closePath();
- ctx.fillStyle=shadeColor(body,sunLight({e:0,n:0,u:1},sun,{ambient:.25,diffuse:.75}));ctx.fill();
+ ctx.fillStyle=shadeColor(body,sunLight({e:0,n:0,u:1},sun,{ambient:sun?.elevationDeg<=0?.69:.35,diffuse:sun?.elevationDeg<=0?0:.65}));ctx.fill();
 }
 function landerSolid(ctx,{z=0,camera,scale=1,body="#bfcddd",flame=false,sun=null}){
  const half=15,top=15,base=4;
@@ -205,7 +207,9 @@ function landerSolid(ctx,{z=0,camera,scale=1,body="#bfcddd",flame=false,sun=null
  const a=p(-half,-half,z+base),b=p(half,-half,z+base),
   c=p(half,half,z+base),d=p(-half,half,z+base),
   A=p(-half,-half,z+top),B=p(half,-half,z+top),C=p(half,half,z+top),D=p(-half,half,z+top);
- const lit=(color,n)=>shadeColor(color,sunLight(n,sun,{ambient:.18,diffuse:.82}));
+ const night=Boolean(sun&&sun.elevationDeg<=0);
+ const lit=(color,n)=>shadeColor(color,sunLight(n,sun,
+  {ambient:night?.71:.33,diffuse:night?0:.67}));
  polygon(ctx,[d,c,C,D],lit("#8193a8",{e:0,n:1,u:0}));
  polygon(ctx,[b,c,C,B],lit("#c6d4de",{e:1,n:0,u:0}));
  polygon(ctx,[a,b,B,A],lit(body,{e:0,n:-1,u:0}));
@@ -227,14 +231,45 @@ function landerSolid(ctx,{z=0,camera,scale=1,body="#bfcddd",flame=false,sun=null
   ctx.lineTo(from.x+3,from.y);ctx.closePath();ctx.fillStyle="#ffd075";ctx.fill();
  }
 }
+
+function projectedRing(ctx,camera,width,height,radius,color,dash=[]){
+ ctx.beginPath();
+ for(let k=0;k<=80;k++){
+  const a=k*Math.PI*2/80;
+  const p=projectTerrainPoint(radius*Math.cos(a),radius*Math.sin(a),.8,camera,width,height);
+  if(!k)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+ }
+ ctx.lineWidth=1.9;ctx.strokeStyle=color;ctx.setLineDash(dash);
+ ctx.stroke();ctx.setLineDash([]);
+}
+function launchSupportFrame(ctx,camera,width,height,sun){
+ // Generic cinematic tower. NOT an image or survey of a real LC-39,
+ // Cape Canaveral or Vandenberg gantry, and NOT a structural design.
+ const towerHeight=76,breadth=13,east=-43,north=0;
+ const p=(de,dn,z)=>projectTerrainPoint(east+de,north+dn,z,camera,width,height);
+ const neutral=sun&&sun.elevationDeg<=0?"#91b2c5":"#668598";
+ ctx.strokeStyle=neutral;ctx.lineWidth=2;
+ for(const e of [-breadth/2,breadth/2]){
+  const bottom=p(e,0,0),top=p(e,0,towerHeight);
+  ctx.beginPath();ctx.moveTo(bottom.x,bottom.y);ctx.lineTo(top.x,top.y);ctx.stroke();
+ }
+ ctx.lineWidth=1.1;ctx.strokeStyle="#94b5c3";
+ for(let height=9;height<towerHeight;height+=12){
+  const a=p(-breadth/2,0,height),b=p(breadth/2,0,height);
+  const c=p(-breadth/2,0,Math.max(0,height-12));
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.stroke();
+ }
+ const arm=p(0,0,towerHeight*.72),attach=p(40,0,towerHeight*.72);
+ ctx.beginPath();ctx.moveTo(arm.x,arm.y);ctx.lineTo(attach.x,attach.y);ctx.stroke();
+}
 export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6,pitch:.65,zoom:1},
  altitudeM=0,vehicle=null,lander=null,progress=0,width=600,height=278,sun=null}={}){
  const validSun=Number.isFinite(sun?.azimuthDeg)&&Number.isFinite(sun?.elevationDeg)?sun:null;
  const day=Boolean(validSun&&validSun.elevationDeg>0);
  const twilight=Boolean(validSun&&validSun.elevationDeg>-12);
  const bg=ctx.createLinearGradient(0,0,width,height);
- bg.addColorStop(0,kind==="landing"?"#030913":day?"#164e79":twilight?"#142840":"#05101f");
- bg.addColorStop(1,kind==="landing"?"#101c30":day?"#5c96b3":twilight?"#44324a":"#14243a");
+ bg.addColorStop(0,kind==="landing"?"#15263a":day?"#164e79":twilight?"#2b344d":"#17293e");
+ bg.addColorStop(1,kind==="landing"?"#27394d":day?"#5c96b3":twilight?"#495369":"#2a3f52");
  ctx.fillStyle=bg;ctx.fillRect(0,0,width,height);
  drawSkySun(ctx,validSun,camera,width,height);
  const cells=grid?.rows,center=Number.isFinite(grid?.center)?grid.center:0;
@@ -254,9 +289,11 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   const vertices=cells.map(p=>projectTerrainPoint(p.e,p.n,
    (p.h-center)*terrainExaggeration,viewCamera,width,height));
   const normal=terrainNormal(cells);
-  const intensity=sunLight(normal,validSun,
-   {ambient:kind==="landing"?.16:.30,diffuse:kind==="landing"?.84:.70});
-  const base=Math.round((kind==="launch"?123:158)*intensity);
+  const night=Boolean(validSun&&validSun.elevationDeg<=0);
+  const intensity=sunLight(normal,validSun,{
+   ambient:night?.68:kind==="landing"?.28:.39,
+   diffuse:night?0:kind==="landing"?.72:.61});
+  const base=Math.round((kind==="launch"?151:173)*intensity);
   const fill=kind==="launch"?
    "rgb("+Math.round(base*.75)+","+base+","+Math.round(base*.91)+")":
    "rgb("+base+","+Math.round(base*.99)+","+Math.round(base*1.06)+")";
@@ -284,6 +321,9 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   // Ascent height is compressed for viewability, not a flight-path solver.
   const z=190*(1-Math.exp(-Math.max(0,altitudeM)/1800));
   const rocket=vehicle||{heightM:70,diameterM:3.7,paint:"#e0e6ec"};
+  // Visual/reference-only pad center and service support scaffolding.
+  projectedRing(ctx,viewCamera,width,height,27,"#58c7c5cc",[5,5]);
+  launchSupportFrame(ctx,viewCamera,width,height,validSun);
   drawShadow(ctx,validSun,viewCamera,footprint,z+rocket.heightM,width,height);
   if(rocket.boosters)for(const off of [-1,1])
    cylinder(ctx,{e:off*(rocket.diameterM*1.7),n:0,z,r:rocket.diameterM*.32,
@@ -299,6 +339,10 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
  }else{
   const z=120*clamp(altitudeM/180,0,1);
   drawShadow(ctx,validSun,viewCamera,footprint,z+15*exaggeration,width,height);
+  // Context rings are illustrative positions, not certified hazard zones.
+  const localRing=grid?.detail===false?footprint*.12:48;
+  projectedRing(ctx,viewCamera,width,height,localRing,"#50d4b8de",[5,4]);
+  projectedRing(ctx,viewCamera,width,height,localRing*2.5,"#e8b765bf",[3,7]);
   const target=projectTerrainPoint(0,0,0,viewCamera,width,height);
   ctx.beginPath();ctx.arc(target.x,target.y,4,0,Math.PI*2);
   ctx.strokeStyle="#d8bd69";ctx.lineWidth=1.6;ctx.stroke();
