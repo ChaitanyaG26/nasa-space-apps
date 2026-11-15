@@ -25,6 +25,7 @@ jobs:
         run: |
           node --test luna-mission-control/tests/static-engine.test.mjs
           node --test luna-mission-control/tests/mobile-scenario-layout.test.mjs
+          node --test luna-mission-control/tests/scroll-to-top.test.mjs
           node --test luna-mission-control/tests/horizons-static.test.mjs
           node --test luna-mission-control/tests/lola-terrain.test.mjs
           node --test luna-mission-control/tests/lola-global.test.mjs
