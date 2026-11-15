@@ -913,3 +913,28 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
  .chart-info-content{width:240px;}
  .sidebar-layout .mission-toolbar #restartMission{font-size:10px;padding:7px 8px;}
 }
+
+
+/* Measured 3D terrain cinema with CSS-sized text overlays (never stretched canvas fonts). */
+#luna-launch-cola .sequence-panel{min-width:0;}
+#luna-launch-cola .sequence-panel canvas{
+ display:block;width:100%;max-width:600px;height:auto;max-height:none;
+ aspect-ratio:600/278;margin-inline:auto;touch-action:none;cursor:grab;
+ border:1px solid #314f68;border-radius:9px;image-rendering:auto;
+}
+#luna-launch-cola .sequence-panel canvas:active{cursor:grabbing;}
+#luna-launch-cola .sequence-panel canvas:focus-visible{outline:2px solid #ddb96a;outline-offset:3px;}
+#luna-launch-cola .sequence-telemetry{
+ font-size:11px;line-height:1.5;color:#315574;background:#f3f7fa;
+ border:1px solid #d8e4ec;border-radius:6px;padding:7px 9px;margin-top:6px;
+ font-variant-numeric:tabular-nums;white-space:normal;
+}
+#luna-launch-cola .sequence-terrain-status{font-size:10px;color:#618096;
+ margin:4px 0 8px;line-height:1.4;}
+#luna-launch-cola .sequence-header label{min-width:0;}
+#luna-launch-cola .vehicle-readout{word-break:normal;overflow-wrap:break-word;}
+#luna-launch-cola .sequence-header{align-items:flex-end;}
+@media(max-width:540px){
+ #luna-launch-cola .sequence-header label{flex-basis:100%;max-width:none;}
+ #luna-launch-cola .sequence-telemetry{font-size:10px;}
+}
