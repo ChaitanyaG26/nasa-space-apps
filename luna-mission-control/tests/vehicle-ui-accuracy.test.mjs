@@ -37,7 +37,7 @@ test("Earth–Moon view preserves separation ratios; distant Sun is never a near
  assert.ok(Math.abs(distanceOnEarthMoonView(dMoon/2,dMoon)-105)<1e-9);
  const orbit=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
  assert.match(orbit,/SUN • OFF-FRAME/);
- assert.doesNotMatch(orbit,/bubble\\(sun,/);
+ assert.ok(!orbit.includes("bubble(sun,"));
  assert.match(orbit,/sunDistanceKm/);
 });
 test("Professional dashboard omits sky playback and graph sequence numerals",()=>{
@@ -45,7 +45,7 @@ test("Professional dashboard omits sky playback and graph sequence numerals",()=
  const page=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
  assert.doesNotMatch(app,/playEphemeris/);
  assert.doesNotMatch(app,/metric-sequence/);
- assert.doesNotMatch(page,/01 \\/ MISSION TIME/);
+ assert.ok(!page.includes("01 / MISSION TIME"));
  assert.match(page,/Mission timing/);
  assert.match(page,/20261114-physics-ui-v10/);
 });
