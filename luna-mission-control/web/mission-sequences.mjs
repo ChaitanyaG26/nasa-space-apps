@@ -163,7 +163,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  function drawRocket(ctx,vehicle,x,y,phase){
   const w=vehicle.diameterM*2.45,h=vehicle.heightM*1.16,fairingH=Math.max(12,h*.16);
   ctx.save();ctx.translate(x,y);
-  if(phase>.08&&phase<1){
+  if(phase>0&&phase<1){
    const flare=(16+8*Math.sin(phase*83))*(.7+.3*phase);
    ctx.shadowColor="#ffb847";ctx.shadowBlur=22;
    ctx.beginPath();ctx.moveTo(-w*.45,0);ctx.quadraticCurveTo(-w*.8,flare*.5,0,flare);
