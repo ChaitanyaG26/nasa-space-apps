@@ -53,7 +53,7 @@ const fmt=(n,unit)=>{
  return n.toLocaleString("en-US",{maximumFractionDigits:digits})+" "+unit;
 };
 export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model",percent=false,zero=false,
- threshold=null,subtitle=""}={}){
+ threshold=null,subtitle="",highlightAbove=false}={}){
  if(!Array.isArray(rows)||rows.length<2)return '<div class="chart"><p>Not enough samples</p></div>';
  const start=Date.parse(rows[0].time),end=Date.parse(rows.at(-1).time);
  if(!Number.isFinite(start)||!Number.isFinite(end)||start>=end)throw Error("Invalid graph UTC timestamps");
@@ -138,8 +138,14 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
     ' L'+x(kept.at(-1).time).toFixed(2)+','+y(0).toFixed(2)+
     ' L'+x(kept[0].time).toFixed(2)+','+y(0).toFixed(2)+' Z" fill="url(#fill-'+id+')" stroke="none"/>';
   }).join(""):"";
-  series='<defs><linearGradient id="fill-'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".20"/><stop offset="100%" stop-color="'+color+'" stop-opacity=".02"/></linearGradient></defs>'+
-   background+paths.map(path=>'<path d="'+path+'" fill="none" class="plot-series" stroke="'+color+'" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>').join("")+
+  const lit=Boolean(highlightAbove&&Number.isFinite(threshold));
+  const highlightClip=lit?'<clipPath id="clip-'+id+'"><rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'"/></clipPath>':"";
+  const pathsWithThreshold=lit?
+   paths.map(path=>'<path d="'+path+'" class="plot-series" fill="none" stroke="#93a6b8" stroke-width="2.4"/>'+
+    '<path d="'+path+'" class="plot-active-series" clip-path="url(#clip-'+id+')" fill="none" stroke="#24a890" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>').join(""):
+   paths.map(path=>'<path d="'+path+'" fill="none" class="plot-series" stroke="'+color+'" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>').join("");
+  series='<defs><linearGradient id="fill-'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".20"/><stop offset="100%" stop-color="'+color+'" stop-opacity=".02"/></linearGradient>'+highlightClip+'</defs>'+
+   background+pathsWithThreshold+
    [minimum,maximum].map(point=>'<circle class="plot-extrema" cx="'+x(point.time).toFixed(2)+'" cy="'+y(point.value).toFixed(2)+'" r="3.7" fill="white" stroke="'+color+'" stroke-width="2"/>').join("");
  }
  const periodLabel=kind==="observed"?"Historical NASA observations · discrete bins":"Physics model · connected computed samples";
@@ -148,6 +154,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '<svg data-plot-id="'+id+'" role="img" aria-label="'+esc(title)+' from '+new Date(start).toISOString()+' to '+new Date(end).toISOString()+
  '" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
  '<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+ph+'" fill="#f8fbfc"/>'+
+ (highlightAbove&&Number.isFinite(threshold)?'<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'" fill="#24a890" opacity=".07"/>':"")+
  grid+series+
  '<line class="plot-timecursor" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+ '<line class="plot-hoverline" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+
  '<circle class="plot-hoverdot" cx="'+M.left+'" cy="'+M.top+'" r="5" fill="'+color+'" stroke="white" stroke-width="2" visibility="hidden"/>'+
