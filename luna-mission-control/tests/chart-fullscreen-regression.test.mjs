@@ -27,10 +27,10 @@ test("NASA supported date notice is upper right, away from bottom right scroll a
 test("Published pages use current controller and CSS versions",()=>{
  for(const path of ["web/index.html","../index.html"]){
   const html=read(path);
-  assert.match(html,/styles\.css\?v=20261115-telemetry-v22/);
-  assert.match(html,/app\.js\?v=20261115-telemetry-v22/);
+  assert.match(html,/styles\.css\?v=20261115-legible-v23/);
+  assert.match(html,/app\.js\?v=20261115-legible-v23/);
  }
- assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-telemetry-v22/);
+ assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-legible-v23/);
 });
 
 test("Point inspection is rendered as a separate telemetry band, not over the chart legend",()=>{
@@ -45,4 +45,23 @@ test("Point inspection is rendered as a separate telemetry band, not over the ch
  assert.match(css,/body>\.luna-chart-overlay \.plot-live-reading\{/);
  assert.match(css,/body>\.luna-chart-overlay \.plot-foot-summary\{/);
  assert.match(css,/@media\(max-width:760px\)/);
+});
+
+test("Fullscreen explanation leaves the graph area and selected telemetry unobstructed",()=>{
+ const source=read("web/science-charts.mjs");
+ assert.match(source,/className="chart-fullscreen-explanation"/);
+ assert.match(source,/disclosure\.addEventListener\("toggle",syncExplanation\)/);
+ assert.match(source,/fullscreenInfoCleanup\?\.\(\)/);
+ assert.match(source,/tooltip\.hidden=expanded/);
+ const css=read("web/styles.css");
+ assert.match(css,/body>\.luna-chart-overlay \.chart-information \.chart-info-content\{display:none!important;/);
+ assert.match(css,/body>\.luna-chart-overlay \.chart-fullscreen-explanation:not\(\[hidden\]\)/);
+});
+test("Readable footer separates ranges, samples, and UTC start/end on phone and desktop",()=>{
+ const source=read("web/science-charts.mjs");
+ for(const selector of ["plot-foot-value","plot-foot-count","plot-foot-range","plot-foot-dates","plot-date-label","plot-live-reading"])assert.ok(source.includes(selector));
+ const css=read("web/styles.css");
+ assert.match(css,/v23: a calm, separate methodology panel/);
+ assert.match(css,/@media\(max-width:800px\)/);
+ assert.match(css,/grid-template-columns:minmax\(0,1fr\)!important/);
 });
