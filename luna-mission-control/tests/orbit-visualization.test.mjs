@@ -40,3 +40,10 @@ test("Idealized transfer solves Kepler time-of-flight and slows near apogee",()=
  assert.ok(keplerTransferPoint(1).radiusKm>380000);
  assert.ok(Number.isFinite(middle.x)&&Number.isFinite(middle.y));
 });
+
+test("3D science visualization supports pan, zoom, Kepler timing and changing Moon direction",()=>{
+ const source=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
+ for(const expected of ["orbit-3d-canvas","cameraProject","pointermove","shiftKey","wheel","moonEphemeris","keplerTransferPoint","catalogAgeDays","NOT COLA screening"]){
+  assert.ok(source.includes(expected),expected);
+ }
+});

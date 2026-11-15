@@ -408,3 +408,27 @@ body{background:var(--luna-night);}
 }
 @media(max-width:900px){.cards.scenario-compare{grid-template-columns:1fr;}.scenario-compare .terrain-3d-canvas{height:390px;}}
 @media(max-width:540px){.scenario-plot-grid{grid-template-columns:1fr;}.scenario-card .stat b{font-size:15px;}.metric-slot .science-plot.chart-expanded{inset:4vh 3vw;padding:12px;}.results-page{padding:10px;}}
+
+
+/* Full 3D exploratory orbit canvas, accessible camera and controls. */
+#luna-launch-cola .orbit-scene-3d{padding:12px;background:#08192a;border:1px solid #2b6291;border-radius:13px;color:#d2e6fa;box-shadow:inset 0 1px 0 #3f7dae33;}
+#luna-launch-cola .orbit-scene-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+#luna-launch-cola .orbit-scene-3d .orbit-title{color:#f9ce4c;font-size:13px;font-weight:850;}
+#luna-launch-cola .orbit-scene-3d .orbit-subtitle{font-size:10px;line-height:1.45;color:#a5c5da;margin:4px 0 10px;}
+#luna-launch-cola .orbit-data-flag{font-size:9px;font-weight:850;color:#f9d569;border:1px solid #f9d56970;padding:6px 8px;border-radius:15px;white-space:nowrap;}
+#luna-launch-cola .orbit-3d-canvas{width:100%;height:auto;aspect-ratio:760/420;display:block;border:1px solid #355d7a;border-radius:10px;cursor:grab;touch-action:none;}
+#luna-launch-cola .orbit-3d-canvas:active{cursor:grabbing;}
+#luna-launch-cola .orbit-3d-canvas:focus-visible{outline:3px solid #f9ce4c;outline-offset:2px;}
+#luna-launch-cola .orbit-scene-3d .orbit-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+#luna-launch-cola .orbit-scene-3d .orbit-controls button{padding:7px 9px;border:1px solid #417daf;background:#113554;color:#edf6ff;border-radius:7px;font-size:10px;cursor:pointer;}
+#luna-launch-cola .orbit-scene-3d .orbit-controls button:hover{background:#1b5791;}
+#luna-launch-cola .orbit-scene-3d .orbit-controls input{accent-color:#f9ce4c;}
+#luna-launch-cola .orbit-scene-3d .orbit-phase{font-size:10px;line-height:1.45;flex-basis:100%;}
+#luna-launch-cola .orbit-scene-3d .orbit-legend{font-size:10px;line-height:1.55;color:#a9c4dc;margin:8px 0;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog{border-top:1px solid #28516a;margin:9px 0 0;padding:9px 0 0;font-size:10px;color:#b6d3e9;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog summary{font-weight:800;color:#f9ce4c;cursor:pointer;margin-bottom:6px;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog p{margin:6px 0;font-size:10px;line-height:1.5;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog ul{max-height:120px;overflow:auto;list-style:none;display:block;padding:0;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog li{margin:5px 0;font-size:10px;line-height:1.4;}
+#luna-launch-cola .orbit-scene-3d .orbit-catalog li::before{content:"•";color:#f9ce4c;margin-right:6px;}
+@media(max-width:600px){#luna-launch-cola .orbit-scene-top{display:block;}#luna-launch-cola .orbit-data-flag{display:inline-block;margin-bottom:8px;}}

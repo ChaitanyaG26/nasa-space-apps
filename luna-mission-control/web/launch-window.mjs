@@ -1,4 +1,4 @@
-import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-kepler-v4";
+import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-three-d-v5";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
  * NASA LSP launch range references: nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/
@@ -109,8 +109,8 @@ function scenarioMarkup(s){
     LAUNCH_SITES.map(site=>'<option value="'+site.id+'" '+(state.site===site.id?"selected":"")+'>'+htmlSafe(site.name)+'</option>').join("")+
   '</select></label>'+
   '<p class="launch-cola-site-note" data-cola-note></p>'+
-  '<details class="launch-cola-holds"><summary>Optional official COLA hold intervals for this scenario</summary>'+
-  '<p>Supply authorized hold intervals in UTC, one start,end pair per line. No entry means unscreened, not approved.</p>'+
+  '<details class="launch-cola-holds"><summary>User-provided COLA hold intervals for this scenario</summary>'+
+  '<p>Paste externally issued UTC hold intervals, one start,end pair per line. The tool cannot authenticate these records. Empty means unscreened, never approved.</p>'+
   '<textarea data-cola-field="holds" rows="2" placeholder="2026-11-15T12:00Z,2026-11-15T12:40Z">'+htmlSafe(state.holds)+'</textarea></details>'+
   '<button class="launch-cola-run" data-cola-calc type="button">Evaluate '+htmlSafe(s.label.toLowerCase())+'</button>'+
   '<div data-cola-output aria-live="polite"><p class="launch-cola-hint">Run this scenario to see its own candidate departure times and clearance status.</p></div>'+
@@ -131,9 +131,9 @@ function installPanel(){
   '<label>Search ± hours<select data-cola-shared="span"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label>'+
   '<label>Time step<select data-cola-shared="step"><option value="30">30 min</option><option value="60">60 min</option><option value="120">120 min</option></select></label></div>'+
   '<div class="launch-cola-scenarios" data-cola-list></div>'+
-  '<div class="launch-cola-animation"><b>Launch animations — reserved</b><p>Separate Higgsfield clips can be inserted for each mission later. The schematic is not a computed flight path.</p></div>'+
+  '<div class="launch-cola-animation"><b>Interactive 3D mission views</b><p>Pan and rotate each conceptual transfer in 3D. Future Higgsfield clips can be added separately; no depicted route is collision-cleared.</p></div>'+
   '<details class="launch-cola-provenance"><summary>Methodology, scientific limits and sources</summary>'+
-  '<p>Truncated lunar theory and idealized two-body Earth-to-lunar-radius transfer. The destination coordinates label the selected lunar surface site; the simplified transfer does not solve a surface landing or lunar orbit insertion. Ranking uses an arrival-timing and Moon-bearing heuristic, not operational launch trajectory optimization.</p>'+
+  '<p>Truncated lunar theory and idealized two-body Earth-to-lunar-radius transfer. The destination coordinates label the selected lunar surface site; the simplified transfer does not solve a surface landing, lunar orbit insertion, or a vehicle-specific path. The 3D view shows Moon direction from a truncated theory with compressed distances, not a verified interception. Ranking uses an arrival-timing and Moon-bearing heuristic, not operational launch trajectory optimization.</p>'+
   '<p>Real launch approval requires vehicle/range capabilities, trajectory targeting, tracked-object ephemerides, uncertainties and official COLA clearance. CelesTrak public OMM data is a partial, lower-fidelity reference and cannot validate a collision-free route. A time outside entered hold intervals is never declared safe.</p>'+
   '<p><a href="https://www.nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/" target="_blank" rel="noopener noreferrer">NASA launch ranges</a> · <a href="https://www.nasa.gov/cara/" target="_blank" rel="noopener noreferrer">NASA conjunction assessment</a> · <a href="https://celestrak.org/NORAD/documentation/gp-data-formats.php" target="_blank" rel="noopener noreferrer">CelesTrak public catalog documentation</a> · <a href="https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_450.169-1.pdf" target="_blank" rel="noopener noreferrer">FAA COLA guidance</a></p></details>'+
   '<p class="launch-cola-scope-note"><b>Launch-site acknowledgement:</b> This educational model focuses on Cape Canaveral Space Force Station, Kennedy Space Center, and Vandenberg Space Force Base as major U.S. orbital launch locations. Many other NASA-associated ranges mainly support sounding rockets, small or specialized missions. This is not a complete list of orbital launch facilities.</p>';
@@ -165,7 +165,10 @@ function renderScenarioPanels(el){
  list.innerHTML=scenarios.map(s=>scenarioMarkup(s)).join("");
  for(const article of list.querySelectorAll("[data-cola-scenario]")){
   renderSiteNote(article);
-  const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{scenario:article.dataset.colaScenario});
+  const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{
+   scenario:article.dataset.colaScenario,moonEphemeris:moonPosition,
+   departureUtc:scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario))?.time-5*DAY
+  });
   article.orbitController=controller;
   orbitControllers.push(controller);
   loadCatalogContext().then(data=>controller.setCatalog(data));
