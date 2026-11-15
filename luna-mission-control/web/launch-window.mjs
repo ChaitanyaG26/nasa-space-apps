@@ -1,5 +1,6 @@
 import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-lander-sequence-v8";
 import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-lander-sequence-v8";
+import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
  * NASA LSP launch range references: nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/
@@ -7,6 +8,11 @@ import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-lander-s
  * NASA/FAA/US Space Force launch COLA requires authoritative space-object and flight-path data.
  */
 const DEG=Math.PI/180, DAY=86400000, MU=398600.4418, R_EARTH=6378.137;
+let officialVectors=null;
+const JPL_MOON_AT=t=>{
+ if(!officialVectors)return null;
+ try{return geocentricAt(officialVectors,t).moon;}catch{return null;}
+};
 // Three primary U.S. launch complexes selected for LUNA; not a roster of approved translunar launchpads.
 const LAUNCH_SITES=[
  {id:"ksc",name:"Kennedy Space Center · LC-39",lat:28.627,lon:-80.621,category:"NASA orbital",note:"NASA launch complex; actual pad/vehicle capability must be confirmed"},
@@ -16,6 +22,8 @@ const LAUNCH_SITES=[
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const wrap=v=>((v%360)+360)%360;
 function moonPosition(utc){
+ const official=JPL_MOON_AT(utc);
+ if(official)return official;
  const d=(utc-Date.UTC(2000,0,1,12))/DAY, T=d/36525;
  const l=wrap(218.316+13.176396*d),m=wrap(134.963+13.064993*d)*DEG;
  const dd=wrap(297.850+12.190749*d)*DEG,f=wrap(93.272+13.229350*d)*DEG;
@@ -198,6 +206,18 @@ function renderScenarioPanels(el){
   orbitControllers.push(controller);
   loadCatalogContext().then(data=>controller.setCatalog(data));
  }
+ loadGeocentricVectors().then(data=>{
+  officialVectors=data;
+  if(!list.isConnected)return;
+  for(const article of list.querySelectorAll("[data-cola-scenario]")){
+   article.orbitController?.setEphemerides?.(
+    utc=>geocentricAt(data,utc).moon,
+    utc=>geocentricAt(data,utc).sun
+   );
+  }
+ }).catch(error=>{
+  console.warn("JPL geocentric vector cache unavailable; orbit uses marked analytic approximation",error);
+ });
 }
 function resultMarkup(target,candidates,holds){
  const shown=candidates.filter(c=>!c.held).slice(0,5);
