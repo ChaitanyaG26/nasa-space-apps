@@ -1,0 +1,55 @@
+name: Cache JPL geocentric vectors
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'luna-mission-control/scripts/build_geocentric_vectors.py'
+      - '.github/workflows/luna-geocentric-cache.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: luna-geocentric-vectors
+  cancel-in-progress: false
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NASA data client dependencies
+        run: python -m pip install requests
+      - name: Generate Earth-centered JPL Moon and Sun vectors
+        run: python luna-mission-control/scripts/build_geocentric_vectors.py
+      - name: Validate cached ephemeris
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,math
+          p=Path("luna-mission-control/web/assets/horizons-geocentric-icrf.json")
+          d=json.loads(p.read_text())
+          assert d["schema_version"]==1 and len(d["samples"])>3500
+          for t,*coordinates in d["samples"]:
+            assert len(coordinates)==12
+            assert 300000<math.hypot(*coordinates[:3])<450000
+          print("Validated",len(d["samples"]),"hourly geocentric JPL vectors")
+          PY
+      - name: Publish JPL vectors to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add luna-mission-control/web/assets/horizons-geocentric-icrf.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Publish JPL Moon and Sun geocentric vector reference"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
