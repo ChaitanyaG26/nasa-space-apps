@@ -142,7 +142,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
   const highlightClip=lit?'<clipPath id="clip-'+id+'"><rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'"/></clipPath>':"";
   const pathsWithThreshold=lit?
    paths.map(path=>'<path d="'+path+'" class="plot-series" fill="none" stroke="#93a6b8" stroke-width="2.4"/>'+
-    '<path d="'+path+'" class="plot-active-series" clip-path="url(#clip-'+id+')" fill="none" stroke="#3a9ad2" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>').join(""):
+    '<path d="'+path+'" class="plot-active-series" clip-path="url(#clip-'+id+')" fill="none" stroke="'+color+'" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>').join(""):
    paths.map(path=>'<path d="'+path+'" fill="none" class="plot-series" stroke="'+color+'" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>').join("");
   series='<defs><linearGradient id="fill-'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".20"/><stop offset="100%" stop-color="'+color+'" stop-opacity=".02"/></linearGradient>'+highlightClip+'</defs>'+
    background+pathsWithThreshold+
