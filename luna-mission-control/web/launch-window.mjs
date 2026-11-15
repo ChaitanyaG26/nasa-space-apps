@@ -129,7 +129,7 @@ function installPanel(){
   '<div class="launch-cola-form">'+
   '<label>LEO parking altitude (km)<input data-cola-shared="parking" type="number" min="160" max="2000" step="20" value="'+controls.parking+'"></label>'+
   '<label>Search ± hours<select data-cola-shared="span"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label>'+
-  '<label>Time step<select data-cola-shared="step"><option value="30">30 min</option><option value="60">60 min</option><option value="120">120 min</option></select></label></div>'+
+  '</div>'+
   '<div class="launch-cola-scenarios" data-cola-list></div>'+
   '<div class="launch-cola-animation"><b>Interactive 3D mission views</b><p>Pan and rotate each conceptual transfer in 3D. Future Higgsfield clips can be added separately; no depicted route is collision-cleared.</p></div>'+
   '<details class="launch-cola-provenance"><summary>Methodology, scientific limits and sources</summary>'+
