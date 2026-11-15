@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-three-d-v5"
+RELEASE = "20261114-sidebar-actions-v6"
 
 
 class Assets(html.parser.HTMLParser):
@@ -58,6 +58,21 @@ def verify(base_url):
     page = fetch_text(fresh(base_url))
     if 'class="mission-toolbar"' not in page:
         raise AssertionError("Live page missing top-of-globe mission toolbar")
+    if '<body class="sidebar-layout">' not in page:
+        raise AssertionError("Published LUNA site does not use a left vertical sidebar")
+    aside = page.split("</aside>", 1)[0]
+    if '<nav class="mission-toolbar"' not in page:
+        raise AssertionError("Missing top simulation action bar")
+    actions = page.split('<nav class="mission-toolbar"', 1)[1].split("</nav>", 1)[0]
+    if actions.count("<button ") != 2 or "<select" in actions or "<input" in actions:
+        raise AssertionError("Top bar must contain only the Simulate and Optimize buttons")
+    for name in ("date", "time", "duration", "sampleMinutes", "mode", "preserve",
+                 "area", "battery", "load", "reserve"):
+        if f'id="{name}"' not in aside:
+            raise AssertionError(f"{name} must remain in left sidebar")
+    for name in ("simulate", "optimize"):
+        if f'id="{name}"' not in actions:
+            raise AssertionError(f"{name} must remain in top action bar")
     parser = Assets()
     parser.feed(page)
     for element_id in ("date", "time", "simulate", "optimize", "preserve", "globe"):
