@@ -13,9 +13,9 @@ The goal of our mission planner is to allow a visitor to quickly compare the eff
 
 Now, the chosen graphs have more information explaining them (when you click the i-icon); however, here is a brief summary of each graph and its relevance when planning a lunar mission:
 
-1. Solar generation: since every lunar mission is going to be solar-powered, and different locations/times have different prospects of receiving solar energy (based on the angle of the sun at the horizon), this shows you if you get enough power.
+1. Solar generation: for solar-powered lunar missions, different locations and times offer different illumination opportunities (based on the angle of the sun at the horizon), this shows you if you get enough power.
 
-2. Battery charge: a simpler organization of the above tool, allows you to see the range of operation of your lander/mission during the first few days. 0W means it needs to go into hibernation.
+2. Battery charge: a simpler organization of the above tool, allows you to see the range of operation of your lander/mission during the first few days. 0% battery charge means modeled energy is depleted; it does not establish an automatic hibernation requirement.
 
 3. Regolith temperature: some landers need to hibernate at extremely cold or extremely hot temperatures. This graph allows you to see what could potentially be a range of operation.
 
@@ -23,7 +23,7 @@ Now, the chosen graphs have more information explaining them (when you click the
 
 5. Heater power: showcases how much power consumption you can expect over the course of your mission.
 
-6. S-band RF margin: a representation of the strength of the radio signal to Earth at the given location over time.
+6. S-band RF margin: an assumed S-band link-budget margin using hypothetical transmitter and Earth receiver specifications, not a guaranteed contact.
 
 7. Diviner archival temperature: historical temperature observations, a rough view of how temperatures might look during the mission.
 
@@ -37,7 +37,7 @@ Now, the chosen graphs have more information explaining them (when you click the
 
 On the main page, we have selectors for date and time (which move the moon-centered directions 3d view appropriately, alongside the local terrain horizon view, and change the shading on the render), and a 3D view of the moon you can pan through (where clicking chooses your location, hovering over a historic landing gives you information about it, and where coordinates of your selected location are given.
 
-You may also update the spacecraft assumptions and engineering screening assumptions dropdowns on the main page to get more accurate data from the graphs and a better "optimized" value.
+You may also update the spacecraft assumptions and engineering screening assumptions dropdowns on the main page to examine how projected values and the candidate ranking change with your assumptions; these inputs do not independently validate a spacecraft.
 
 ## Widget Usage Guide
 The widget can be used on both computer and mobile. This is a guide for computer, although mobile users have the same features and buttons (just more scrolling).
@@ -57,7 +57,7 @@ Clicking the i-icon gives you more information about the graphs. Fullscreen allo
 4 specific values are provided for each case: the solar energy, the length of the longest blackout, the minimum battery, and the Earth visibility.
 
 <img width="931" height="898" alt="image" src="https://github.com/user-attachments/assets/3bf2f6cd-f540-4726-9c1d-1abbf04b632c" />
-The terrain map gives you the ability to pan across the terrain. You can choose the area shown and the vertical exaggeration, alongside the terrain layer (LOLA elevation or seismic data).
+The terrain map gives you the ability to pan across the terrain. You can choose the area shown and the vertical exaggeration, alongside the terrain layer (LOLA elevation/slope or an unassessed seismic-evidence view).
 
 <img width="925" height="589" alt="image" src="https://github.com/user-attachments/assets/e2f233b4-f31d-4ce8-8cdd-6766250b6017" />
 There is then an animation for the orbit of the spacecraft, given inputs (launch range as the starting point, the "parking altitude," the range to search across for the launch, etc). Clicking "find departure windows lets you see the departure windows."
@@ -112,18 +112,18 @@ The logic for optimization:
 
 1. We assign a score to each observed value: 60% from the solar energy, 40% from the RF availability, and minimum state of charge as the tiebreaker (when RF data is not present, we use the Earth-visibility scores instead).
 
-2. We run 11 candidate sites for the location optimization; it is not a global optimum (for the sake of quick computation); across the nearest 14-day period, we search candidates in 12-hour increments from the other (again, for the sake of quick computation).
+2. We screen up to 512 south-polar site candidates for the location optimization, including local neighborhoods near the four high-resolution LOLA patches; this is not a global optimum. For a fixed site, we sample dates every 3 hours over ±14 days, skipping intervals outside the cached NASA ephemeris range. Candidates are first screened at a 60-minute model step, then the top 16 are recalculated at the selected timestep.
 
-3. The optimized candidate is thus an amalgamation of the user inputs and the time/location candidate list — we **cannot** guarantee their functionality or test them without classified data (thus, they are only projections for how an optimal value MIGHT look).
+3. The optimized candidate is thus an amalgamation of the user inputs and the time/location candidate list — we **cannot** establish mission feasibility without a validated vehicle, spacecraft design, ground network, terrain hazard assessment and authorized operational data (thus, they are only projections for how an optimal value MIGHT look).
 
-We use three supported launch ranges: Kennedy Space Center (LC-39, the default); Cape Canaveral Space Force Station; Vandenberg Space Force Base; in other words, the only three launch sites NASA has greenlit for launching rockets on trajectories such as the lunar missions. Departure times are generated here with the arrival UTC as the target, and approximate Moon-Earth positions are used to measure the two-body half-ellipse transfer time (Kepler's third law!), and shifting around the appropriate time with candidates every 60 minutes, allowing roughly accurate departure time values.
+We use three supported launch ranges: Kennedy Space Center (LC-39, the default); Cape Canaveral Space Force Station; Vandenberg Space Force Base; which are representative U.S. orbital launch ranges, not a complete or preapproved list of lunar departure sites. Departure times are generated here with the arrival UTC as the target, and approximate Moon-Earth positions are used to measure the two-body half-ellipse transfer time (Kepler's third law!), and shifting around the appropriate time with candidates every 60 minutes, yielding preliminary educational departure estimates rather than operational launch windows.
 
 We do not have debris, probability of collision, among other things; we do NOT have COLA since we don't have enough data to actually REASONABLY establish COLA. The animations below the orbit showcase different rocket and lander silhouettes (the most common ones, at least: the Falcon 9, Falcon Heavy, SLS Block 1, Vulcan Centaur, Atlas V, Firefly Alpha; the Blue Ghost, Nova-C, Peregrine, generic), with different values/assumptions.
 
-We require WebGL/Canvas for the views here (and thus, low-memory phones and GPU drivers might change how it is viewed); we require loading large cached assets, so it often takes a few seconds for the page to fully load; screen layouts have been proofed for both mobile and computer, although some bugs across the widgets may remain untested.
+We require WebGL/Canvas for the views here (and thus, low-memory phones and GPU drivers might change how it is viewed); we require loading large cached assets, so it often takes a few seconds for the page to fully load; automated responsive and numerical checks exist, but behavior across all physical browsers/devices has not been fully verified.
 
 ### Limitations:
-1. As noted above, "optimized" is not a global optimum but an optimized value across a relatively small candidate set.
+1. As noted above, "optimized" is not a global optimum but a ranked value from a finite 512-site grid or 3-hour date search, not a global optimum or a vetted landing site.
 
 2. Thermal performance metrics haven't exactly been tested/validated; there are a myriad of assumptions required to establish these with the data we have been provided.
 
@@ -131,6 +131,6 @@ We require WebGL/Canvas for the views here (and thus, low-memory phones and GPU 
 
 4. We use vertical terrain exaggeration often, which IS noted on the website but may affect a user unfamiliar with the layout; lighting/thrust/model scale are not exactly proportional or photorealistic in all cases, but are altered for visibility (for example, the dark side of the moon is much brighter than it should be).
 
-5. Failed data is supposed to produce errors, but some may be misinterpreted: absent local terrain MIGHT be read as completely flat, or the archived Diviner bins might be thoroughly inaccurate.
+5. Failed data is supposed to produce errors, but some can be misinterpreted: missing local terrain does not mean flat or safe ground, and archived Diviner bins do not measure the selected future mission.
 
 However, the result is the same; you can compare rough values for each landing position/schedule to generate some (possibly better) candidates.
