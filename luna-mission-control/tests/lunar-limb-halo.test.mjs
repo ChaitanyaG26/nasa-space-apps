@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {
- sunToMoonView,haloLimbStrength,drawLunarLimbHalo
+ sunToMoonView,haloLimbStrength,drawLunarLimbHalo,lunarHaloBitmap
 } from "../web/lunar-limb-halo.mjs";
 
 const nearly=(a,b)=>Math.abs(a-b)<1e-10;
@@ -35,25 +35,55 @@ test("Full face-on illumination has only a subtle symmetric rim; backlit disk ha
  assert.equal(haloLimbStrength(newMoon,0),0);
  assert.equal(haloLimbStrength(newMoon,Math.PI),0);
 });
-test("Halo renderer clears every frame and draws only illuminated rim arcs",()=>{
- const arcs=[];
+test("Continuous halo raster is prominent and fades smoothly without segmented stroke bands",()=>{
+ const right=lunarHaloBitmap({width:500,height:400,zoom:.75,sunView:[1,0,0]});
+ const left=lunarHaloBitmap({width:500,height:400,zoom:.75,sunView:[-1,0,0]});
+ assert.equal(right.width,500);assert.equal(right.height,400);
+ const alpha=(bmp,x,y)=>bmp.pixels[(y*bmp.width+x)*4+3];
+ // The visible disk radius is 150px, so the Sun-facing right limb
+ // should have a bright inner bloom and a much wider amber penumbra.
+ assert.ok(alpha(right,406,200)>100);
+ assert.ok(alpha(right,425,200)>40);
+ assert.ok(alpha(right,440,200)>22);
+ assert.equal(alpha(right,100,200),0);
+ assert.ok(alpha(left,100,200)>100);
+ assert.equal(alpha(left,406,200),0);
+ const samples=Array.from({length:35},(_,i)=>alpha(right,415+i,200));
+ const diffs=samples.slice(1).map((v,i)=>Math.abs(v-samples[i]));
+ assert.ok(Math.max(...diffs)<14, "Adjacent halo pixels must not form bands");
+ assert.ok(samples[0]>samples.at(-1),"Golden falloff must be continuous toward space");
+});
+test("Full-phase halo is subtle and backlit disk has no fictional glow",()=>{
+ const full=lunarHaloBitmap({width:400,height:400,zoom:.75,sunView:[0,0,1]});
+ const back=lunarHaloBitmap({width:400,height:400,zoom:.75,sunView:[0,0,-1]});
+ const alpha=(bmp,x,y)=>bmp.pixels[(y*bmp.width+x)*4+3];
+ assert.ok(alpha(full,360,200)>0 && alpha(full,360,200)<32);
+ assert.equal(alpha(back,360,200),0);
+});
+test("Canvas painter uses one smoothly upscaled bitmap and never draws arc strokes",()=>{
+ const calls=[];
+ const scratchContext={
+  createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4)};},
+  putImageData(image){calls.push(["pixels",image.data.some(v=>v>0)]);}
+ };
+ const scratch={
+  width:0,height:0,
+  getContext(){return scratchContext;}
+ };
  const ctx={
-  clearRect(...args){arcs.push(["clear",...args]);},
-  save(){},restore(){},beginPath(){},
-  arc(...args){arcs.push(["arc",...args]);},
-  stroke(){arcs.push(["stroke",this.strokeStyle]);},
-  set lineCap(v){},set lineWidth(v){},set shadowBlur(v){},
-  set shadowColor(v){},set strokeStyle(v){this._strokeStyle=v;},
-  get strokeStyle(){return this._strokeStyle;},
+  canvas:{ownerDocument:{createElement:()=>scratch}},
+  clearRect(...args){calls.push(["clear",...args]);},
+  save(){calls.push(["save"]);},
+  restore(){calls.push(["restore"]);},
+  drawImage(...args){calls.push(["image",args[0]===scratch,args[3],args[4]]);}
  };
  drawLunarLimbHalo(ctx,{width:500,height:400,zoom:.75,sunView:[1,0,0]});
- assert.deepEqual(arcs[0],["clear",0,0,500,400]);
- const lit=arcs.filter(a=>a[0]==="stroke");
- assert.ok(lit.length>50 && lit.length<170);
- assert.ok(lit.some(a=>a[1].includes("255,211,110")));
- arcs.length=0;
+ assert.equal(calls.filter(x=>x[0]==="image").length,1);
+ assert.ok(calls.some(x=>x[0]==="pixels"&&x[1]));
+ assert.ok(!calls.some(x=>x[0]==="arc"||x[0]==="stroke"));
+ calls.length=0;
  drawLunarLimbHalo(ctx,{width:500,height:400,zoom:.75,sunView:[0,0,-1]});
- assert.deepEqual(arcs, [["clear",0,0,500,400]]);
+ assert.deepEqual(calls,[["clear",0,0,500,400]]);
 });
 test("Moon WebGL canvas and halo share a redraw and compositing stack",()=>{
  const globe=readFileSync(new URL("../web/globe.js",import.meta.url),"utf8");
