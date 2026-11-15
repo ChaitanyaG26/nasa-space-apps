@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUNA Mission Control</title><link rel="stylesheet" href="./luna-mission-control/web/styles.css?v=20261115-screening-v25"></head>
+<title>LUNA Mission Control</title><link rel="stylesheet" href="./luna-mission-control/web/styles.css?v=20261115-optimize-progress-v26"></head>
 <body class="sidebar-layout">
 <div class="shell">
 <aside class="sidebar">
@@ -65,6 +65,10 @@
 <button id="simulate" class="primary" type="button">Simulate mission</button>
 <div class="optimize-trigger">
 <button id="optimize" class="secondary" disabled type="button">Optimize &amp; compare</button>
+<div id="optimizeProgress" class="optimize-progress" role="status" aria-live="polite" aria-atomic="true" hidden>
+ <div class="optimize-progress-top"><span id="optimizeProgressText">Loading NASA reference data…</span><strong id="optimizeProgressCount"></strong></div>
+ <progress id="optimizeProgressBar" max="100" aria-label="Optimization progress"></progress>
+</div>
 </div>
 <button id="restartMission" class="restart-mission" type="button" title="Reset mission settings and return to the Moon">Restart mission</button>
 </nav>
@@ -84,5 +88,5 @@
 <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 6-6 6 6"/></svg>
 </button>
 <script>window.LUNA_STATIC_SITE = true;</script>
-<script type="module" src="./luna-mission-control/web/app.js?v=20261115-screening-v25"></script>
+<script type="module" src="./luna-mission-control/web/app.js?v=20261115-optimize-progress-v26"></script>
 </body></html>
