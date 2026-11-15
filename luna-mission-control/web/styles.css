@@ -846,3 +846,70 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
  width:145px;padding:8px;gap:3px;font-size:9px;}
  .landing-site-legend small{display:none;}
  .landing-site-marker{width:9px;height:9px;}}
+
+
+/* Compact three-way science comparison; each scenario remains fully rendered. */
+.scenario-navigation{display:flex;align-items:center;gap:7px;overflow-x:auto;
+ padding:9px 0;margin:2px 0 5px;scrollbar-width:thin;}
+.scenario-navigation button{flex:0 0 auto;padding:8px 11px;
+ border:1px solid #c3d5e4;background:#f8fbfe;color:#255477;border-radius:8px;
+ font-size:11px;font-weight:700;cursor:pointer;}
+.scenario-navigation button:hover,
+.scenario-navigation button[aria-current="true"]{background:#dfeffc;color:#165e9c;border-color:#7aaed7;}
+.scenario-triple-viewport{max-width:100%;overflow-x:auto;scroll-snap-type:x proximity;
+ border-radius:11px;padding-bottom:9px;scrollbar-color:#b6cadd #edf4fa;}
+.cards.scenario-triple{display:grid;grid-template-columns:repeat(3,minmax(390px,1fr));
+ gap:11px;align-items:start;min-width:1200px;}
+.scenario-triple>[data-scenario-card]{min-width:0;scroll-snap-align:start;}
+.scenario-triple .scenario-card{padding:10px;}
+.scenario-triple .scenario-card .stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+.scenario-triple .scenario-card .stat{padding:6px;}
+.scenario-triple .scenario-plot-grid{gap:7px;}
+.scenario-triple .metric-slot .chart{min-height:130px;padding:8px 5px 6px;}
+.scenario-empty{padding:20px;background:#fff;border-radius:10px;color:#55758e;}
+.chart-information{position:absolute;right:7px;top:6px;z-index:12;}
+.chart-information>summary{display:flex;align-items:center;justify-content:center;
+ width:22px;height:22px;list-style:none;border-radius:50%;border:1px solid #9fbcd0;
+ background:#eff6fb;color:#356d91;cursor:pointer;font-size:13px;line-height:1;
+ font-family:system-ui;font-weight:700;}
+.chart-information>summary::-webkit-details-marker{display:none;}
+.chart-information>summary:hover,.chart-information[open]>summary{background:#d5eaf8;color:#164767;}
+.chart-info-content{position:absolute;top:29px;right:0;width:260px;max-width:70vw;
+ background:#122d43;border:1px solid #477895;color:#d6e6f3;
+ padding:12px 13px;box-shadow:0 15px 24px #0b243c40;border-radius:9px;
+ font-size:11px;line-height:1.5;z-index:15;}
+.chart-info-content strong{color:#e9d085;font-size:11px;}
+.chart-info-content p{margin:6px 0;}
+.metric-slot{overflow:visible;}
+.metric-slot .chart{overflow:hidden;border-radius:8px;}
+.metric-slot .chart-head{padding-right:29px;}
+.metric-slot .chart-subtitle{display:none;}
+.metric-slot .plot-foot{display:none;}
+.metric-slot .plot-expand{font-size:12px;padding:2px 5px;}
+.metric-slot .chart-head strong{font-size:11px;}
+.metric-slot .plot-wrap{margin-top:5px;}
+.metric-slot .plot-threshold{stroke:#24a890;stroke-width:1.8;stroke-dasharray:6 3;}
+.metric-slot .plot-threshold-label{fill:#1f947f;font-size:11px;}
+.metric-earth{--metric-color:#24a890!important;}
+.metric-earth .plot-active-series{filter:drop-shadow(0 0 1px #27b99777);}
+.sidebar-layout .sky-mini #orbital{display:block;width:100%;height:112px;
+ touch-action:none;cursor:grab;border-radius:7px;}
+.sidebar-layout .sky-mini #orbital:active{cursor:grabbing;}
+.sidebar-layout .sky-mini #orbital:focus-visible{outline:2px solid #e8c870;}
+.sidebar-layout .sky-mini #horizon{height:67px;}
+.sidebar-layout .mission-toolbar #restartMission,
+.sidebar-layout .mission-toolbar .restart-mission{border:1px solid #496c83;
+ background:#122d42;border-radius:8px;color:#d6e8f5;padding:8px 12px;
+ font-size:11px;font-weight:750;cursor:pointer;flex:0 0 auto;}
+.sidebar-layout .mission-toolbar #restartMission:hover{border-color:#9ec8e4;background:#21445f;}
+@media(max-width:1100px){
+ .cards.scenario-triple{grid-template-columns:repeat(3,minmax(330px,1fr));min-width:1020px;}
+}
+@media(max-width:670px){
+ .scenario-navigation{gap:5px;}
+ .scenario-navigation button{font-size:10px;padding:7px;}
+ .cards.scenario-triple{grid-template-columns:repeat(3, minmax(310px,1fr));min-width:955px;}
+ .sidebar-layout .sky-mini #orbital{height:99px;}
+ .chart-info-content{width:240px;}
+ .sidebar-layout .mission-toolbar #restartMission{font-size:10px;padding:7px 8px;}
+}
