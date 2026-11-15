@@ -236,9 +236,18 @@ const CHART_EXPLANATIONS={
 };
 function metricSlot(index,key,content){
  const note=CHART_EXPLANATIONS[key];
- const info='<details class="chart-information"><summary aria-label="Explain '+escapeHtml(key)+' graph" title="Graph explanation">ⓘ</summary>'+
-  '<div class="chart-info-content"><strong>'+escapeHtml(note[0])+'</strong><p>'+escapeHtml(note[1])+'</p><p>'+escapeHtml(note[2])+'</p></div></details>';
- return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+info+content+'</div>';
+ const info='<details class="chart-information"><summary aria-label="Explain '+escapeHtml(key)+' graph" title="About this graph">'+
+  '<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" focusable="false">'+
+  '<circle cx="10" cy="10" r="8.1" fill="none" stroke="currentColor" stroke-width="1.55"/>'+
+  '<circle cx="10" cy="5.8" r="1" fill="currentColor"/>'+
+  '<path d="M10 9v5.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"/></svg>'+
+  '</summary><div class="chart-info-content"><strong>'+escapeHtml(note[0])+'</strong>'+
+  '<p>'+escapeHtml(note[1])+'</p><p>'+escapeHtml(note[2])+'</p></div></details>';
+ // Keep the info WITHIN the science plot so fullscreen preserves it.
+ const expand='<button type="button" class="plot-expand"';
+ if(content.includes(expand))content=content.replace(expand,info+expand);
+ else content=content.replace(/(<div class="chart[^"]*"[^>]*>)/, '$1'+info);
+ return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+content+'</div>';
 }
 function card(data,label){
  const m=data.metrics,s=data.samples;
