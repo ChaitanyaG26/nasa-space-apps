@@ -151,7 +151,7 @@ test("Optimizer screens full grid with hourly models and refines only top sixtee
  assert.equal(calls.filter(x=>x===30).length,17);
  assert.match(optimized.search,/511 candidates screened/);
  assert.equal(optimized.alternatives.length,5);
- assert.equal(optimized.recommended.landing_time,r.landing_time);
+ assert.equal(Date.parse(optimized.recommended.landing_time),Date.parse(r.landing_time));
  const date=await optimizeWithEngineAsync({...args,preserve:"site"},runner,{
   supported:req=>Date.parse(req.landing_time)>=Date.parse(r.landing_time),
   yieldEvery:1000
