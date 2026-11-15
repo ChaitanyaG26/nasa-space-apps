@@ -4,7 +4,7 @@
  * avoiding jumps and preserving smooth positions between hourly samples.
  * This provides celestial-body positions, NOT spacecraft navigation or COLA.
  */
-const URL=new URL("./assets/horizons-geocentric-icrf.json",import.meta.url);
+const DATA_URL=new URL("./assets/horizons-geocentric-icrf.json",import.meta.url);
 const HOUR_MS=3600000,DEG=180/Math.PI;
 let promise=null;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -28,7 +28,7 @@ export function verifyGeocentricCache(data){
  return data;
 }
 export async function loadGeocentricVectors(){
- if(!promise)promise=fetch(URL,{cache:"default"}).then(response=>{
+ if(!promise)promise=fetch(DATA_URL,{cache:"default"}).then(response=>{
   if(!response.ok)throw Error("JPL Earth-centered vector cache not yet published");
   return response.json();
  }).then(verifyGeocentricCache).catch(error=>{promise=null;throw error;});
