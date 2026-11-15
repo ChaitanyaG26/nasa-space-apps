@@ -30,7 +30,8 @@ test("Compact sidebar keeps sky/horizon while hiding removed controls",()=>{
   assert.match(page,/class="sky-stack"/);
   assert.match(page,/id="orbital"/);
   assert.match(page,/id="horizon"/);
-  assert.match(page,/class="toolbar-disclosure spacecraft-assumptions" open/);
+  assert.match(page,/class="toolbar-disclosure spacecraft-assumptions"/);
+  assert.doesNotMatch(page,/class="toolbar-disclosure spacecraft-assumptions" open/);
   assert.match(page,/id="optimizeMenu"[^>]*hidden/);
   assert.ok(page.indexOf('id="duration"')>page.indexOf("Spacecraft assumptions"));
   assert.ok(page.indexOf('id="preserve"')>page.indexOf('id="optimize"'));
