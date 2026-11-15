@@ -1,5 +1,5 @@
-import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-physics-ui-v10";
-import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-physics-ui-v10";
+import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-threeway-v11";
+import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-threeway-v11";
 import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
@@ -87,16 +87,22 @@ function utc(when){return new Date(when).toISOString().replace(".000Z","Z");}
 
 const SCENARIOS=[
  {id:"original",label:"Original mission"},
- {id:"optimized",label:"Optimized alternative"}
+ {id:"date-fixed",label:"Date fixed · optimized site"},
+ {id:"site-fixed",label:"Site fixed · optimized date"}
 ];
 const userState={
  original:{site:"ksc",holds:""},
- optimized:{site:"ksc",holds:""}
+ "date-fixed":{site:"ksc",holds:""},
+ "site-fixed":{site:"ksc",holds:""}
 };
 let controls={parking:200,span:24,step:60};
 let orbitControllers=[];
 let sequenceControllers=[];
-const visualSelections={original:{rocket:"falcon9",lander:"blueghost",payloadKg:500},optimized:{rocket:"falcon9",lander:"blueghost",payloadKg:500}};
+const visualSelections={
+ original:{rocket:"falcon9",lander:"blueghost",payloadKg:500},
+ "date-fixed":{rocket:"falcon9",lander:"blueghost",payloadKg:500},
+ "site-fixed":{rocket:"falcon9",lander:"blueghost",payloadKg:500}
+};
 function findScenarios(){
  const shared=globalThis.window?.lunaLaunchScenarios;
  if(Array.isArray(shared)&&shared.length)return shared.filter(s=>s?.data!==null);
@@ -285,9 +291,17 @@ if(typeof document!=="undefined"){
   const observer=new MutationObserver(installPanel);
   observer.observe(root,{childList:true});
   installPanel();
-  window.addEventListener("luna:scenarios-updated",()=>{
+  window.addEventListener("luna:scenarios-updated",event=>{
    const panel=document.getElementById("luna-launch-cola");
-   if(panel)renderScenarioPanels(panel);
+   if(panel&&Array.isArray(event.detail)&&event.detail.length)renderScenarioPanels(panel);
+   else if(panel){
+    orbitControllers.forEach(c=>c.destroy());orbitControllers=[];
+    sequenceControllers.forEach(c=>c.destroy());sequenceControllers=[];
+    panel.remove();
+    for(const state of Object.values(userState)){state.site="ksc";state.holds="";}
+    controls={parking:200,span:24,step:60};
+    for(const v of Object.values(visualSelections))Object.assign(v,{rocket:"falcon9",lander:"blueghost",payloadKg:500});
+   }
   });
  };
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",attach,{once:true});
