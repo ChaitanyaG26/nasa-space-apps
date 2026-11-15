@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {normalizeCatalog,demoShipPoint,keplerTransferPoint,idealTransferDays} from "../web/orbit-visualization.mjs";
+import {normalizeCatalog,demoShipPoint,keplerTransferPoint,idealTransferDays,idealizedMoonIntercept,smoothTransferFractions} from "../web/orbit-visualization.mjs";
 
 test("Public OMM catalog metadata is filtered, not treated as conjunction screening",()=>{
  const entries=[{OBJECT_NAME:"ISS",NORAD_CAT_ID:25544,EPOCH:"2026-11-14T12:00:00",MEAN_MOTION:15.5},
@@ -18,8 +18,8 @@ test("Schematic ship path has finite endpoints and intermediate positions",()=>{
 });
 test("Catalog display never asserts an operational avoidance solution",()=>{
  const source=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
- assert.match(source,/NOT COLA screening/);
- assert.match(source,/NOT real-time propagated coordinates/);
+ assert.match(source,/NOT COLA CLEARED/);
+ assert.match(source,/metadata, NOT/);
  assert.match(source,/CACHE_MS=2\*60\*60\*1000/);
 });
 test("Compact sidebar keeps sky/horizon while hiding removed controls",()=>{
@@ -54,15 +54,33 @@ test("Idealized transfer solves Kepler time-of-flight and slows near apogee",()=
 
 test("3D science visualization supports pan, zoom, Kepler timing and changing Moon direction",()=>{
  const source=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
- for(const expected of ["orbit-3d-canvas","cameraProject","pointermove","shiftKey","wheel","moonEphemeris","keplerTransferPoint","catalogAgeDays","NOT COLA screening"]){
+ for(const expected of ["orbit-3d-canvas","cameraProject","pointermove","shiftKey","wheel","moonEphemeris","keplerTransferPoint","catalogAgeDays","NOT COLA CLEARED"]){
   assert.ok(source.includes(expected),expected);
  }
 });
 
 test("Animated orbit is continuously sampled and shows explicitly illustrative burns",()=>{
  const scene=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
- assert.match(scene,/length:601/);
+ assert.match(scene,/smoothTransferFractions\(\)/);
  assert.match(scene,/data-orbit-burn/);
  assert.match(scene,/thrusterPhaseAt/);
  assert.match(scene,/this does not simulate propulsion/);
+});
+
+test("Idealized two-body transfer terminates exactly at the rendered Moon arrival position",()=>{
+ const moon={ra:137.8,dec:-6.2,distanceKm:391200};
+ const end=idealizedMoonIntercept(1,moon);
+ const ra=moon.ra*Math.PI/180,dec=moon.dec*Math.PI/180;
+ const target=[
+  moon.distanceKm*Math.cos(dec)*Math.cos(ra),
+  moon.distanceKm*Math.cos(dec)*Math.sin(ra),
+  moon.distanceKm*Math.sin(dec)
+ ];
+ assert.ok(Math.hypot(...end.map((v,i)=>v-target[i]))<.01,"transfer endpoint must match Moon at arrival");
+ const steps=smoothTransferFractions(1200);
+ assert.equal(steps.length,1201);
+ assert.equal(steps[0],0);
+ assert.equal(steps.at(-1),1);
+ assert.ok(steps.every((t,i)=>i===0||t>=steps[i-1]));
+ assert.ok(steps[1]<1/1200,"fine sampling near departure removes apparent sharp kinks");
 });
