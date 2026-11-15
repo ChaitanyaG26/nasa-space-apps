@@ -54,7 +54,7 @@ test("The Moon backlight is behind a transparent WebGL globe, not a fabricated e
 });
 test("Mobile and portrait tablet share simulation engine, avoid horizontal overflow and stack navigation",()=>{
  const css=file("styles.css"),page=file("index.html");
- assert.match(css,/@media \(max-width:820px\), \(max-width:1100px\) and \(orientation:portrait\)/);
+ assert.match(css,/@media \(max-width:960px\), \(max-width:1100px\) and \(orientation:portrait\)/);
  assert.match(css,/\.sidebar-layout \.shell\{\s*display:flex!important;flex-direction:column!important/);
  assert.match(css,/\.sidebar-layout \.mission-toolbar\{\s*display:grid!important;/);
  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
