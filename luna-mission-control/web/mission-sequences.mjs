@@ -3,7 +3,7 @@ import {destination,loadLolaGlobal} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs?v=20261114-extent500-1";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
 import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
-import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid,LAUNCH_RANGE_COORDS} from "./mission-surface-3d.mjs?v=20261114-solar-3d-v13";
+import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid,LAUNCH_RANGE_COORDS} from "./mission-surface-3d.mjs?v=20261114-data-ui-v14";
 import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 import {earthSunAngles} from "./solar-geometry.mjs";
 /* LUNA scenario-specific launch and landing cinematic visualizations.
