@@ -31,6 +31,6 @@ test("Info panel styles are scoped and version refreshed",()=>{
  const index=readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
  assert.match(css,/#scienceInfoDrawer \.science-info-row dd/);
  assert.match(css,/#luna-launch-cola \.launch-cola-scenarios/);
- assert.match(index,/styles\\.css\\?v=[A-Za-z0-9-]+/);
- assert.match(index,/app\\.js\\?v=[A-Za-z0-9-]+/);
+ assert.match(index,/styles\.css\?v=[A-Za-z0-9-]+/);
+ assert.match(index,/app\.js\?v=[A-Za-z0-9-]+/);
 });
