@@ -813,3 +813,36 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
  .sidebar-layout .sidebar{height:66dvh;max-height:none;min-height:410px;}
  #luna-launch-cola .sequence-header label{flex-basis:42%;min-width:120px;max-width:none;}
 }
+
+
+/* Sourced lunar touchdown markers: all share the globe's sphere projection. */
+.map-page{position:relative;isolation:isolate;}
+.landing-site-layer{position:absolute;inset:0;z-index:4;pointer-events:none;}
+.landing-site-marker{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;
+ width:10px;height:10px;padding:0;border-radius:50%;border:1.5px solid #f4f9fc;
+ background:var(--marker-color);box-shadow:0 0 0 2px #061625b8,0 0 9px color-mix(in srgb,var(--marker-color),transparent 35%);
+ cursor:pointer;transition:transform .13s ease,box-shadow .13s ease;z-index:4;}
+.landing-site-marker:hover,.landing-site-marker:focus-visible{transform:translate(-50%,-50%) scale(1.55);
+ outline:1px solid white;outline-offset:3px;z-index:8;}
+.landing-site-marker[hidden]{display:none;}
+.landing-site-legend{position:absolute;bottom:37px;right:14px;z-index:5;
+ display:flex;flex-direction:column;gap:5px;width:172px;max-width:35vw;
+ padding:12px;border:1px solid #31516b;border-radius:10px;background:#0b1d2beb;
+ color:#d5e5f1;box-shadow:0 12px 28px #071b2a6b;backdrop-filter:blur(8px);
+ font-size:10px;pointer-events:auto;}
+.landing-site-legend strong{font-size:11px;color:#eaf4fb;margin-bottom:2px;}
+.landing-site-legend span{display:flex;align-items:center;gap:8px;line-height:1.25;}
+.landing-site-legend i{display:inline-block;flex:0 0 9px;height:9px;border:1px solid #e4f4ff;
+ border-radius:50%;background:var(--marker-color);}
+.landing-site-legend small{font-size:9px;color:#84a9c3;margin-top:3px;line-height:1.35;}
+.landing-site-tooltip{position:absolute;z-index:12;max-width:235px;min-width:180px;
+ display:grid;gap:4px;padding:11px 12px;background:#0b2033;border:1px solid #527da0;
+ border-radius:8px;color:#d5e8f5;font-size:11px;box-shadow:0 12px 26px #0008;
+ pointer-events:none;line-height:1.35;}
+.landing-site-tooltip[hidden]{display:none;}
+.landing-site-tooltip strong{font-size:12px;color:#fff;}
+.landing-site-tooltip time{color:#f1d58e;font-variant-numeric:tabular-nums;}
+@media(max-width:620px){.landing-site-legend{right:9px;bottom:28px;max-width:50vw;
+ width:145px;padding:8px;gap:3px;font-size:9px;}
+ .landing-site-legend small{display:none;}
+ .landing-site-marker{width:9px;height:9px;}}
