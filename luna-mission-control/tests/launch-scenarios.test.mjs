@@ -15,7 +15,8 @@ test("Different arrival dates produce distinct departure candidate windows",()=>
 test("Each scenario has its own COLA hold state and output",()=>{
  const module=readFileSync(new URL("../web/launch-window.mjs",import.meta.url),"utf8");
  assert.match(module,/original:\{site:"ksc",holds:""\}/);
- assert.match(module,/optimized:\{site:"ksc",holds:""\}/);
+ assert.match(module,/"date-fixed":\{site:"ksc",holds:""\}/);
+ assert.match(module,/"site-fixed":\{site:"ksc",holds:""\}/);
  assert.match(module,/data-cola-scenario/);
  assert.match(module,/scenarioTarget\(scenario\)/);
  assert.match(module,/NOT VERIFIED/);
@@ -23,8 +24,11 @@ test("Each scenario has its own COLA hold state and output",()=>{
 test("Simulation supplies structured original and optimized arrival dates",()=>{
  const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
  assert.match(app,/lunaLaunchScenarios/);
- assert.match(app,/arrival_time:s.data.landing_time/);
- assert.match(app,/comparison\.recommended/);
+ assert.match(app,/arrival_time:item.data.landing_time/);
+ assert.match(app,/comparison\.dateFixed/);
+ assert.match(app,/comparison\.siteFixed/);
+ assert.match(app,/preserve:"time"/);
+ assert.match(app,/preserve:"site"/);
 });
 test("Info panel styles are scoped and version refreshed",()=>{
  const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");

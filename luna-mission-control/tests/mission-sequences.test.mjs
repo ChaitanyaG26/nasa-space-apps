@@ -50,5 +50,7 @@ test("Illustrative probe landing feet meet the target height for each site's coo
   assert.ok(surface>225&&surface<248);
  }
  const script=readFileSync(new URL("../web/mission-sequences.mjs",import.meta.url),"utf8");
- assert.match(script,/surfaceY-21-26/);
+ assert.match(script,/drawMissionSurface3D/);
+ assert.match(script,/loadEarthSiteGrid/);
+ assert.match(script,/loadMoonSiteGrid/);
 });

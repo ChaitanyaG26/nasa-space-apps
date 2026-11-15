@@ -47,5 +47,5 @@ test("Professional dashboard omits sky playback and graph sequence numerals",()=
  assert.doesNotMatch(app,/metric-sequence/);
  assert.ok(!page.includes("01 / MISSION TIME"));
  assert.match(page,/Mission timing/);
- assert.match(page,/20261114-physics-ui-v10/);
+ assert.match(page,/20261114-threeway-v11/);
 });

@@ -52,5 +52,5 @@ test("Descent scene uses measured LOLA and cached JPL reference where available"
   assert.ok(scene.includes(term),term);
  assert.match(launch,/landingUtc:destination\?\.time/);
  assert.match(scene,/hazards unknown/);
- assert.match(scene,/2× vertical display/);
+ assert.match(scene,/true elevation mesh/);
 });

@@ -32,12 +32,13 @@ test("Compact sidebar keeps sky/horizon while hiding removed controls",()=>{
   assert.match(page,/id="horizon"/);
   assert.match(page,/class="toolbar-disclosure spacecraft-assumptions"/);
   assert.doesNotMatch(page,/class="toolbar-disclosure spacecraft-assumptions" open/);
-  assert.match(page,/id="optimizeMenu"[^>]*hidden/);
+  assert.match(page,/id="restartMission"/);
+  assert.doesNotMatch(page,/id="optimizeMenu"/);
   assert.ok(page.indexOf('id="duration"')>page.indexOf("Spacecraft assumptions"));
-  assert.ok(page.indexOf('id="preserve"')>page.indexOf('id="optimize"'));
+  assert.ok(page.indexOf('id="restartMission"')>page.indexOf('id="optimize"'));
   for(const gone of ["mode","sampleMinutes","coords","focus"])
    assert.doesNotMatch(page,new RegExp('id="'+gone+'"'));
-  for(const id of ["date","time","duration","preserve","simulate","optimize","runOptimize"])
+  for(const id of ["date","time","duration","simulate","optimize","restartMission"])
    assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id+" unique");
  }
  assert.match(css,/sky-stack-card/);
