@@ -1,5 +1,5 @@
-import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-lander-sequence-v8";
-import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-lander-sequence-v8";
+import {mountOrbitAnimation,loadCatalogContext,idealTransferDays} from "./orbit-visualization.mjs?v=20261114-physics-ui-v10";
+import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-physics-ui-v10";
 import {loadGeocentricVectors,geocentricAt} from "./horizons-geocentric.mjs?v=20261114-vector-v9";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
@@ -96,7 +96,7 @@ const userState={
 let controls={parking:200,span:24,step:60};
 let orbitControllers=[];
 let sequenceControllers=[];
-const visualSelections={original:{rocket:"falcon9",lander:"blueghost"},optimized:{rocket:"falcon9",lander:"blueghost"}};
+const visualSelections={original:{rocket:"falcon9",lander:"blueghost",payloadKg:500},optimized:{rocket:"falcon9",lander:"blueghost",payloadKg:500}};
 function findScenarios(){
  const shared=globalThis.window?.lunaLaunchScenarios;
  if(Array.isArray(shared)&&shared.length)return shared.filter(s=>s?.data!==null);
@@ -144,7 +144,7 @@ function installPanel(){
   '<div class="launch-cola-scenarios" data-cola-list></div>'+
 
   '<details class="launch-cola-provenance"><summary>Methodology, scientific limits and sources</summary>'+
-  '<p>Truncated lunar theory and idealized two-body Earth-to-lunar-radius transfer. The destination coordinates label the selected lunar surface site; the simplified transfer does not solve a surface landing, lunar orbit insertion, or a vehicle-specific path. The 3D view shows Moon direction from a truncated theory with compressed distances, not a verified interception. Ranking uses an arrival-timing and Moon-bearing heuristic, not operational launch trajectory optimization.</p>'+
+  '<p>Moon/Sun positions use cached JPL Horizons geocentric vectors where covered. The Earth-centered two-body coast arc uses Kepler physics and meets the projected lunar position by construction; this is not a solved three-body encounter, landing, or lunar orbit insertion. Vehicle payload checks are based only on published launch specifications. The Sun is displayed as direction only, outside the Earth–Moon view.</p>'+
   '<p>Real launch approval requires vehicle/range capabilities, trajectory targeting, tracked-object ephemerides, uncertainties and official COLA clearance. CelesTrak public OMM data is a partial, lower-fidelity reference and cannot validate a collision-free route. A time outside entered hold intervals is never declared safe.</p>'+
   '<p><a href="https://www.nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/" target="_blank" rel="noopener noreferrer">NASA launch ranges</a> · <a href="https://www.nasa.gov/cara/" target="_blank" rel="noopener noreferrer">NASA conjunction assessment</a> · <a href="https://celestrak.org/NORAD/documentation/gp-data-formats.php" target="_blank" rel="noopener noreferrer">CelesTrak public catalog documentation</a> · <a href="https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_450.169-1.pdf" target="_blank" rel="noopener noreferrer">FAA COLA guidance</a></p></details>'+
   '<p class="launch-cola-scope-note"><b>Launch-site acknowledgement:</b> This educational model focuses on Cape Canaveral Space Force Station, Kennedy Space Center, and Vandenberg Space Force Base as major U.S. orbital launch locations. Many other NASA-associated ranges mainly support sounding rockets, small or specialized missions. This is not a complete list of orbital launch facilities.</p>';
@@ -171,7 +171,7 @@ function installPanel(){
    article.sequenceController?.setSite(e.target.value);
    if(article.sequenceController)visualSelections[id]=article.sequenceController.selection();
   }
-  if(e.target.matches("[data-rocket],[data-lander]")&&article.sequenceController)
+  if(e.target.matches("[data-rocket],[data-lander],[data-payload-mass]")&&article.sequenceController)
    visualSelections[id]=article.sequenceController.selection();
  });
  el.addEventListener("input",e=>{
@@ -198,9 +198,13 @@ function renderScenarioPanels(el){
    ...visualSelections[article.dataset.colaScenario]
   });
   article.sequenceController=sequence;sequenceControllers.push(sequence);
+  const moonDistance=destination?moonPosition(destination.time).distanceKm:384400;
+  const parkingKm=Number(controls.parking)||200;
+  const days=idealTransferDays(parkingKm,moonDistance);
+  const arrival=destination?.time||Date.parse("2026-11-20T00:00:00Z");
   const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{
    scenario:article.dataset.colaScenario,moonEphemeris:moonPosition,
-   departureUtc:scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario))?.time-5*DAY
+   parkingKm,moonDistanceKm:moonDistance,flightDays:days,departureUtc:arrival-days*DAY
   });
   article.orbitController=controller;
   orbitControllers.push(controller);
@@ -210,6 +214,17 @@ function renderScenarioPanels(el){
   officialVectors=data;
   if(!list.isConnected)return;
   for(const article of list.querySelectorAll("[data-cola-scenario]")){
+   const destination=scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario));
+   if(!destination)continue;
+   const parkingKm=Number(controls.parking)||200;
+   try{
+    const moonKm=geocentricAt(data,destination.time).moon.distanceKm;
+    const days=idealTransferDays(parkingKm,moonKm);
+    article.orbitController?.setTransfer?.({
+     parkingKm,moonDistanceKm:moonKm,flightDays:days,
+     departureUtc:destination.time-days*DAY
+    });
+   }catch{/* Outside JPL coverage: keep marked approximate ephemeris. */}
    article.orbitController?.setEphemerides?.(
     utc=>geocentricAt(data,utc).moon,
     utc=>geocentricAt(data,utc).sun
