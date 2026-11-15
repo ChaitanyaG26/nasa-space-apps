@@ -10,8 +10,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-
-RELEASE = "20261114-scroll-top-v20"
+from pathlib import Path
 
 
 class Assets(html.parser.HTMLParser):
@@ -29,6 +28,26 @@ class Assets(html.parser.HTMLParser):
             self.scripts.append(attributes.get("src", ""))
         if tag == "link" and attributes.get("rel") == "stylesheet":
             self.styles.append(attributes.get("href", ""))
+
+
+def expected_release():
+    """Read the expected asset version from the checked-out production entry.
+
+    This keeps live deployment verification aligned with the actual site and
+    avoids false failures when a newer build intentionally busts browser cache.
+    """
+    source = (Path(__file__).resolve().parents[2] / "index.html").read_text(encoding="utf-8")
+    parser = Assets()
+    parser.feed(source)
+    if len(parser.scripts) != 1 or len(parser.styles) != 1:
+        raise AssertionError("Local production page must reference one script and one stylesheet")
+    versions = []
+    for asset in (parser.scripts[0], parser.styles[0]):
+        params = urllib.parse.parse_qs(urllib.parse.urlsplit(asset).query)
+        versions.append(params.get("v", [None])[0])
+    if not versions[0] or versions[0] != versions[1]:
+        raise AssertionError("Local app and stylesheet versions must match")
+    return versions[0]
 
 
 def fetch_text(url):
@@ -82,7 +101,8 @@ def verify(base_url):
     if len(parser.scripts) != 1 or len(parser.styles) != 1:
         raise AssertionError("Expected one module entry and one stylesheet")
     module_path, css_path = parser.scripts[0], parser.styles[0]
-    if RELEASE not in module_path or RELEASE not in css_path:
+    release = expected_release()
+    if release not in module_path or release not in css_path:
         raise AssertionError("Live HTML still serves an older asset version")
     module_url = urllib.parse.urljoin(base_url, module_path)
     css_url = urllib.parse.urljoin(base_url, css_path)
