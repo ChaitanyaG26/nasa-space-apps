@@ -165,13 +165,14 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '<output class="plot-readout-value"><span class="plot-reading-time">Hover or tap a graph point</span>'+
  '<strong class="plot-reading-number">—</strong></output></div>'+
  '<div class="plot-foot-summary">'+
- '<div class="plot-foot-item plot-foot-count"><span class="plot-foot-label">Data</span><span>'+points.length.toLocaleString("en-US")+' '+(kind==="observed"?"archival bins":"computed samples")+'</span></div>'+
+ '<div class="plot-foot-item plot-foot-count"><span class="plot-foot-label">Samples</span><span class="plot-foot-value">'+points.length.toLocaleString("en-US")+' '+(kind==="observed"?"archival bins":"computed samples")+'</span></div>'+
  '<div class="plot-foot-item plot-foot-range"><span class="plot-foot-label">Value range</span>'+
- '<span>Min '+esc(fmt(minimum.value,unit))+'</span><span>Max '+esc(fmt(maximum.value,unit))+'</span></div>'+
+ '<span class="plot-foot-value">Minimum: '+esc(fmt(minimum.value,unit))+'</span>'+
+ '<span class="plot-foot-value">Maximum: '+esc(fmt(maximum.value,unit))+'</span></div>'+
  '<div class="plot-foot-item plot-foot-dates"><span class="plot-foot-label">UTC time window</span>'+
- '<div class="plot-time-pair"><time datetime="'+new Date(start).toISOString()+'">'+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+'</time>'+
- '<span class="plot-time-separator">to</span>'+
- '<time datetime="'+new Date(end).toISOString()+'">'+esc(new Date(end).toISOString().slice(0,16).replace("T"," "))+'</time></div></div>'+
+ '<div class="plot-time-pair">'+
+ '<span class="plot-foot-date"><span class="plot-date-label">Start</span><time datetime="'+new Date(start).toISOString()+'">'+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+'</time></span>'+
+ '<span class="plot-foot-date"><span class="plot-date-label">End</span><time datetime="'+new Date(end).toISOString()+'">'+esc(new Date(end).toISOString().slice(0,16).replace("T"," "))+'</time></span></div></div>'+
  '</div></div></div>';
 }
 export function resetCharts(){registry.clear();counter=0;}
@@ -186,8 +187,11 @@ function nearestAt(series,t){
 // The expanded plot is displayed in a dedicated body-level dialog, outside
 // clipping, scrolling and transformed comparison panes on mobile and desktop.
 let fullscreenSlot=null,fullscreenPlaceholder=null,fullscreenOverlay=null,fullscreenTrigger=null;
+let fullscreenInfoCleanup=null;
 export function closeExpandedChart(){
  if(!fullscreenSlot)return;
+ fullscreenInfoCleanup?.();
+ fullscreenInfoCleanup=null;
  const slot=fullscreenSlot,placeholder=fullscreenPlaceholder;
  const panel=slot.querySelector(".science-plot");
  panel?.classList.remove("chart-expanded");
@@ -219,6 +223,22 @@ function openExpandedChart(panel){
  fullscreenTrigger=panel.querySelector(".plot-expand");
  slot.classList.add("fullscreen-slot");
  panel.classList.add("chart-expanded");
+ // Fullscreen explanatory text is displayed in normal document flow,
+ // not positioned over the plotted data or selected reading.
+ const disclosure=panel.querySelector("details.chart-information");
+ const note=disclosure?.querySelector(".chart-info-content");
+ if(disclosure&&note){
+  const explanation=document.createElement("section");
+  explanation.className="chart-fullscreen-explanation";
+  explanation.setAttribute("role","note");
+  explanation.setAttribute("aria-label","About this graph");
+  explanation.append(...Array.from(note.childNodes,child=>child.cloneNode(true)));
+  (panel.querySelector(".chart-subtitle")||panel.querySelector(".chart-head")).after(explanation);
+  const syncExplanation=()=>{explanation.hidden=!disclosure.open;};
+  disclosure.addEventListener("toggle",syncExplanation);
+  syncExplanation();
+  fullscreenInfoCleanup=()=>{disclosure.removeEventListener("toggle",syncExplanation);explanation.remove();};
+ }
  const button=panel.querySelector(".plot-expand");
  if(button){button.textContent="×";button.setAttribute("aria-label","Close expanded chart");button.setAttribute("aria-expanded","true");}
  document.body.classList.add("luna-chart-modal-open");
@@ -275,11 +295,15 @@ export function attachChartInteractions(root){
    const cy=M.top+(dom.max-p.value)/(dom.max-dom.min)*ph;
    line.setAttribute("x1",cx);line.setAttribute("x2",cx);line.setAttribute("visibility","visible");
    dot.setAttribute("cx",cx);dot.setAttribute("cy",cy);dot.setAttribute("visibility","visible");
-   tooltip.hidden=false;
    const utcLabel=new Date(p.time).toISOString().slice(0,16).replace("T"," ")+" UTC";
    const valueLabel=fmt(p.value,plot.unit);
-   tooltip.textContent=utcLabel+" · "+valueLabel;
-   tooltip.style.left=Math.min(76,Math.max(8,cx/W*100))+"%";
+   // Fullscreen uses a dedicated telemetry strip; suppress floating labels.
+   const expanded=Boolean(svg.closest(".luna-chart-overlay"));
+   tooltip.hidden=expanded;
+   if(!expanded){
+    tooltip.textContent=utcLabel+" · "+valueLabel;
+    tooltip.style.left=Math.min(76,Math.max(8,cx/W*100))+"%";
+   }
    if(readingTime)readingTime.textContent=utcLabel;
    if(readingNumber)readingNumber.textContent=valueLabel;
   };
