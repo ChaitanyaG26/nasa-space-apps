@@ -27,10 +27,10 @@ test("NASA supported date notice is upper right, away from bottom right scroll a
 test("Published pages use current controller and CSS versions",()=>{
  for(const path of ["web/index.html","../index.html"]){
   const html=read(path);
-  assert.match(html,/styles\.css\?v=20261115-legible-v23/);
-  assert.match(html,/app\.js\?v=20261115-legible-v23/);
+  assert.match(html,/styles\.css\?v=20261115-compact-v24/);
+  assert.match(html,/app\.js\?v=20261115-compact-v24/);
  }
- assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-legible-v23/);
+ assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-compact-v24/);
 });
 
 test("Point inspection is rendered as a separate telemetry band, not over the chart legend",()=>{
@@ -64,4 +64,17 @@ test("Readable footer separates ranges, samples, and UTC start/end on phone and 
  assert.match(css,/v23: a calm, separate methodology panel/);
  assert.match(css,/@media\(max-width:800px\)/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\)!important/);
+});
+
+test("Fullscreen plot keeps a larger viewport while compressing open explanations and footer",()=>{
+ const css=read("web/styles.css");
+ assert.match(css,/v24: compact fullscreen metadata/);
+ assert.match(css,/height:min\(91dvh,920px\)!important/);
+ assert.match(css,/body>\.luna-chart-overlay \.chart-fullscreen-explanation:not\(\[hidden\]\)/);
+ assert.match(css,/max-height:88px!important/);
+ assert.match(css,/body>\.luna-chart-overlay \.plot-wrap\{/);
+ assert.match(css,/flex:1 1 auto!important/);
+ assert.match(css,/@media\(max-width:800px\)/);
+ assert.match(css,/height:92dvh!important/);
+ assert.match(css,/grid-template-columns:minmax\(0,.85fr\) minmax\(0,1.15fr\)!important/);
 });
