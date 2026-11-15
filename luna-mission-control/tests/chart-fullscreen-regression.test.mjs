@@ -27,10 +27,10 @@ test("NASA supported date notice is upper right, away from bottom right scroll a
 test("Published pages use current controller and CSS versions",()=>{
  for(const path of ["web/index.html","../index.html"]){
   const html=read(path);
-  assert.match(html,/styles\.css\?v=20261115-compact-v24/);
-  assert.match(html,/app\.js\?v=20261115-compact-v24/);
+  assert.match(html,/styles\.css\?v=20261115-screening-v25/);
+  assert.match(html,/app\.js\?v=20261115-screening-v25/);
  }
- assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-compact-v24/);
+ assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-screening-v25/);
 });
 
 test("Point inspection is rendered as a separate telemetry band, not over the chart legend",()=>{
