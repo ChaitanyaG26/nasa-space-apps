@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-physics-ui-v10"></head>
+<title>LUNA Mission Control</title><link rel="stylesheet" href="/styles.css?v=20261114-threeway-v11"></head>
 <body class="sidebar-layout">
 <div class="shell">
 <aside class="sidebar">
@@ -19,7 +19,7 @@
 <h3>Sun, Earth &amp; terrain</h3>
 <div class="sky-stack-card">
 <div class="sky-caption"><span>☀ Sun</span><span>◉ Earth</span><span>◐ Moon</span></div>
-<section class="sky-mini"><strong>Moon-centered directions</strong><svg id="orbital" viewBox="0 0 320 110" role="img" aria-label="Sun and Earth directions from the Moon"></svg></section>
+<section class="sky-mini"><strong>Moon-centered directions</strong><canvas id="orbital" width="320" height="134" aria-label="Interactive 3D Moon-centered directions to Sun and Earth"></canvas></section>
 <section class="sky-mini"><strong>Local terrain horizon</strong><svg id="horizon" viewBox="0 0 320 110" role="img" aria-label="Sun and Earth angles against the selected site's terrain horizon"></svg></section>
 <div id="angles" class="sky-angles">Loading JPL reference…</div>
 <small id="source" class="sky-source">JPL Horizons reference · local horizon loading</small>
@@ -64,11 +64,9 @@
 <nav class="mission-toolbar" aria-label="Simulation actions">
 <button id="simulate" class="primary" type="button">Simulate mission</button>
 <div class="optimize-trigger">
-<button id="optimize" class="secondary" disabled type="button" aria-expanded="false" aria-controls="optimizeMenu">Optimize &amp; compare</button>
-<div id="optimizeMenu" class="optimize-menu" role="group" aria-label="Optimization comparison options" hidden>
-<label>Compare by changing<select id="preserve"><option value="time">Landing site · keep date</option><option value="site">Landing date · keep site (±14 days)</option></select></label>
-<button id="runOptimize" class="optimize-run" type="button">Run comparison</button>
-</div></div>
+<button id="optimize" class="secondary" disabled type="button">Optimize &amp; compare</button>
+</div>
+<button id="restartMission" class="restart-mission" type="button" title="Reset mission settings and return to the Moon">Restart mission</button>
 </nav>
 <div id="mapPage" class="map-page">
 <div class="map-top">Select a lunar site <span>Drag the Moon to explore</span></div>
@@ -81,5 +79,5 @@
 <div id="results"></div></div>
 <div id="toast" class="toast hidden" role="status"></div>
 </main>
-</div><script type="module" src="/app.js?v=20261114-physics-ui-v10"></script>
+</div><script type="module" src="/app.js?v=20261114-threeway-v11"></script>
 </body></html>
