@@ -173,28 +173,55 @@ function nearestAt(series,t){
  if(l>0&&Math.abs(pts[l-1].time-t)<Math.abs(pts[l].time-t))l--;
  return pts[l];
 }
+// Move the active chart's entire metric slot to the document top level.
+// This prevents its original horizontally scrolling comparison pane from
+// clipping or offsetting the fullscreen graph on smaller displays.
+let fullscreenSlot=null,fullscreenPlaceholder=null;
+export function closeExpandedChart(){
+ if(!fullscreenSlot)return;
+ const slot=fullscreenSlot,placeholder=fullscreenPlaceholder;
+ const panel=slot.querySelector(".science-plot");
+ panel?.classList.remove("chart-expanded");
+ const button=panel?.querySelector(".plot-expand");
+ if(button){button.textContent="⤢";button.setAttribute("aria-label","Expand chart");}
+ slot.classList.remove("fullscreen-slot");
+ if(placeholder?.parentNode)placeholder.replaceWith(slot);
+ else slot.remove();
+ fullscreenSlot=null;fullscreenPlaceholder=null;
+ document.body.classList.remove("luna-chart-modal-open");
+}
+function openExpandedChart(panel){
+ closeExpandedChart();
+ const slot=panel.closest(".metric-slot");
+ if(!slot)return;
+ const placeholder=document.createComment("expanded chart original location");
+ slot.parentNode.replaceChild(placeholder,slot);
+ document.body.appendChild(slot);
+ fullscreenSlot=slot;fullscreenPlaceholder=placeholder;
+ slot.classList.add("fullscreen-slot");
+ panel.classList.add("chart-expanded");
+ const button=panel.querySelector(".plot-expand");
+ if(button){button.textContent="×";button.setAttribute("aria-label","Close expanded chart");}
+ document.body.classList.add("luna-chart-modal-open");
+}
 export function attachChartInteractions(root){
+ // A re-render must never strand an old fullscreen chart in <body>.
+ closeExpandedChart();
  if(!root.dataset.lunaExpandEnabled){
   root.dataset.lunaExpandEnabled="1";
   root.addEventListener("click",event=>{
    const button=event.target.closest(".plot-expand");
-   if(!button)return;
-   const panel=button.closest(".science-plot");
-   const on=!panel.classList.contains("chart-expanded");
-   root.querySelectorAll(".chart-expanded").forEach(el=>{
-    el.classList.remove("chart-expanded");
-    const b=el.querySelector(".plot-expand");
-    if(b){b.textContent="⤢";b.setAttribute("aria-label","Expand chart");}
-   });
-   if(on){panel.classList.add("chart-expanded");button.textContent="×";button.setAttribute("aria-label","Close expanded chart");}
+   if(!button||!root.contains(button))return;
+   openExpandedChart(button.closest(".science-plot"));
+  });
+  // The expanded metric slot is portaled outside root, so closing it is
+  // deliberately handled at document level.
+  document.addEventListener("click",event=>{
+   const button=event.target.closest(".plot-expand");
+   if(button&&fullscreenSlot?.contains(button))closeExpandedChart();
   });
   document.addEventListener("keydown",event=>{
-   if(event.key!=="Escape")return;
-   root.querySelectorAll(".chart-expanded").forEach(el=>{
-    el.classList.remove("chart-expanded");
-    const btn=el.querySelector(".plot-expand");
-    if(btn){btn.textContent="⤢";btn.setAttribute("aria-label","Expand chart");}
-   });
+   if(event.key==="Escape"&&fullscreenSlot){event.preventDefault();closeExpandedChart();}
   });
  }
  for(const svg of root.querySelectorAll("svg[data-plot-id]")){
