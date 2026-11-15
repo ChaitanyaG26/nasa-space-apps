@@ -61,6 +61,15 @@ export function idealTransferDays(parkingKm=200,moonDistanceKm=384400){
  if(!(rp>RE&&ra>rp))throw new RangeError("Invalid reference orbit");
  return Math.PI*Math.sqrt(((rp+ra)/2)**3/MU)/86400;
 }
+/** Earth-centered two-body vis-viva speed; not a lunar gravity capture model. */
+export function transferDynamicsAt(fraction,{parkingKm=200,moonDistanceKm=384400}={}){
+ const p=keplerTransferPoint(fraction,{parkingKm,moonDistanceKm});
+ const rp=RE+parkingKm,a=(rp+moonDistanceKm)/2;
+ const speed=Math.sqrt(MU*(2/p.radiusKm-1/a));
+ const vParking=Math.sqrt(MU/rp),vPerigee=Math.sqrt(MU*(2/rp-1/a));
+ return {radiusKm:p.radiusKm,speedKmS:speed,specificEnergyKm2S2:-MU/(2*a),
+  tliDeltaVKmS:vPerigee-vParking,flightDays:idealTransferDays(parkingKm,moonDistanceKm)};
+}
 export function keplerTransferPoint(fraction,{parkingKm=200,moonDistanceKm=384400}={}){
  const t=clamp(fraction,0,1),rp=RE+parkingKm,ra=moonDistanceKm;
  if(!(rp>RE&&ra>rp))throw new RangeError("Invalid transfer radii");
@@ -140,6 +149,7 @@ export function mountOrbitAnimation(host,{
   '<input data-orbit-scrub type="range" min="0" max="1000" step="1" value="0" aria-label="Conceptual transit fraction">'+
   '<span data-orbit-phase class="orbit-phase">Elapsed 0.00 d</span>'+
  '<span data-orbit-burn class="orbit-burn-indicator">Coasting</span></div>'+
+ '<div class="orbit-physics-telemetry" data-orbit-telemetry></div>'+
   '</section>';
  const qs=s=>host.querySelector(s),canvas=qs("canvas"),ctx=canvas.getContext("2d");
  if(!ctx)return{destroy(){},setCatalog(){},setTransfer(){}};
@@ -165,12 +175,20 @@ export function mountOrbitAnimation(host,{
   ctx.lineWidth=width;ctx.strokeStyle=color;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([]);
  };
  const text=(label,x,y,color="#d4e8f3")=>{ctx.fillStyle=color;ctx.font="12px system-ui,sans-serif";ctx.fillText(label,x,y);};
- const bubble=(vec,radius,fill,outline,label)=>{
+ const bubble=(vec,radius,fill,outline,label,sunVector=[1,0,0],atmosphere=false)=>{
   const p=cameraProject(vec,camera),r=Math.max(2,radius*camera.zoom);
-  const shade=ctx.createRadialGradient(p.x-r*.35,p.y-r*.45,1,p.x,p.y,r);
-  shade.addColorStop(0,"#edf8ff");shade.addColorStop(.19,fill);shade.addColorStop(1,outline);
+  const sunP=cameraProject(add(vec,sunVector),camera),centerP=cameraProject(vec,camera);
+  const dx=sunP.x-centerP.x,dy=sunP.y-centerP.y,m=Math.hypot(dx,dy)||1;
+  const shade=ctx.createRadialGradient(p.x+r*.38*dx/m,p.y+r*.38*dy/m,1,p.x,p.y,r*1.08);
+  shade.addColorStop(0,"#f4f8ff");shade.addColorStop(.23,fill);
+  shade.addColorStop(.68,outline);shade.addColorStop(1,"#101b2c");
+  if(atmosphere){
+   ctx.beginPath();ctx.arc(p.x,p.y,r*1.29,0,2*Math.PI);
+   ctx.strokeStyle="#5acbff7b";ctx.lineWidth=Math.max(1,r*.13);
+   ctx.shadowColor="#3e9cf0";ctx.shadowBlur=16;ctx.stroke();ctx.shadowBlur=0;
+  }
   ctx.beginPath();ctx.arc(p.x,p.y,r,0,2*Math.PI);ctx.fillStyle=shade;ctx.fill();
-  ctx.strokeStyle="#d6f5ff77";ctx.lineWidth=.6;ctx.stroke();
+  ctx.strokeStyle="#c3dfff80";ctx.lineWidth=.7;ctx.stroke();
   text(label,p.x+r+7,p.y+4);
  };
  function ephemAt(time){
@@ -221,13 +239,13 @@ export function mountOrbitAnimation(host,{
   rays.addColorStop(0,"#ffe7a988");rays.addColorStop(1,"#ffc84e00");
   ctx.fillStyle=rays;ctx.beginPath();ctx.arc(sunPt.x,sunPt.y,65*camera.zoom,0,Math.PI*2);ctx.fill();
   // Draw bodies and markers with strong visual hierarchy, separate from catalog data.
-  bubble([0,0,0],12,"#4c9fd6","#13406a","Earth");
+  bubble([0,0,0],12,"#4c9fd6","#13406a","Earth",source,true);
   const eq=cameraProject([0,0,0],camera),angle=2*Math.PI*(when/86164090.5);
   ctx.strokeStyle="#c5f4ff9a";ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(eq.x+Math.cos(angle)*11*camera.zoom,eq.y-11*camera.zoom);
   ctx.quadraticCurveTo(eq.x-Math.sin(angle)*16*camera.zoom,eq.y,eq.x-Math.cos(angle)*11*camera.zoom,eq.y+11*camera.zoom);ctx.stroke();
-  bubble(moon,7.5,"#d5dbe3","#5b718a",t>=.999?"Moon · arrival":"Moon");
-  bubble(sun,12,"#ffd875","#d78b16","Sun direction");
+  bubble(moon,7.5,"#d5dbe3","#5b718a",t>=.999?"Moon · arrival":"Moon",source);
+  bubble(sun,12,"#ffd875","#d78b16","Sun direction",source);
   const sc=cameraProject(ship,camera);
   const burn=thrusterPhaseAt(t);
   if(burn){
@@ -254,6 +272,9 @@ export function mountOrbitAnimation(host,{
   scrub.value=Math.round(t*1000);
   const utc=new Date(when).toISOString().slice(0,16).replace("T"," ");
   phase.textContent=(scene.flightDays*t).toFixed(2)+" / "+scene.flightDays.toFixed(2)+" d · "+utc+" UTC";
+  const dyn=transferDynamicsAt(t,scene);
+  qs("[data-orbit-telemetry]").textContent="Earth range "+Math.round(dyn.radiusKm).toLocaleString()+" km · "+
+   "speed "+dyn.speedKmS.toFixed(2)+" km/s · idealized TLI "+dyn.tliDeltaVKmS.toFixed(2)+" km/s";
  }
  function frame(now){
   if(!alive||!host.isConnected)return;
