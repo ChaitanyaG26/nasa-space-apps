@@ -1,6 +1,7 @@
 import {renderScientificInformation} from "./science-info.mjs";
 import "./launch-window.mjs?v=20261114-physics-ui-v10";
-import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
+import {initGlobe} from "./globe.js?v=20261114-landmark-v11";
+import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-landmark-v11";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-extent500-1";
@@ -76,6 +77,7 @@ async function attachDivinerClimatology(result,request,geom){
 const $=id=>document.getElementById(id);
 let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,comparison=null,previewSeq=0;
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
+const moonSky3D=createMoonSky3D($("orbital"));
 function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("mapCoords").textContent=text;}
 function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:30,data_mode:"horizons"}}
 async function api(path,data){
@@ -151,28 +153,7 @@ function svgText(x,y,text,color="#c5d6e3"){return '<text x="'+x+'" y="'+y+'" fon
 function updateDiagrams(p){
  const fixed=p.global;
  if(!fixed || !fixed.sun || !fixed.earth)throw Error("Global Moon-fixed geometry missing");
- const cx=160,cy=55;
- const endpoint=(vec,radius)=>{
-   const h=Math.hypot(vec.x,vec.z)||1;
-   return [cx+radius*vec.x/h,cy-radius*vec.z/h];
- };
- const [sx,sy]=endpoint(fixed.sun,42),[ex,ey]=endpoint(fixed.earth,28);
- $("orbital").innerHTML=
-   '<circle cx="160" cy="55" r="44" fill="none" stroke="#425f73" stroke-dasharray="3 5"/>'+
-   '<line x1="160" y1="8" x2="160" y2="102" stroke="#304e60" stroke-dasharray="2 4"/>'+
-   '<line x1="111" y1="55" x2="209" y2="55" stroke="#304e60" stroke-dasharray="2 4"/>'+
-   '<line x1="160" y1="55" x2="'+sx+'" y2="'+sy+'" stroke="#f2c773" stroke-width="2"/>'+
-   '<line x1="160" y1="55" x2="'+ex+'" y2="'+ey+'" stroke="#5acbff" stroke-width="2"/>'+
-   '<circle cx="160" cy="55" r="11" fill="#738fa3" stroke="#afcad8"/>'+
-   '<circle cx="'+sx+'" cy="'+sy+'" r="6" fill="#f3c56b"/>'+
-   '<circle cx="'+ex+'" cy="'+ey+'" r="5" fill="#56b2df"/>'+
-   svgText(12,15,"0°E ↑", "#90aabb")+
-   svgText(251,15,"Top-down", "#90aabb")+
-   svgText(15,104,"Moon-fixed", "#90aabb")+
-   svgText(218,104,"Not to scale","#90aabb")+
-   svgText(176,55,"Moon")+
-   svgText(Math.min(265,sx+8),Math.max(11,Math.min(100,sy-4)),"Sun","#f3c56b")+
-   svgText(Math.min(265,ex+7),Math.max(11,Math.min(100,ey+12)),"Earth","#56b2df");
+ moonSky3D.update(fixed);
  // Preview actual site skyline rather than a nominal flat-horizon line.
  const terrain=p.regional_horizon?.coverage&&Array.isArray(p.regional_horizon.horizon)?p.regional_horizon.horizon:null;
  const heights=terrain?.filter(Number.isFinite)||[],high=Math.max(12,p.sun_el+4,p.earth_el+4,...heights.map(v=>v+3));
@@ -209,14 +190,10 @@ function chart(name,rows,key,color,maxVal){
  const unit=key==="soc"?"%":key==="rf_margin_db"?"dB":key.includes("temperature")?"°C":
   key==="heater_w"||key==="power_w"?"W":"";
  return chartMarkup(name,rows,key,{unit,color,percent:key==="soc",zero:key==="power_w"||key==="heater_w",
-  threshold:key==="soc"?lastMission?.reserve_percent:key==="rf_margin_db"?lastMission?.rf_required_margin_db:null,
-  subtitle:key==="temperature_proxy_c"?"Projected regolith temperature, not spacecraft temperature":
-  key==="lander_temperature_c"?"One-node lander model, assumed hardware; unvalidated":
-  key==="rf_margin_db"?"NASA Earth range + assumed RF equipment":"NASA-backed physical estimate and engineering assumptions"});
+  threshold:key==="soc"?lastMission?.reserve_percent:key==="rf_margin_db"?lastMission?.rf_required_margin_db:null});
 }
 function plotMeasured(samples,key,color){
- return chartMarkup("NASA Diviner measured historical TBOL — 2009–2015",samples,key,
-  {unit:"°C",color,kind:"observed",subtitle:"Discrete historic observations at selected lunar local time; not a 2026 forecast."});
+ return chartMarkup("Diviner archival temperature",samples,key,{unit:"°C",color,kind:"observed"});
 }
 function timeRibbon(title,samples,key){
  const first=Date.parse(samples[0]?.time),last=Date.parse(samples.at(-1)?.time);
@@ -243,9 +220,25 @@ function timeRibbon(title,samples,key){
   '<div class="windows">'+ribbons+'</div>'+
   '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
 }
-function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
+function windows(samples){
+ return chartMarkup("Earth terrain clearance",samples,"earth_clearance_deg",
+  {unit:"°",color:"#8fa2b7",threshold:0,highlightAbove:true});
+}
+const CHART_EXPLANATIONS={
+ power:["Solar generation","Estimated array production from Sun elevation, panel orientation and assumed conversion efficiency.","At the lunar poles, shallow sunlight and ridges can interrupt charging. Read watts (vertical) versus UTC (horizontal); zero means no generation."],
+ battery:["Battery charge","Projected remaining charge as a percentage of battery capacity.","Long darkness can exhaust reserves. Compare to the horizontal reserve threshold; the curve assumes a specified battery and electrical load."],
+ regolith:["Regolith temperature","Modeled ground radiative temperature; not the temperature of the spacecraft.","Extreme temperature shifts create thermal design challenges. Read °C over UTC; this is not a direct measurement."],
+ lander:["Spacecraft temperature","A one-node thermal model using assumed heat capacity, radiator and heater.","Electronics have operating limits. Read the projected °C and compare with the craft's assumed tolerance; not flight-validated."],
+ heater:["Heater electrical demand","Modeled heater power needed to meet the chosen thermal setpoint.","Heaters drain batteries in shadowed periods. Read watts over UTC alongside battery charge."],
+ radio:["S-band radio margin","Estimated received link margin from Earth range and hypothetical antennas, transmitter and bitrate.","Earth can be visible but communications can still fail. Higher dB margin improves this assumed budget; ground-station scheduling is excluded."],
+ diviner:["Diviner historical temperatures","NASA LRO Diviner measurements binned by lunar local time, shown as separate observations.","Historical context helps estimate thermal uncertainties. Dots are archived bins, not an uninterrupted forecast for this mission date."],
+ earth:["Earth terrain clearance","Earth-center angular elevation minus the modeled local terrain horizon.","Green above 0° indicates geometric direct-to-Earth line of sight; gray at or below 0° means blocked. Antenna pointing, RF signal strength and ground-station availability can still prevent contact."]
+};
 function metricSlot(index,key,content){
- return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+content+'</div>';
+ const note=CHART_EXPLANATIONS[key];
+ const info='<details class="chart-information"><summary aria-label="Explain '+escapeHtml(key)+' graph" title="Graph explanation">ⓘ</summary>'+
+  '<div class="chart-info-content"><strong>'+escapeHtml(note[0])+'</strong><p>'+escapeHtml(note[1])+'</p><p>'+escapeHtml(note[2])+'</p></div></details>';
+ return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+info+content+'</div>';
 }
 function card(data,label){
  const m=data.metrics,s=data.samples;
@@ -346,24 +339,34 @@ function render(){
  let html=lastResult?
   '<div class="science-overview"><span class="science-overview-tag">NASA data · engineering models</span><button type="button" data-info-open class="science-overview-link">Methods &amp; sources</button></div>':"";
  if(comparison){
-  html+='<div class="science-compare-heading"><span>Original and alternative mission scenarios</span><button type="button" data-info-open>Comparison details</button></div>'+
-   '<div class="cards scenario-compare">'+card(comparison.original,"ORIGINAL SELECTION")+
-   (comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>';
- }else if(lastResult)html+='<div class="cards scenario-single">'+card(lastResult,"ORIGINAL SELECTION")+'</div>';
+  const variants=[
+   {id:"original",label:"Original selection",data:comparison.original},
+   {id:"date-fixed",label:"Date fixed · optimize site",data:comparison.dateFixed},
+   {id:"site-fixed",label:"Site fixed · optimize date",data:comparison.siteFixed}
+  ];
+  html+='<nav class="scenario-navigation" aria-label="Jump between three mission scenarios">'+
+   variants.map(item=>'<button type="button" data-scenario-target="'+item.id+'">'+escapeHtml(item.label)+'</button>').join("")+
+   '</nav><div class="scenario-triple-viewport"><div class="cards scenario-triple">'+
+   variants.map(item=>item.data?'<div data-scenario-card="'+item.id+'">'+card(item.data,item.label)+'</div>':
+    '<div class="scenario-empty">No candidate found for '+escapeHtml(item.label)+'</div>').join("")+
+   '</div></div>';
+ }else if(lastResult)html+='<div class="cards scenario-single">'+card(lastResult,"Original selection")+'</div>';
  window.lunaLaunchScenarios = [
   {id:"original",label:"Original mission",data:comparison?.original||lastResult},
-  ...(comparison?.recommended?[{id:"optimized",label:"Optimized alternative",data:comparison.recommended}]:[])
- ].filter(s=>s.data).map(s=>({
-  id:s.id,label:s.label,
-  arrival_time:s.data.landing_time,
-  latitude:s.data.site?.latitude,
-  longitude:s.data.site?.longitude
+  ...(comparison?[
+   {id:"date-fixed",label:"Date fixed optimization",data:comparison.dateFixed},
+   {id:"site-fixed",label:"Site fixed optimization",data:comparison.siteFixed}
+  ]:[])
+ ].filter(item=>item.data).map(item=>({
+  id:item.id,label:item.label,arrival_time:item.data.landing_time,
+  latitude:item.data.site?.latitude,longitude:item.data.site?.longitude
  }));
  $("results").innerHTML=html;
  window.dispatchEvent(new CustomEvent("luna:scenarios-updated",{detail:window.lunaLaunchScenarios}));
  $("scienceInfoBody").innerHTML=renderScientificInformation(lastResult,comparison);
  attachChartInteractions($("results"));
 }
+
 let terrainInstances=[];
 async function mountTerrainViews(){
  terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
@@ -379,26 +382,45 @@ async function mountTerrainViews(){
  }
 }
 function busy(button,fn){button.disabled=true;const old=button.textContent;button.textContent="Calculating…";Promise.resolve().then(fn).catch(e=>alertUser(e.message)).finally(()=>{button.disabled=false;button.textContent=old})}
-$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{closeOptimizeMenu();const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
-const optimizeMenu=$("optimizeMenu");
-function closeOptimizeMenu(){optimizeMenu.hidden=true;$("optimize").setAttribute("aria-expanded","false");}
-$("optimize").addEventListener("click",()=>{
- if(!lastMission)return;
- const shouldOpen=optimizeMenu.hidden;
- optimizeMenu.hidden=!shouldOpen;$("optimize").setAttribute("aria-expanded",String(shouldOpen));
- if(shouldOpen)$("preserve").focus();
-});
-$("runOptimize").addEventListener("click",()=>{
- if(!lastMission)return;
- closeOptimizeMenu();
- busy($("runOptimize"),async()=>{
-  comparison=await api("optimize",{mission:lastMission,preserve:$("preserve").value});
+$("simulate").addEventListener("click",()=>busy($("simulate"),async()=>{const req=mission(),r=await api("simulate",req);lastMission=req;lastResult=r;comparison=null;$("optimize").disabled=false;render();showResults();await mountTerrainViews();}));
+$("optimize").addEventListener("click",()=>{if(!lastMission)return;
+ busy($("optimize"),async()=>{
+  const [fixedDate,fixedSite]=await Promise.all([
+   api("optimize",{mission:lastMission,preserve:"time"}),
+   api("optimize",{mission:lastMission,preserve:"site"})
+  ]);
+  comparison={original:lastResult,dateFixed:fixedDate.recommended,siteFixed:fixedSite.recommended,
+   variants:[fixedDate,fixedSite],
+   search:"Date-fixed site search and location-fixed date search run independently.",
+   comparison_note:"Candidates are screened against model assumptions, not landing safety requirements."};
   render();showResults();await mountTerrainViews();
  });
 });
-document.addEventListener("pointerdown",e=>{if(!e.target.closest(".optimize-trigger"))closeOptimizeMenu();});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!optimizeMenu.hidden){closeOptimizeMenu();$("optimize").focus();}});
-
+$("results").addEventListener("click",event=>{
+ const id=event.target.closest("[data-scenario-target]")?.dataset.scenarioTarget;
+ if(!id)return;
+ const node=$("results").querySelector('[data-scenario-card="'+id+'"]');
+ const viewport=$("results").querySelector(".scenario-triple-viewport");
+ if(node&&viewport)viewport.scrollTo({left:node.offsetLeft-(viewport.offsetLeft||0),behavior:"smooth"});
+ for(const b of $("results").querySelectorAll("[data-scenario-target]"))
+  b.setAttribute("aria-current",String(b.dataset.scenarioTarget===id));
+});
+$("restartMission").addEventListener("click",()=>{
+ closeScienceInformation();
+ for(const element of document.querySelectorAll("#missionFields input,#missionFields select")){
+  if(element.tagName==="SELECT"){
+   const option=[...element.options].find(o=>o.defaultSelected)||element.options[0];
+   if(option)element.value=option.value;
+  }else element.value=element.defaultValue;
+ }
+ position={latitude:-89.5,longitude:0};globe.reset?.();moonSky3D.reset();showCoords();
+ lastMission=null;lastResult=null;comparison=null;$("optimize").disabled=true;
+ terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
+ $("results").replaceChildren();window.lunaLaunchScenarios=[];
+ window.dispatchEvent(new CustomEvent("luna:scenarios-updated",{detail:[]}));
+ $("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));
+ showGlobe();refreshPreview();
+});
 $("back").addEventListener("click",showGlobe);
 $("time").addEventListener("input",()=>{$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
 $("date").addEventListener("change",()=>refreshPreview());
