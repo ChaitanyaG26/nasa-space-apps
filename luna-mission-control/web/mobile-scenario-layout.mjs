@@ -15,9 +15,12 @@ export function arrangeScenarioPanels(panel,mobile){
  if(!mobile){
   if(!active)return false;
   const deck=panel.querySelector(".scenario-triple-viewport, .cards.scenario-single");
+  // Snapshot before lifting the deck out: afterwards its animation articles
+  // are no longer descendants of panel and would otherwise be missed.
+  const articles=[...panel.querySelectorAll("[data-cola-scenario]")];
   if(deck)root.insertBefore(deck,panel);
   // Moving existing articles retains running animations and selected values.
-  for(const article of panel.querySelectorAll("[data-cola-scenario]"))list.appendChild(article);
+  for(const article of articles)list.appendChild(article);
   panel.classList.remove("phone-scenario-interleaved");
   return true;
  }
