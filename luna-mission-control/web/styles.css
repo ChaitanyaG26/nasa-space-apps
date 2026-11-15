@@ -664,3 +664,17 @@ body{background:var(--luna-night);}
 #luna-launch-cola .orbit-scene-3d .orbit-phase{flex-basis:auto;}
 #luna-launch-cola .orbit-burn-indicator{display:inline-flex;padding:5px 9px;border:1px solid #3f6179;border-radius:20px;font-size:10px;color:#a9c6db;background:#102b42;}
 #luna-launch-cola .orbit-burn-indicator.burn-active{background:#57411a;color:#ffdf74;border-color:#d6ab47;box-shadow:0 0 15px #ffcf5265;}
+
+/* Minimal lunar site control / readable 2-line celestial metrics */
+.sidebar-layout .sidebar .spacecraft-assumptions:not([open]){background:#112a3c;border-color:#35546b;}
+.sidebar-layout .sky-stack .sky-angles{max-height:none;display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:10px;overflow:visible;}
+.sidebar-layout .sky-stack .sky-angles>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:5px 6px;background:#0a2031;border-radius:6px;}
+.sidebar-layout .sky-stack .sky-angles span{color:#8fbfda;font-size:10px;}
+.sidebar-layout .sky-stack .sky-angles b{color:#f7e4a8;font-size:12px;}
+.sidebar-layout .sky-stack .sky-angles small{flex-basis:100%;font-size:9px;color:#a0c1d3;}
+.sidebar-layout .sky-stack .sky-source{font-size:10px;color:#9bbdce;max-height:none;line-height:1.3;}
+.sidebar-layout .ephemeris-playback{grid-template-columns:1fr;}
+.sidebar-layout .ephemeris-playback button{margin:3px 0;padding:8px;}
+.sidebar-layout .ephemeris-playback small{font-size:9px;color:#9dbccb;}
+#luna-launch-cola .launch-cola-form{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;}
+@media(max-width:650px){#luna-launch-cola .launch-cola-form{grid-template-columns:1fr;}}
