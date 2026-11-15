@@ -1030,3 +1030,72 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
  .sidebar-layout .sidebar .toolbar-disclosure{margin:2px 0;padding:3px 6px;}
 }
 @media(max-width:620px){.sidebar-layout .sky-mini #orbital{height:66px;}}
+
+
+/* v14: restore true panel aspect ratios (the old forced 73px/45px distorted diagrams).
+   The additional height uses previously empty lower-sidebar space. */
+.sidebar-layout .sidebar .sky-stack .sky-mini #orbital{
+ width:100%!important;height:auto!important;aspect-ratio:320/134!important;
+ max-height:none!important;object-fit:contain;display:block;
+}
+.sidebar-layout .sidebar .sky-stack .sky-mini #horizon{
+ display:block;width:100%!important;height:auto!important;aspect-ratio:320/110!important;
+ max-height:none!important;object-fit:contain;
+}
+.sidebar-layout .sidebar .sky-stack .sky-mini{padding:5px 7px;overflow:hidden;}
+.sidebar-layout .sidebar .sky-stack-card{padding:7px;gap:6px;}
+.sidebar-layout .sidebar .sky-stack .sky-angles>div{padding:5px 7px;}
+/* Global "details" has a dark background and 12px padding. Reset every
+   property for chart controls, including when the info panel is open. */
+.metric-slot details.chart-information,
+.metric-slot details.chart-information[open]{
+ position:relative!important;inset:auto!important;
+ display:block!important;flex:0 0 19px!important;
+ width:19px!important;height:19px!important;
+ padding:0!important;margin:0 0 0 4px!important;
+ border:0!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;
+ color:#397596!important;z-index:2!important;overflow:visible!important;
+}
+.metric-slot details.chart-information>summary{
+ display:grid!important;place-items:center!important;
+ width:19px!important;height:19px!important;padding:0!important;
+ border:0!important;background:transparent!important;
+ border-radius:50%!important;color:#397596!important;
+ box-shadow:none!important;outline-offset:2px;list-style:none!important;
+}
+.metric-slot details.chart-information>summary::-webkit-details-marker{display:none!important;}
+.metric-slot details.chart-information>summary:hover,
+.metric-slot details.chart-information>summary:focus-visible{
+ background:#e2f0f9!important;color:#135986!important;
+}
+.metric-slot details.chart-information>summary svg{width:15px;height:15px;}
+.metric-slot .chart-head .plot-expand{
+ order:2;flex:0 0 20px;width:20px;height:20px;
+ margin-left:0!important;
+}
+.metric-slot .chart-head .chart-information{order:1;margin-left:3px!important;}
+.metric-slot .chart-head>.chart-meta{margin-left:auto;}
+.metric-slot .chart-head{justify-content:flex-start;align-items:center;gap:4px;}
+.metric-slot .chart-head strong{min-width:0;flex:1 1 auto;}
+.metric-slot .chart-head>.chart-meta{flex:0 0 auto; margin-left:0;}
+/* The enlarged chart creates a global modal context. No other chart info
+   markers may remain above it through their independent stacking contexts. */
+body:has(.science-plot.chart-expanded) .science-plot:not(.chart-expanded) details.chart-information,
+body:has(.science-plot.chart-expanded) .science-plot:not(.chart-expanded) .plot-expand{
+ visibility:hidden!important;pointer-events:none!important;
+}
+body:has(.science-plot.chart-expanded) .metric-slot:has(.science-plot.chart-expanded){
+ position:static!important;z-index:auto!important;isolation:auto!important;
+}
+.metric-slot .science-plot.chart-expanded{
+ z-index:1000!important;
+ box-shadow:0 0 0 100vmax #071626c2,0 24px 60px #04162977;
+}
+.metric-slot .science-plot.chart-expanded .chart-info-content{
+ background:#fff!important;color:#274258!important;
+ border:1px solid #bdd1de!important;box-shadow:0 12px 35px #0d283b3b!important;
+}
+@media(max-height:690px){
+ .sidebar-layout .sidebar .fields{overflow-y:auto;}
+}
