@@ -143,7 +143,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
    [minimum,maximum].map(point=>'<circle class="plot-extrema" cx="'+x(point.time).toFixed(2)+'" cy="'+y(point.value).toFixed(2)+'" r="3.7" fill="white" stroke="'+color+'" stroke-width="2"/>').join("");
  }
  const periodLabel=kind==="observed"?"Historical NASA observations · discrete bins":"Physics model · connected computed samples";
- return '<div class="chart science-plot"><div class="chart-head"><strong>'+esc(title)+'</strong><span>'+esc(unit)+'</span></div>'+
+ return '<div class="chart science-plot"><div class="chart-head"><strong>'+esc(title)+'</strong><span class="chart-meta">'+esc(unit)+'</span><button type="button" class="plot-expand" aria-label="Expand '+esc(title)+'" title="Expand chart">⤢</button></div>'+
  '<div class="chart-subtitle">'+esc(subtitle||periodLabel)+'</div><div class="plot-wrap">'+
  '<svg data-plot-id="'+id+'" role="img" aria-label="'+esc(title)+' from '+new Date(start).toISOString()+' to '+new Date(end).toISOString()+
  '" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
@@ -167,6 +167,29 @@ function nearestAt(series,t){
  return pts[l];
 }
 export function attachChartInteractions(root){
+ if(!root.dataset.lunaExpandEnabled){
+  root.dataset.lunaExpandEnabled="1";
+  root.addEventListener("click",event=>{
+   const button=event.target.closest(".plot-expand");
+   if(!button)return;
+   const panel=button.closest(".science-plot");
+   const on=!panel.classList.contains("chart-expanded");
+   root.querySelectorAll(".chart-expanded").forEach(el=>{
+    el.classList.remove("chart-expanded");
+    const b=el.querySelector(".plot-expand");
+    if(b){b.textContent="⤢";b.setAttribute("aria-label","Expand chart");}
+   });
+   if(on){panel.classList.add("chart-expanded");button.textContent="×";button.setAttribute("aria-label","Close expanded chart");}
+  });
+  document.addEventListener("keydown",event=>{
+   if(event.key!=="Escape")return;
+   root.querySelectorAll(".chart-expanded").forEach(el=>{
+    el.classList.remove("chart-expanded");
+    const btn=el.querySelector(".plot-expand");
+    if(btn){btn.textContent="⤢";btn.setAttribute("aria-label","Expand chart");}
+   });
+  });
+ }
  for(const svg of root.querySelectorAll("svg[data-plot-id]")){
   const plot=registry.get(svg.dataset.plotId);
   if(!plot)continue;
@@ -181,6 +204,7 @@ export function attachChartInteractions(root){
    const t=plot.start+(Math.max(M.left,Math.min(W-M.right,vx))-M.left)/pw*(plot.end-plot.start);
    const p=nearestAt(plot,t);
    if(!p)return;
+   setChartsCursor(root,new Date(p.time).toISOString());
    const cx=M.left+(p.time-plot.start)/(plot.end-plot.start)*pw;
    const dom=plot.dom;
    // Read exact plotted y from nearest path value rather than interpolate

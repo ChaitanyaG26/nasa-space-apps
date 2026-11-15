@@ -242,20 +242,43 @@ function timeRibbon(title,samples,key){
   '<div class="ribbon-ticks">'+marks.map(x=>'<span>'+escapeHtml(x.label)+'</span>').join("")+'</div></div>';
 }
 function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
-function card(data,label){const m=data.metrics,s=data.samples;return '<div class="card"><small>'+escapeHtml(label)+'</small><h2>'+data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2><div class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</div><div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>'<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+chart("Generated solar power (W)",s,"power_w","#d39426")+chart("Battery state of charge (%)",s,"soc","#188d85",100)+chart("Projected regolith temperature (°C) · screening model",s,"temperature_proxy_c","#b46b6b")+
-chart("Projected lander thermal node (°C)",s,"lander_temperature_c","#8360ac")+
-chart("Modeled heater power (W)",s,"heater_w","#bf853c")+
-(m.predicted_rf_link_hours!==null?chart("Projected S-band RF link margin (dB)",s,"rf_margin_db","#307db4")+
-timeRibbon("Projected RF link availability · teal = assumed link margin sufficient",s,"rf_link_available"):
-'<div class="chart"><p class="muted">RF link budget unavailable without NASA Earth range; only geometric visibility is shown.</p></div>')+
-(s.some(x=>Number.isFinite(x.diviner_observed_c))?
- plotMeasured(s,"diviner_observed_c","#8052aa"):
- '<div class="chart"><div class="chart-title">NASA Diviner historical reference</div><p class="muted">'+escapeHtml(data.quality.diviner_observations||"No archival observation loaded for this run")+'</p></div>')+
-timeRibbon("Power-conservation advisory · amber = advisory",s,"power_conservation_advisory")+windows(s)+
-'<div class="science-card-summary"><span>NASA-derived data · Engineering projections</span><button type="button" data-info-open class="science-card-info">ⓘ Methods &amp; limitations</button></div>'+
-'<section class="terrain-panel" data-site-lat="'+data.site.latitude+'" data-site-lon="'+data.site.longitude+'">'+
-'<div class="terrain-heading"><h3>3D local lunar terrain</h3><small>NASA LOLA DEM · drag to rotate · scroll to zoom</small></div>'+
-'<p class="muted">Loading elevation grid...</p></section></div>'}
+function metricSlot(index,key,content){
+ return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'"><div class="metric-sequence">'+
+  String(index).padStart(2,"0")+' / 08</div>'+content+'</div>';
+}
+function card(data,label){
+ const m=data.metrics,s=data.samples;
+ const rows=[
+  metricSlot(1,"power",chart("Solar generation",s,"power_w","#f9c74f")),
+  metricSlot(2,"battery",chart("Battery charge",s,"soc","#4ba4f6",100)),
+  metricSlot(3,"regolith",chart("Regolith temperature",s,"temperature_proxy_c","#e6a65a")),
+  metricSlot(4,"lander",chart("Lander thermal model",s,"lander_temperature_c","#8d8ff5")),
+  metricSlot(5,"heater",chart("Heater power",s,"heater_w","#f9c74f")),
+  metricSlot(6,"radio",m.predicted_rf_link_hours!==null?
+   chart("S-band RF margin",s,"rf_margin_db","#4ba4f6"):
+   '<div class="chart chart-unavailable"><div class="chart-title">S-band RF margin</div><p class="muted">RF model unavailable. Geometric Earth visibility remains shown.</p></div>'),
+  metricSlot(7,"diviner",s.some(x=>Number.isFinite(x.diviner_observed_c))?
+   plotMeasured(s,"diviner_observed_c","#8d8ff5"):
+   '<div class="chart chart-unavailable"><div class="chart-title">Diviner reference (historical)</div><p class="muted">'+escapeHtml(data.quality?.diviner_observations||"No matching archival observations")+'</p></div>'),
+  metricSlot(8,"earth",windows(s))
+ ];
+ return '<article class="card scenario-card">'+
+  '<header class="scenario-header"><small>'+escapeHtml(label)+'</small><h2>'+
+   data.site.latitude.toFixed(3)+'°, '+data.site.longitude.toFixed(3)+'°</h2>'+
+   '<p class="muted">Landing '+escapeHtml(data.landing_time)+' · '+data.duration_days+'-day mission</p></header>'+
+  '<div class="stats">'+[['Solar energy',m.total_energy_wh.toLocaleString()+' Wh'],['Earth visibility',(100*m.earth_fraction).toFixed(0)+'%'],['Longest blackout',m.max_earth_blackout_h+' h'],['Minimum battery',m.min_soc+'%']].map(([k,v])=>
+    '<div class="stat"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+
+  '<div class="scenario-plot-grid" aria-label="Eight synchronized mission science charts">'+rows.join("")+'</div>'+
+  '<details class="scenario-more"><summary>Additional operational timelines</summary>'+
+   timeRibbon("Power-conservation advisory · amber = advisory",s,"power_conservation_advisory")+
+   (m.predicted_rf_link_hours!==null?timeRibbon("Modeled RF link availability · assumed margin",s,"rf_link_available"):"")+
+  '</details>'+
+  '<div class="science-card-summary"><span>NASA-derived data · Engineering projections</span>'+
+  '<button type="button" data-info-open class="science-card-info">ⓘ Methods &amp; limitations</button></div>'+
+  '<section class="terrain-panel" data-site-lat="'+data.site.latitude+'" data-site-lon="'+data.site.longitude+'">'+
+  '<div class="terrain-heading"><h3>3D local lunar terrain</h3><small>NASA LOLA DEM · drag to rotate · scroll to zoom</small></div>'+
+  '<p class="muted">Loading elevation grid...</p></section></article>';
+}
 let scienceInfoReturnFocus=null;
 function openScienceInformation(){
  const panel=$("scienceInfoDrawer"),overlay=$("scienceInfoOverlay");
@@ -323,9 +346,9 @@ function render(){
   '<div class="science-overview"><span class="science-overview-tag">NASA DATA + MODELS</span><p>Sun, Earth and terrain data inform these graphs. Power, thermal, radio and safety results are preliminary estimates.</p><button type="button" data-info-open class="science-overview-link">ⓘ View information &amp; sources</button></div>':"";
  if(comparison){
   html+='<div class="science-compare-heading"><span>Original and alternative mission scenarios</span><button type="button" data-info-open>Comparison details</button></div>'+
-   '<div class="cards">'+card(comparison.original,"ORIGINAL SELECTION")+
+   '<div class="cards scenario-compare">'+card(comparison.original,"ORIGINAL SELECTION")+
    (comparison.recommended?card(comparison.recommended,"RECOMMENDED ALTERNATIVE"):'<p>No alternative was produced.</p>')+'</div>';
- }else if(lastResult)html+='<div class="cards">'+card(lastResult,"ORIGINAL SELECTION")+'</div>';
+ }else if(lastResult)html+='<div class="cards scenario-single">'+card(lastResult,"ORIGINAL SELECTION")+'</div>';
  window.lunaLaunchScenarios = [
   {id:"original",label:"Original mission",data:comparison?.original||lastResult},
   ...(comparison?.recommended?[{id:"optimized",label:"Optimized alternative",data:comparison.recommended}]:[])
