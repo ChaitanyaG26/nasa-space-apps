@@ -38,6 +38,7 @@ jobs:
           node --test luna-mission-control/tests/launch-window.test.mjs
           node --test luna-mission-control/tests/orbit-visualization.test.mjs
           node --test luna-mission-control/tests/launch-scenarios.test.mjs
+          node --test luna-mission-control/tests/mobile-scenario-layout.test.mjs
           node --test luna-mission-control/tests/science-info.test.mjs
           node --check luna-mission-control/web/science-info.mjs
           node --check luna-mission-control/web/launch-window.mjs
