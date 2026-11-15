@@ -1183,3 +1183,218 @@ body:has(.science-plot.chart-expanded) .metric-slot:has(.science-plot.chart-expa
 .terrain-panel .terrain-status{font-size:10px;line-height:1.4;color:#54758b;
  margin:6px 0;padding:4px 0;}
 .terrain-panel .terrain-3d-canvas{background:#e8f2f5;}
+
+
+/* v15 — a single mission-control palette. Deep navy navigation + pale-blue
+   science surface. Warm gold is reserved for actionable controls, site focus,
+   and meaningful chart reference thresholds. */
+:root{
+ --luna-night:#071727;
+ --luna-blue:#4a9dd9;
+ --luna-gold:#f6cc60;
+ --luna-ink:#183e58;
+ --luna-paper:#eaf5fc;
+ --luna-soft-blue:#cbe5f7;
+ --luna-glow:0 0 15px #f8c85d55,0 3px 12px #dba53d1f;
+}
+body{background:#061625;color:#e6f3fe;}
+.sidebar-layout .sidebar,
+.sidebar-layout .sidebar header{background:#0a2035;border-color:#274966;}
+.sidebar-layout .mission-toolbar{
+ background:#0a2035;border-color:#294e6b;
+ box-shadow:0 4px 20px #05142629;
+}
+.results-page{background:#e7f3fc;color:#183c59;}
+.card,.scenario-card{background:#f9fcff;border:1px solid #c9e1f1;
+ box-shadow:0 2px 12px #1e527c12;}
+.results-top h1,.scenario-header h2{color:#153d5e;}
+.scenario-card .stat{background:#edf6fc;border:1px solid #d6eaf6;}
+.scenario-card .stat b{color:#194f78;}
+.scenario-card .stat small{color:#577e9c;}
+.science-overview,.science-card-summary{border-color:#d3e5f1;color:#4c7794;}
+.science-card-info,.science-overview-link{color:#206f9f;}
+.metric-slot .science-plot{background:#fcfeff;border-color:#c6deed;}
+.metric-slot .science-plot .chart-head strong{color:#164a70;}
+.plot-grid line{stroke:#d7e7f3;}
+.plot-grid line.plot-xgrid{stroke:#e7f2fa;}
+.plot-grid text,.plot-axis-label{fill:#61809b;}
+.plot-threshold,.metric-slot .plot-threshold{
+ stroke:var(--luna-gold)!important;stroke-width:2!important;stroke-dasharray:5 4;
+}
+.metric-slot .plot-threshold-label{fill:#9c7422!important;}
+.metric-earth .plot-active-series{filter:drop-shadow(0 0 1px #67b9f899);}
+.sidebar-layout .sidebar .control-group h3,.sidebar-layout .sidebar .sky-stack h3{color:#f3d381;}
+.sidebar-layout #date{border:1px solid #caa85c;
+ box-shadow:inset 0 0 0 1px #f6ce6b22,0 0 12px #f5c95b1a;}
+.sidebar-layout #date::-webkit-calendar-picker-indicator{filter:sepia(1) saturate(2.2) hue-rotate(355deg) brightness(1.24);cursor:pointer;}
+.sidebar-layout #time,.sidebar-layout .sidebar input[type=range]{
+ accent-color:var(--luna-gold)!important;
+}
+.sidebar-layout #time{filter:drop-shadow(0 0 4px #f7cd6070);}
+#mapCoords{color:#f9d984!important;text-shadow:0 0 9px #f1c35270;}
+.logo span{color:var(--luna-gold)!important;}
+.sidebar-layout .mission-toolbar #simulate,
+.sidebar-layout .mission-toolbar #optimize:not(:disabled){
+ background:linear-gradient(130deg,#ffdf87,#f5c651 62%,#eeb447)!important;
+ color:#082238!important;border:1px solid #f7d37b!important;
+ font-weight:850!important;box-shadow:var(--luna-glow)!important;
+}
+.sidebar-layout .mission-toolbar #simulate:hover,
+.sidebar-layout .mission-toolbar #optimize:not(:disabled):hover{
+ background:linear-gradient(140deg,#fff1b1,#ffd76b)!important;
+ box-shadow:0 0 22px #ffe18f8e,0 4px 18px #b67a2044!important;
+}
+.sidebar-layout .mission-toolbar #optimize:disabled{
+ opacity:1!important;background:#d4e8f8!important;color:#4f7b9d!important;
+ border:1px solid #9bbdda!important;box-shadow:none!important;cursor:not-allowed;
+}
+.sidebar-layout .mission-toolbar #restartMission{border-color:#e5bc63!important;color:#efcf88!important;background:#102b45!important;}
+.sidebar-layout .mission-toolbar #restartMission:hover{box-shadow:0 0 12px #f4c7603a!important;}
+.sidebar-layout .mission-toolbar :is(button,input):focus-visible{outline:2px solid #f7d47a;outline-offset:2px;}
+#luna-launch-cola .launch-cola-run{
+ background:linear-gradient(120deg,#ffdf86,#f3c35a)!important;color:#132b3e!important;
+ border:1px solid #e8b84a!important;box-shadow:0 0 9px #f5c96533!important;
+ font-weight:800;
+}
+#luna-launch-cola .launch-cola-run:hover{filter:brightness(1.06);}
+#luna-launch-cola .launch-cola-uncleared{background:#f8e8c0;color:#7b531e;}
+#luna-launch-cola .launch-cola-tag{background:#f0e0b4;color:#795b2f;}
+#luna-launch-cola .launch-cola-scenario{background:#f7fbff;border-color:#bcd9eb;}
+
+/* Remove forced min-width and scroll on both three-way grids. 3 equal cards
+   on desktop; 2 or 1 responsive columns rather than an inaccessible sideways
+   pan on small screens. All cards still render their own science and COLA. */
+.scenario-triple-viewport{
+ max-width:100%!important;min-width:0!important;width:100%;
+ overflow-x:visible!important;overflow-y:visible!important;
+ scroll-snap-type:none!important;scrollbar-width:none!important;padding:0!important;
+}
+.cards.scenario-triple{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ min-width:0!important;max-width:100%!important;
+ gap:12px!important;align-items:start;
+}
+.scenario-triple>[data-scenario-card]{min-width:0!important;}
+.scenario-triple .scenario-card{min-width:0!important;max-width:100%;padding:10px;}
+#luna-launch-cola{max-width:100%!important;width:100%!important;min-width:0!important;
+ overflow:visible!important;}
+#luna-launch-cola .launch-cola-scenarios,
+#luna-launch-cola .launch-cola-scenarios:has(> .launch-cola-scenario:nth-child(3)){
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ min-width:0!important;max-width:100%!important;
+ width:100%!important;gap:11px!important;align-items:start;
+}
+#luna-launch-cola .launch-cola-scenario{min-width:0!important;max-width:100%!important;overflow:visible;}
+#luna-launch-cola .launch-cola-scenario :is(select,input,textarea){max-width:100%;min-width:0;}
+#luna-launch-cola .launch-cola-target{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+#luna-launch-cola .launch-cola-target strong{font-size:11px;line-height:1.3;}
+#luna-launch-cola .launch-cola-scenario-head h3{font-size:12px;margin:2px 0;}
+#luna-launch-cola .launch-cola-scenario-head{flex-wrap:wrap;gap:2px;}
+#luna-launch-cola .launch-cola-form{gap:7px;}
+#luna-launch-cola .orbit-controls{min-width:0;}
+#luna-launch-cola .orbit-controls input[type=range]{min-width:0;}
+#luna-launch-cola .launch-cola-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+#luna-launch-cola .sequence-panel{min-width:0!important;}
+#luna-launch-cola .sequence-panel canvas{max-width:100%!important;}
+
+/* Center animation controls and reserve headings, source, and assumptions for
+   the accessible info panel. No redundant scene titles or Ascending labels. */
+.visually-hidden{
+ position:absolute!important;width:1px!important;height:1px!important;padding:0!important;
+ margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
+ white-space:nowrap!important;border:0!important;clip-path:inset(50%)!important;
+}
+#luna-launch-cola .sequence-header{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ gap:7px!important;flex-wrap:wrap!important;padding:2px 3px!important;
+ min-height:36px;
+}
+#luna-launch-cola .sequence-header .sequence-info{
+ order:3!important;flex:0 0 21px!important;align-self:center!important;
+}
+#luna-launch-cola .sequence-header .sequence-vehicle-control{
+ order:1;flex:1 1 135px;min-width:0;max-width:220px;
+ margin:0!important;
+}
+#luna-launch-cola .sequence-header .sequence-payload-control{
+ order:2;flex:0 1 102px;min-width:85px;max-width:115px;
+ margin:0!important;
+}
+#luna-launch-cola .sequence-header :is(input,select){
+ width:100%!important;height:33px!important;
+ margin:0!important;padding:5px 8px!important;
+ border-radius:7px!important;border:1px solid #bad3e4!important;
+ background:#fafdff!important;color:#184364!important;
+ font-weight:650;font-size:11px!important;
+}
+#luna-launch-cola .sequence-header input::placeholder{color:#678da8;}
+#luna-launch-cola .sequence-meta,
+#luna-launch-cola .vehicle-readout{display:none!important;}
+#luna-launch-cola .sequence-terrain-status{text-align:center;font-size:9px!important;
+ margin:3px auto 5px!important;max-width:100%;white-space:normal;}
+#luna-launch-cola .sequence-telemetry{text-align:center;font-size:10px!important;line-height:1.3!important;}
+#luna-launch-cola .sequence-playback{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ gap:9px!important;padding:6px 2px!important;
+}
+#luna-launch-cola .sequence-playback>button{
+ background:linear-gradient(130deg,#ffdf82,#f4c45b)!important;
+ color:#102c42!important;border:1px solid #f1c768!important;
+ border-radius:8px!important;box-shadow:0 0 10px #f6d27039!important;
+ font-weight:750;padding:7px 11px;
+}
+#luna-launch-cola .sequence-playback input[type=range]{
+ flex:1 1 140px;min-width:0;max-width:230px;
+ accent-color:var(--luna-gold)!important;margin:0!important;
+}
+#luna-launch-cola .sequence-playback output{display:none!important;}
+#luna-launch-cola .sequence-info .sequence-info-popover{font-size:11px;}
+#luna-launch-cola .sequence-info-popover strong{color:#1d4d74;}
+
+/* Fullscreen plot is moved to body by the plot controller: free from every
+   overflow container or transformed ancestor. Center graph and axes. */
+body.luna-chart-modal-open{overflow:hidden!important;}
+body>.metric-slot.fullscreen-slot{position:static!important;min-width:0!important;
+ overflow:visible!important;isolation:auto!important;}
+body>.metric-slot.fullscreen-slot>.science-plot.chart-expanded{
+ position:fixed!important;left:50vw!important;top:50dvh!important;
+ right:auto!important;bottom:auto!important;inset:auto!important;
+ transform:translate(-50%,-50%)!important;
+ display:flex!important;flex-direction:column!important;
+ width:min(92vw,1440px)!important;height:min(84dvh,820px)!important;
+ max-width:none!important;max-height:none!important;min-height:300px;
+ padding:clamp(12px,2vw,24px)!important;
+ border-radius:15px;z-index:2147000000!important;
+ background:#fafdff!important;overflow:visible!important;
+ box-shadow:0 0 0 100vmax #071b2cbd,0 22px 64px #0414266b!important;
+}
+body>.metric-slot.fullscreen-slot .chart-head{flex:0 0 auto;width:100%;align-items:center!important;}
+body>.metric-slot.fullscreen-slot .chart-head strong{font-size:clamp(15px,1.6vw,21px);}
+body>.metric-slot.fullscreen-slot .plot-wrap{
+ flex:1 1 auto;min-height:0;min-width:0;width:100%;
+ display:flex;align-items:center;justify-content:center;
+ overflow:hidden;
+}
+body>.metric-slot.fullscreen-slot .plot-wrap>svg{
+ display:block;width:100%!important;height:auto!important;
+ max-width:min(100%,1400px);max-height:calc(84dvh - 115px)!important;
+ margin:auto!important;object-fit:contain;
+}
+body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
+@media(max-width:1200px){
+ .cards.scenario-triple,
+ #luna-launch-cola .launch-cola-scenarios:has(> .launch-cola-scenario:nth-child(3)){
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+}
+@media(max-width:760px){
+ .cards.scenario-triple,
+ #luna-launch-cola .launch-cola-scenarios:has(> .launch-cola-scenario:nth-child(3)){
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ .sidebar-layout .mission-toolbar #restartMission{font-size:10px;}
+ body>.metric-slot.fullscreen-slot>.science-plot.chart-expanded{
+  width:96vw!important;height:83dvh!important;
+  padding:12px!important;
+ }
+}
