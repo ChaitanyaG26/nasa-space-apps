@@ -1678,3 +1678,48 @@ body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
   max-width:100%!important;width:100%!important;
  }
 }
+
+
+/* v20: accessible, persistent back-to-top action across desktop and phones. */
+.sidebar-layout .scroll-to-top{
+ position:fixed!important;
+ right:calc(18px + env(safe-area-inset-right,0px))!important;
+ bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
+ width:49px!important;height:49px!important;
+ min-width:49px!important;min-height:49px!important;
+ display:grid!important;place-items:center!important;
+ padding:0!important;margin:0!important;
+ border:1.5px solid #f5cf6d!important;border-radius:50%!important;
+ background:linear-gradient(145deg,#183b58,#09253d)!important;
+ color:#ffdf85!important;
+ box-shadow:0 0 15px #efbe5144,0 6px 20px #04172980!important;
+ z-index:10000!important;cursor:pointer;
+ touch-action:manipulation;
+ transition:transform .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.sidebar-layout .scroll-to-top svg{width:25px!important;height:25px!important;display:block;}
+.sidebar-layout .scroll-to-top:hover{
+ transform:translateY(-3px);
+ background:#194c72!important;
+ box-shadow:0 0 20px #fbd87880,0 8px 23px #04172980!important;
+}
+.sidebar-layout .scroll-to-top:focus-visible{
+ outline:3px solid #ffdf85!important;outline-offset:3px!important;
+}
+.sidebar-layout .landing-site-legend{bottom:98px!important;}
+.sidebar-layout .map-bottom{right:88px!important;}
+.sidebar-layout .results-page{padding-bottom:86px!important;}
+@media (max-width:620px){
+ .sidebar-layout .scroll-to-top{
+  right:calc(12px + env(safe-area-inset-right,0px))!important;
+  bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;
+  width:46px!important;height:46px!important;
+  min-width:46px!important;min-height:46px!important;
+ }
+ .sidebar-layout .landing-site-legend{bottom:90px!important;}
+ .sidebar-layout .map-bottom{right:73px!important;}
+}
+@media (prefers-reduced-motion:reduce){
+ .sidebar-layout .scroll-to-top{transition:none!important;}
+ .sidebar-layout .scroll-to-top:hover{transform:none;}
+}
