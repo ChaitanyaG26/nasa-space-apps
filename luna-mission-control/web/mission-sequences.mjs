@@ -3,6 +3,7 @@ import {destination} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
 import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
+import {drawMissionSurface3D,loadEarthSiteGrid,loadMoonSiteGrid} from "./mission-surface-3d.mjs";
 /* LUNA scenario-specific launch and landing cinematic visualizations.
  * Drawings show selectable historical vehicle/lander silhouettes, not actual
  * vehicle performance, compatibility, descent navigation or flight clearance.
@@ -54,6 +55,23 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  const state={site,latitude,longitude,landingUtc,rocket,lander,payloadKg};
  const descent=descentParameters({altitudeM:180,entryDownSpeedMS:14,touchDownSpeedMS:.8});
  let measuredTerrain=null,terrainStatus="Loading NASA LOLA terrain…",sunElevationDeg=null,terrainRequest=0;
+ let earthGrid=null,moonGrid=null,earthStatus="Loading elevation tile…",earthRequest=0;
+ const cameras={launch:{yaw:.58,pitch:.68,zoom:1},landing:{yaw:.48,pitch:.68,zoom:1}};
+ async function loadEarthScience(){
+  const token=++earthRequest;earthGrid=null;earthStatus="Loading open elevation tile…";
+  try{
+   const sampled=await loadEarthSiteGrid(state.site);
+   if(!alive||token!==earthRequest)return;
+   earthGrid=sampled?.coverage>=.75?sampled:null;
+   earthStatus=earthGrid?
+    "Measured public DEM · "+Math.round(earthGrid.resolutionM)+" m tile pixels":
+    "Elevation coverage unavailable · flat reference only";
+  }catch{
+   if(token!==earthRequest||!alive)return;
+   earthStatus="Terrain service unavailable · flat reference only";
+  }
+  draw();
+ }
  const sampleGround=(offsetM)=>{
   if(!measuredTerrain)return 236;
   const arr=measuredTerrain.samples.filter(v=>Number.isFinite(v.heightM));
@@ -68,7 +86,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  };
  async function loadScience(){
   const request=++terrainRequest,lat=Number(state.latitude),lon=Number(state.longitude);
-  measuredTerrain=null;terrainStatus="Checking NASA LOLA 20 m grid…";sunElevationDeg=null;
+  measuredTerrain=null;moonGrid=null;terrainStatus="Checking NASA LOLA 20 m grid…";sunElevationDeg=null;
   try{
    const patch=await loadPolarPatch(lat,lon);
    if(request!==terrainRequest||!alive)return;
@@ -80,9 +98,10 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
      samples.push({offsetM:offset,heightM:km===null?null:km*1000});
     }
     measuredTerrain=normalizeTerrainProfile(samples);
+    moonGrid=loadMoonSiteGrid(patch,lat,lon);
    }
-   terrainStatus=measuredTerrain?"NASA LOLA 20 m DEM · 2× vertical display":
-     "20 m DEM not available · flat guide, hazards unknown";
+   terrainStatus=moonGrid?.coverage>=.7?"NASA LOLA 20 m DEM · true elevation mesh":
+     "No high-resolution LOLA coverage · hazards unknown";
   }catch{terrainStatus="Lunar elevation unavailable · hazards unknown";}
   try{
    if(state.landingUtc){
@@ -99,15 +118,19 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   '<label>Rocket<select data-rocket aria-label="Select rocket illustration"></select></label>'+
  '<label>Payload mass (kg)<input data-payload-mass type="number" min="1" max="200000" step="50" value="500" aria-label="Mission payload mass in kilograms"></label></div>'+
   '<div class="sequence-meta" data-site-name></div>'+
+ '<div class="sequence-terrain-status" data-launch-terrain></div>'+
  '<div class="vehicle-readout" data-vehicle-readout aria-live="polite"></div>'+
-  '<canvas data-scene="launch" width="600" height="278" aria-label="Animated rocket illustration launching from the selected range"></canvas>'+
+  '<canvas data-scene="launch" width="600" height="278" tabindex="0" aria-label="Rotatable three-dimensional rocket launch scene over open DEM terrain"></canvas>'+
+ '<div class="sequence-telemetry" data-launch-telemetry></div>'+
   '<div class="sequence-playback"><button data-toggle="launch" type="button">Pause</button>'+
   '<input data-scrub="launch" type="range" min="0" max="1000" value="0" aria-label="Rocket launch animation progress"/>'+
   '<output data-label="launch">Liftoff</output></div></div>'+
   '<div class="sequence-panel"><div class="sequence-header"><strong>Probe landing animation</strong>'+
   '<label>Probe<select data-lander aria-label="Select illustrative lunar landing probe"></select></label></div>'+
   '<div class="sequence-meta" data-target-name></div>'+
-  '<canvas data-scene="landing" width="600" height="278" aria-label="Animated lunar probe descending to chosen site coordinates"></canvas>'+
+ '<div class="sequence-terrain-status" data-landing-terrain></div>'+
+  '<canvas data-scene="landing" width="600" height="278" tabindex="0" aria-label="Rotatable three-dimensional probe descent over NASA LOLA terrain"></canvas>'+
+ '<div class="sequence-telemetry" data-landing-telemetry></div>'+
   '<div class="sequence-playback"><button data-toggle="landing" type="button">Pause</button>'+
   '<input data-scrub="landing" type="range" min="0" max="1000" value="0" aria-label="Lunar landing animation progress"/>'+
   '<output data-label="landing">Approach</output></div></div></section>';
@@ -123,6 +146,26 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const dpr=clamp(window.devicePixelRatio||1,1,2);
   c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
   ctx?.setTransform(dpr,0,0,dpr,0,0);contexts[kind]=ctx;
+  c.style.touchAction="none";
+  let drag=null;
+  c.addEventListener("pointerdown",e=>{c.setPointerCapture(e.pointerId);
+   const cam=cameras[kind];drag={x:e.clientX,y:e.clientY,yaw:cam.yaw,pitch:cam.pitch};});
+  c.addEventListener("pointermove",e=>{
+   if(!drag)return;
+   const cam=cameras[kind];cam.yaw=drag.yaw+(e.clientX-drag.x)*.008;
+   cam.pitch=clamp(drag.pitch+(e.clientY-drag.y)*.007,.2,1.38);draw();
+  });
+  c.addEventListener("pointerup",()=>drag=null);
+  c.addEventListener("pointercancel",()=>drag=null);
+  c.addEventListener("wheel",e=>{e.preventDefault();const cam=cameras[kind];
+   cam.zoom=clamp(cam.zoom*Math.exp(-e.deltaY*.0012),.6,1.7);draw();},{passive:false});
+  c.addEventListener("keydown",e=>{
+   if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key))return;
+   e.preventDefault();const cam=cameras[kind];
+   if(e.key==="ArrowLeft")cam.yaw-=.15;if(e.key==="ArrowRight")cam.yaw+=.15;
+   if(e.key==="ArrowUp")cam.pitch=clamp(cam.pitch-.14,.2,1.38);
+   if(e.key==="ArrowDown")cam.pitch=clamp(cam.pitch+.14,.2,1.38);draw();
+  });
  }
  let alive=true,last=0,raf=0,visible=true;
  const observer=typeof IntersectionObserver==="function"?new IntersectionObserver(entries=>{
@@ -202,39 +245,17 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  }
  function drawLaunch(){
   const ctx=contexts.launch;if(!ctx)return;
-  const p=progress.launch,assessment=assessVehicle(state.rocket,state.payloadKg);
-  // Simplified vertical acceleration sensitivity; not an ascent trajectory.
+  const vehicle=chooseVehicle(state.site,state.rocket),assessment=assessVehicle(state.rocket,state.payloadKg);
   const netA=assessment.initialTwrProxy!==null?
    Math.max(0,assessment.thrustN/assessment.massProxyKg-9.80665):10;
-  const kin=genericAscentAt(p,{netAccelerationMS2:netA});
-  const up=clamp(kin.altitudeM/26000,0,1);
-  const vehicle=chooseVehicle(state.site,state.rocket);
-  ctx.clearRect(0,0,W,H);sky(ctx,true);
-  const coastal=state.site!=="vandenberg";
-  // Site context is representational terrain, not real pad geology.
-  ctx.beginPath();ctx.moveTo(0,227);
-  for(let i=0;i<=W;i+=18){
-   const h=coastal?2*Math.sin(i*.018):16*Math.sin(i*.012)+9*Math.sin(i*.038);
-   ctx.lineTo(i,227-h);
-  }
-  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=coastal?"#294d52":"#364855";ctx.fill();
-  if(coastal)rect(ctx,0,234,W,44,"#15415f");
-  rect(ctx,264,222,76,12,"#758694");rect(ctx,281,213,42,10,"#a9bcc8");
-  rect(ctx,232,106,7,119,"#526779");
-  for(let y=118;y<208;y+=19)line(ctx,238,y,262,y-10,"#6c8190",2);
-  const x=302,y=213-up*310;
-  if(up>.002){
-   for(let i=0;i<11;i++){
-    const a=i*2.41+p*6,r=(i%5)*4+up*18;
-    circle(ctx,x+Math.cos(a)*r,215+Math.sin(a)*r*.26,
-      4+7*up+(i%3)*2,"#c3bfc186");
-   }
-  }
-  drawRocket(ctx,vehicle,x,y,p);
-  write(ctx,coastal?"COASTAL LAUNCH RANGE":"PACIFIC LAUNCH RANGE",14,25,"#b8d7ee",11);
-  write(ctx,up>=1?"MODEL SEGMENT COMPLETE":up>.03?"VERTICAL MODEL · NOT FLIGHT PROFILE":"ON THE PAD",14,48,tone,12);
-  write(ctx,"T+"+kin.elapsedS.toFixed(0)+"s  ·  "+(kin.altitudeM/1000).toFixed(1)+" km",14,67,"#e4f1f8",11);
-  write(ctx,vehicle.heightM.toFixed(1)+" m tall · "+vehicle.diameterM.toFixed(2)+" m core",14,85,"#aecde0",10);
+  const kin=genericAscentAt(progress.launch,{netAccelerationMS2:netA});
+  ctx.clearRect(0,0,W,H);
+  drawMissionSurface3D(ctx,{grid:earthGrid,kind:"launch",camera:cameras.launch,
+   altitudeM:kin.altitudeM,vehicle,progress:progress.launch,width:W,height:H});
+  query("[data-launch-terrain]").textContent=earthStatus+" · drag to orbit";
+  query("[data-launch-telemetry]").textContent=
+   "T+"+kin.elapsedS.toFixed(0)+" s · model altitude "+(kin.altitudeM/1000).toFixed(2)+" km · vertical speed "+
+   kin.verticalSpeedMS.toFixed(0)+" m/s · altitude display compressed";
  }
  const terrainSeed=(lat,lon)=>Math.sin(lat*.042+lon*.018)*.5;
  function drawProbe(ctx,probe,x,y,t){
@@ -260,33 +281,13 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  function drawLanding(){
   const ctx=contexts.landing;if(!ctx)return;
   const t=progress.landing,flight=descentAt(t,descent),probe=chooseLander(state.lander,state.rocket);
-  ctx.clearRect(0,0,W,H);sky(ctx,false);
-  // Airless lunar surface; display fill lighting remains nonphysical for clarity.
-  const surface=ctx.createLinearGradient(0,190,0,H);
-  surface.addColorStop(0,Number.isFinite(sunElevationDeg)&&sunElevationDeg<0?"#696e78":"#a3aab4");
-  surface.addColorStop(1,"#414a59");
-  ctx.beginPath();ctx.moveTo(0,sampleGround(-240));
-  for(let x=0;x<=W;x+=4)ctx.lineTo(x,sampleGround((x-W/2)*.8));
-  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=surface;ctx.fill();
-  ctx.beginPath();ctx.moveTo(0,sampleGround(-240));
-  for(let x=4;x<=W;x+=4)ctx.lineTo(x,sampleGround((x-W/2)*.8));
-  ctx.strokeStyle="#dce3eaaf";ctx.lineWidth=1;ctx.stroke();
-  const x=300,ground=sampleGround(0);
-  const y=ground-21-166*flight.heightM/descent.altitudeM;
-  if(flight.heightM<20&&t<1){
-   for(let i=0;i<13;i++){
-    const a=i*2.399+t*24,r=5+(i%7)*(1-flight.heightM/20)*10;
-    circle(ctx,x+Math.cos(a)*r,ground+Math.sin(a)*r*.2,1+(i%3)*.7,"#ced6df8d");
-   }
-  }
-  drawProbe(ctx,probe,x,y,t);
-  ctx.beginPath();ctx.moveTo(287,ground+2);ctx.lineTo(313,ground+2);
-  ctx.strokeStyle="#f5cd61";ctx.lineWidth=2;ctx.stroke();
-  write(ctx,"LOLA TERRAIN · LUNAR-GRAVITY MODEL",14,25,"#d5e7f4",11);
-  write(ctx,"ALT "+flight.heightM.toFixed(1)+" m   DOWN "+flight.downSpeedMS.toFixed(2)+" m/s",14,46,tone,12);
-  write(ctx,"T+"+flight.elapsedS.toFixed(1)+"s / "+descent.seconds.toFixed(1)+"s   T/W "+descent.thrustToWeight.toFixed(2),14,66,"#c4e0ef",10);
-  write(ctx,terrainStatus,14,249,"#edf4ff",10);
-  if(Number.isFinite(sunElevationDeg))write(ctx,"Sun "+sunElevationDeg.toFixed(1)+"° · JPL reference",14,265,"#c7deee",10);
+  ctx.clearRect(0,0,W,H);
+  drawMissionSurface3D(ctx,{grid:moonGrid?.coverage>=.7?moonGrid:null,kind:"landing",camera:cameras.landing,
+   altitudeM:flight.heightM,lander:probe,progress:t,width:W,height:H});
+  query("[data-landing-terrain]").textContent=terrainStatus+" · drag to orbit";
+  query("[data-landing-telemetry]").textContent=
+   "Altitude "+flight.heightM.toFixed(1)+" m · descent "+flight.downSpeedMS.toFixed(2)+" m/s · "+
+   "T+"+flight.elapsedS.toFixed(1)+" s · model T/W "+descent.thrustToWeight.toFixed(2);
  }
  const draw=()=>{drawLaunch();drawLanding();};
  function frame(now){
@@ -325,12 +326,12 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    progress[kind]=Number(e.target.value)/1000;playing[kind]=false;draw();
   });
  }
- syncOptions();renderVehicleAssessment();draw();loadScience();raf=requestAnimationFrame(frame);
+ syncOptions();renderVehicleAssessment();draw();loadScience();loadEarthScience();raf=requestAnimationFrame(frame);
  return{
-  destroy(){alive=false;terrainRequest++;cancelAnimationFrame(raf);observer?.disconnect();},
+  destroy(){alive=false;terrainRequest++;earthRequest++;cancelAnimationFrame(raf);observer?.disconnect();},
   setSite(id){
    if(!VEHICLES[id])return;
-   state.site=id;syncOptions();progress.launch=0;renderVehicleAssessment();draw();
+   state.site=id;syncOptions();progress.launch=0;renderVehicleAssessment();loadEarthScience();draw();
   },
   setTarget(lat,lon){
    if(Number.isFinite(lat)&&Number.isFinite(lon)){
