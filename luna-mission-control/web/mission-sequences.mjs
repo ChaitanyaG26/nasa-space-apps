@@ -22,14 +22,23 @@ export const VEHICLES={
  ]
 };
 export const LANDERS=[
- {id:"blueghost",name:"Blue Ghost (illustrative)",body:"#e3bd65",legs:"#e6e9f4"},
- {id:"novac",name:"Nova-C (illustrative)",body:"#ccd7ee",legs:"#f7f3e5"},
- {id:"concept",name:"Generic science probe",body:"#a1ccdc",legs:"#e8f1fc"}
+ {id:"blueghost",name:"Blue Ghost (illustrative)",vehicle:"falcon9",body:"#e3bd65",legs:"#e6e9f4"},
+ {id:"novac",name:"Nova-C (illustrative)",vehicle:"falcon9",body:"#ccd7ee",legs:"#f7f3e5"},
+ {id:"peregrine",name:"Peregrine (illustrative)",vehicle:"vulcan",body:"#c6bdb7",legs:"#d9e4ed"},
+ {id:"concept",name:"Generic science probe",vehicle:"any",body:"#a1ccdc",legs:"#e8f1fc"}
 ];
 const SITE_NAMES={ksc:"KENNEDY SPACE CENTER",ccsfs:"CAPE CANAVERAL SFS",vandenberg:"VANDENBERG SFB"};
 export const vehiclesForSite=id=>VEHICLES[id]||VEHICLES.ksc;
 export const chooseVehicle=(site,id)=>vehiclesForSite(site).find(v=>v.id===id)||vehiclesForSite(site)[0];
-export const chooseLander=id=>LANDERS.find(p=>p.id===id)||LANDERS[0];
+export const landersForVehicle=id=>LANDERS.filter(p=>p.vehicle===id||p.vehicle==="any");
+export const chooseLander=(id,vehicleId=null)=>{
+ const options=vehicleId?landersForVehicle(vehicleId):LANDERS;
+ return options.find(p=>p.id===id)||options[0];
+};
+export function illustratedSurfaceHeight(lat,lon,x=300){
+ const seed=Math.sin(lat*.042+lon*.018)*.5;
+ return 236+5*Math.sin(x*.035+seed)+2*Math.sin(x*.09+lon*.1);
+}
 export const rocketFraction=t=>ease((t-.08)/.84);
 export const landerFraction=t=>ease((t-.02)/.96);
 
@@ -80,8 +89,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   state.rocket=chooseVehicle(state.site,state.rocket).id;
   launchSelect.innerHTML=options.map(v=>'<option value="'+escapeHTML(v.id)+'">'+escapeHTML(v.name)+'</option>').join("");
   launchSelect.value=state.rocket;
-  state.lander=chooseLander(state.lander).id;
-  landingSelect.innerHTML=LANDERS.map(p=>'<option value="'+escapeHTML(p.id)+'">'+escapeHTML(p.name)+'</option>').join("");
+  const landerOptions=landersForVehicle(state.rocket);
+  state.lander=chooseLander(state.lander,state.rocket).id;
+  landingSelect.innerHTML=landerOptions.map(p=>'<option value="'+escapeHTML(p.id)+'">'+escapeHTML(p.name)+'</option>').join("");
   landingSelect.value=state.lander;
   syncNames();
  };
@@ -182,14 +192,14 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const ground=236;
   ctx.beginPath();ctx.moveTo(0,ground);
   for(let x=0;x<=W;x+=8){
-   const h=5*Math.sin(x*.035+terrainSeed(state.latitude,state.longitude))+
-      2*Math.sin(x*.09+state.longitude*.1);
-   ctx.lineTo(x,ground+h);
+   ctx.lineTo(x,illustratedSurfaceHeight(state.latitude,state.longitude,x));
   }
   ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle="#8b96a6";ctx.fill();
   ctx.beginPath();ctx.moveTo(0,ground+12);ctx.lineTo(W,ground+12);
   ctx.strokeStyle="#d8dce8";ctx.lineWidth=1;ctx.stroke();
-  const x=300+10*Math.sin(Math.PI*t)*Math.cos(t*6),y=26+184*u;
+  const x=300+10*Math.sin(Math.PI*t)*Math.cos(t*6);
+  const surfaceY=illustratedSurfaceHeight(state.latitude,state.longitude,300);
+  const y=26+(surfaceY-21-26)*u; // feet meet selected illustrative surface at t=1
   // Final lander legs touch the stylized terrain (landing silhouette only).
   if(t>=.96){
    for(let i=0;i<12;i++){
@@ -221,7 +231,10 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   }
   last=now;raf=requestAnimationFrame(frame);
  }
- launchSelect.addEventListener("change",()=>{state.rocket=launchSelect.value;progress.launch=0;draw();});
+ launchSelect.addEventListener("change",()=>{
+  state.rocket=launchSelect.value;syncOptions();
+  progress.launch=0;progress.landing=0;draw();
+ });
  landingSelect.addEventListener("change",()=>{state.lander=landingSelect.value;progress.landing=0;draw();});
  for(const kind of ["launch","landing"]){
   query('[data-toggle="'+kind+'"]').addEventListener("click",()=>{
