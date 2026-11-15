@@ -17,7 +17,7 @@ export function createMoonSky3D(canvas){
  let geometry=null,disposed=false;
  const project=v=>{
   const [x,y,z]=rotateVector(v,yaw,pitch);
-  return {x:160+x*47*zoom,y:65-y*47*zoom,depth:z};
+  return {x:160+x*55*zoom,y:64-y*55*zoom,depth:z};
  };
  const draw=()=>{
   if(disposed)return;
@@ -50,13 +50,27 @@ export function createMoonSky3D(canvas){
    {name:"Earth",v:unit([geometry.earth.x,geometry.earth.y,geometry.earth.z]),color:"#63bef4"}
   ];
   vectors.sort((a,b)=>project(a.v).depth-project(b.v).depth);
+  const labelPositions=[];
   for(const marker of vectors){
    const end=project(marker.v);
    ctx.beginPath();ctx.moveTo(moon.x,moon.y);ctx.lineTo(end.x,end.y);
    ctx.strokeStyle=marker.color;ctx.lineWidth=1.9;ctx.stroke();
    ctx.beginPath();ctx.arc(end.x,end.y,5,0,Math.PI*2);ctx.fillStyle=marker.color;ctx.fill();
+   // Close Sun/Earth angles are physically possible. Keep marker
+   // positions faithful while separating labels for legibility.
+   const textX=clamp(end.x+9,7,width-53);
+   let textY=clamp(end.y+3,12,height-19);
+   for(const prior of labelPositions){
+    if(Math.abs(textX-prior.x)<52&&Math.abs(textY-prior.y)<15)
+     textY=clamp(prior.y+(marker.name==="Earth"?16:-16),12,height-19);
+   }
+   labelPositions.push({x:textX,y:textY});
+   if(Math.abs(textY-end.y)>9){
+    ctx.strokeStyle=marker.color+"99";ctx.lineWidth=.8;
+    ctx.beginPath();ctx.moveTo(end.x+3,end.y);ctx.lineTo(textX,textY-3);ctx.stroke();
+   }
    ctx.font="600 10px system-ui";ctx.fillStyle="#dfecf4";
-   ctx.fillText(marker.name,clamp(end.x+8,6,width-43),clamp(end.y+4,12,height-11));
+   ctx.fillText(marker.name,textX,textY);
   }
   ctx.fillStyle="#85a8bd";ctx.font="9px system-ui";ctx.fillText("Drag to rotate · Directions only",8,height-8);
  };
