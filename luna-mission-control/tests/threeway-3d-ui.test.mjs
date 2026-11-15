@@ -13,7 +13,7 @@ test("Historical landing catalog has unique organization-coloured, grounded luna
   assert.ok(site.lat>=-90&&site.lat<=90);
   assert.ok(site.lon>=-180&&site.lon<=180);
   assert.ok(LANDING_ORGANIZATIONS[site.org]?.color?.startsWith("#"));
-  assert.ok(/^\\d{4}-\\d{2}-\\d{2}$/.test(site.date));
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(site.date));
   assert.ok(site.source.startsWith("https://"));
   assert.ok(readableLandingTime(site).includes("UTC")||readableLandingTime(site).includes("unverified"));
   assert.ok(Math.abs(Math.hypot(...siteVector(site.lat,site.lon))-1)<1e-12);
@@ -40,8 +40,8 @@ test("3D projections vary with camera angle and preserve finite geometry",()=>{
 test("Moon DEM must be truly available before the 3D terrain view is called measured",()=>{
  assert.equal(loadMoonSiteGrid(null,-89.5,0),null);
  const code=readFileSync(new URL("../web/mission-sequences.mjs",import.meta.url),"utf8");
- assert.match(code,/moonGrid\\?\\.coverage>=\\.7/);
- assert.match(code,/earthGrid=sampled\\?\\.coverage>=\\.75/);
+ assert.match(code,/moonGrid\?\.coverage>=\.7/);
+ assert.match(code,/earthGrid=sampled\?\.coverage>=\.75/);
  assert.match(code,/Elevation coverage unavailable/);
 });
 test("Earth clearance chart highlights above-zero segments only",()=>{
@@ -55,8 +55,8 @@ test("Earth clearance chart highlights above-zero segments only",()=>{
 });
 test("Three-way comparison and restart are rendered with accessible info per metric",()=>{
  const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
- assert.match(app,/comparison\\.dateFixed/);
- assert.match(app,/comparison\\.siteFixed/);
+ assert.match(app,/comparison\.dateFixed/);
+ assert.match(app,/comparison\.siteFixed/);
  assert.match(app,/preserve:"time"/);
  assert.match(app,/preserve:"site"/);
  assert.match(app,/CHART_EXPLANATIONS/);
