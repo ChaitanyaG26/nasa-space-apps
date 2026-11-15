@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-compact-sky-v7";
+import "./launch-window.mjs?v=20261114-lander-sequence-v8";
 import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
@@ -193,13 +193,15 @@ function updateDiagrams(p){
   path+marker(p.sun_az,p.sun_el,6,"#ffc979")+marker(p.earth_az,p.earth_el,5,"#68caff")+
   svgText(12,103,"N")+svgText(87,103,"E")+svgText(159,103,"S")+svgText(232,103,"W")+svgText(292,103,"N");
  const clearance=(v,az)=>{const h=terrainAt(az);return h===null?"unknown":(v-h).toFixed(1)+"°";};
- $("angles").textContent="Sun "+p.sun_el.toFixed(1)+"° el (clearance "+clearance(p.sun_el,p.sun_az)+") · Earth "+
-  p.earth_el.toFixed(1)+"° el (clearance "+clearance(p.earth_el,p.earth_az)+")"+
-  (terrain?" · NASA LOLA skyline":" · terrain coverage unavailable");
- $("source").textContent=p.source+" · "+p.global_source+(p.regional_horizon?.coverage?" · NASA LOLA coarse regional skyline":" · Regional horizon unavailable");
+ const sunClear=clearance(p.sun_el,p.sun_az),earthClear=clearance(p.earth_el,p.earth_az);
+ $("angles").innerHTML='<div><span>☀ Sun</span><b>'+p.sun_el.toFixed(1)+'°</b><small>clear '+sunClear+'</small></div>'+
+  '<div><span>◉ Earth</span><b>'+p.earth_el.toFixed(1)+'°</b><small>clear '+earthClear+'</small></div>';
+ const fullSource=p.source+" · "+p.global_source+(p.regional_horizon?.coverage?" · NASA LOLA regional skyline":" · Regional horizon unavailable");
+ $("source").title=fullSource;
+ $("source").textContent="JPL Horizons reference · "+(terrain?"LOLA terrain":"terrain coverage unknown");
  globe.setSun(fixed.sun.x,fixed.sun.y,fixed.sun.z);
 }
-async function refreshPreview(){const id=++previewSeq;try{const p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p);return true;}catch(e){if(id===previewSeq){$("source").textContent="Preview unavailable: "+e.message;$("angles").textContent="No verified ephemeris for this selection";}return false;}}
+async function refreshPreview(){const id=++previewSeq;try{const p=await api("preview",mission());if(id===previewSeq)updateDiagrams(p);return true;}catch(e){if(id===previewSeq){$("source").textContent="Reference unavailable";$("source").title=e.message;$("angles").textContent="Ephemeris unavailable";}return false;}}
 function showResults(){ $("mapPage").classList.add("hidden");$("resultsPage").classList.remove("hidden")}
 function showGlobe(){ closeScienceInformation(); $("mapPage").classList.remove("hidden");$("resultsPage").classList.add("hidden")}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -402,15 +404,14 @@ $("back").addEventListener("click",showGlobe);
 // Time animation evaluates the ephemeris at exact UTC steps: source vectors
 // are hourly NASA/JPL samples; intermediate positions are interpolated.
 const controls=document.createElement("div");controls.className="ephemeris-playback";
-controls.innerHTML='<button type="button" id="playEphemeris" aria-pressed="false">▶ Play Sun / Earth</button>'+
- '<label>Step<select id="playStep"><option value="1">10 min</option><option value="3" selected>30 min</option><option value="6">1 hour</option></select></label>'+
- '<small id="playbackStatus">Hourly JPL data · interpolated frames</small>';
+controls.innerHTML='<button type="button" id="playEphemeris" aria-pressed="false">▶ Animate sky</button>'+
+ '<small id="playbackStatus">JPL reference · interpolated frames</small>';
 $("time").closest("label").insertAdjacentElement("afterend",controls);
 let playing=false,timer=null;
-function stopPlayback(){playing=false;if(timer!==null)clearTimeout(timer);timer=null;$("playEphemeris").textContent="▶ Play Sun / Earth";$("playEphemeris").setAttribute("aria-pressed","false");}
+function stopPlayback(){playing=false;if(timer!==null)clearTimeout(timer);timer=null;$("playEphemeris").textContent="▶ Animate sky";$("playEphemeris").setAttribute("aria-pressed","false");}
 async function animateFrame(){
  if(!playing)return;
- const n=advancePlaybackUtc($("date").value,Number($("time").value),Number($("playStep").value));
+ const n=advancePlaybackUtc($("date").value,Number($("time").value),3);
  $("date").value=n.date;$("time").value=n.slot;$("timeLabel").textContent=formatPlaybackUtc(n.slot);
  setChartsCursor($("results"),n.iso);
  const available=await refreshPreview();
