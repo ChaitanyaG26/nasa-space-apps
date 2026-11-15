@@ -8,7 +8,7 @@
 | Earth–Moon 3D transfer | Analytic Earth-centered two-body Kepler time-of-flight, vis-viva energy, arrival distance; NASA JPL geocentric Moon/Sun ICRF vectors when cached | No real vehicle launch/ascent state, lunar gravity, lunar orbit insertion, landing-target intersection, multibody targeting, or COLA certification |
 | Moon and Sun movement | NASA/JPL Horizons geometric state vectors (ICRF Earth center), hourly cached October 2026–March 2027; cubic Hermite interpolation with stored velocities | Outside cache coverage reverts to clearly labeled lower-precision analytic Moon/Sun directions; not a full SPICE spacecraft ephemeris |
 | Lunar globe | NASA CGI Moon Kit/LROC map, lunar sphere mesh; solar angle-based day/night shading | Display-only ambient lighting brightens nightside; it does **not** mean sunlight or electrical power in darkness |
-| Rocket vehicle silhouette | Published approximate rocket height/core diameter, stylized generic ascent kinematics | Does not calculate actual thrust, propellant consumption, staging, atmospheric drag, range safety, or vehicle-specific ascent profiles |
+| Rocket ascent and payload check | Published launch vehicle dimensions; public fueled mass, liftoff thrust and LEO capacity where available; user-entered payload; simplified vertical kinematic sensitivity | Published fueled mass may already include a standard payload; no variable propellant mass flow, staging, drag, gravity changes, actual upper-stage performance, TLI deliverability or mission authorization. Missing public values remain unknown, not fabricated |
 | Probe terminal descent | NASA surface gravity 1.62 m/s²; constant net deceleration from an explicitly assumed 180 m height, 14 m/s downward initial speed to 0.8 m/s at touchdown | NOT a full powered descent guidance/nav/flight simulation; no propellant mass flow, dynamic thrust, control authority, uncertainty, or hazard avoidance |
 | Lunar descent terrain | NASA LOLA 20-meter polar patch samples along an east-west cross section at the selected lunar coordinates, where coverage exists | 2× vertical exaggeration and separately scaled descent height; no boulders or sub-20-m hazards. Missing DEM displays as unknown, not safe |
 | Public catalog context | CelesTrak OMM subset with timestamp and epoch warnings | This is not a full debris catalog, nor object propagation, collision probability, or authorized COLA screening |
@@ -44,6 +44,25 @@ center at the displayed arrival time, and Moon position is animated using
 its actual JPL ephemeris when available. The physical Moon's gravitational
 pull would deflect the real spacecraft before the model reaches that point.
 Do **not** label the result a solved flight path or certified intercept.
+The visual Earth–Moon separation uses a **linear distance scale**. Earth/Moon
+disc radii are enlarged for readability, and the Sun is *not* drawn in the
+same spatial panel: JPL's Sun direction is indicated at the edge, with actual
+Earth–Sun distance in the model readout (~149.6 million km versus ~384,400 km
+for the Moon). Rocket or payload mass does not change the unpowered two-body
+coast; it affects powered flight feasibility, which is **not** solved by this
+mission-planning teaching tool.
+
+### Launch vehicle reference check
+
+Users can enter payload mass for each original or optimized launch scenario.
+When a public manufacturer value exists, LUNA displays approximate liftoff
+thrust, a gross launch-mass sensitivity proxy, and an initial thrust-to-weight
+*proxy*. A separate LEO-capacity comparison helps identify implausibly heavy
+payloads. **None** of these is a verified translunar payload capability:
+actual launch performance requires the exact vehicle variant, upper stage,
+staging, throttle, trajectory, fuel allocation and safety clearance. For
+missing manufacturer specifications, the app displays unavailable values
+rather than inventing parameters.
 
 ### Source links
 
@@ -51,8 +70,8 @@ Do **not** label the result a solved flight path or certified intercept.
 - NASA Moon gravity and mean radius: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html
 - NASA Lunar Reconnaissance Orbiter CGI Moon Kit: https://svs.gsfc.nasa.gov/4720/
 - NASA LOLA lunar digital elevations: https://pgda.gsfc.nasa.gov/products/81
-- SpaceX Falcon 9 dimensions: https://www.spacex.com/vehicles/falcon-9/
-- NASA SLS dimensions: https://www.nasa.gov/reference/space-launch-system-core-stage/
+- SpaceX Falcon 9 dimensions: https://new.spacex.com/vehicles/falcon-9
+- NASA SLS dimensions: https://www.nasa.gov/reference/space-launch-system/
 - ULA Vulcan dimensions: https://www.ulalaunch.com/docs/default-source/rockets/vulcancentaur.pdf
 - Firefly Alpha dimensions: https://fireflyspace.com/alpha/
 - NASA conjunction-assessment overview: https://www.nasa.gov/cara/
