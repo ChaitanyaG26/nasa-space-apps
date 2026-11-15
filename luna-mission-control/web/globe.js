@@ -1,4 +1,5 @@
 import {HISTORIC_LANDING_SITES,LANDING_ORGANIZATIONS,siteVector,readableLandingTime} from "./landing-sites.mjs";
+import {sunToMoonView,drawLunarLimbHalo} from "./lunar-limb-halo.mjs";
 // NASA Lunar Reconnaissance Orbiter color mosaic (CGI Moon Kit), displayed on a globe.
 // https://svs.gsfc.nasa.gov/4720/ . Visual reference, not LOLA terrain hazards.
 export function initGlobe(canvas,onSelect) {
@@ -51,14 +52,41 @@ export function initGlobe(canvas,onSelect) {
  };
  moonImage.src=LOCAL_URL;
 
- function draw(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);// Transparent clear exposes the gold backlight painted behind the globe canvas.
- gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);gl.uniform3fv(u("sun"),sun);gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);projectMarker()}
+ function draw(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const w=Math.max(1,Math.round(canvas.clientWidth*dpr)),h=Math.max(1,Math.round(canvas.clientHeight*dpr));
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+  if(haloContext){
+   if(haloCanvas.width!==w||haloCanvas.height!==h){
+    haloCanvas.width=w;haloCanvas.height=h;
+   }
+   drawLunarLimbHalo(haloContext,{
+    width:w,height:h,zoom,sunView:sunToMoonView(sun,yaw,pitch)
+   });
+  }
+  gl.viewport(0,0,w,h);
+  // The WebGL Moon is opaque; its transparent background lets the
+  // Sun-facing halo remain visible ONLY around the illuminated limb.
+  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);
+  gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);
+  gl.uniform3fv(u("sun"),sun);
+  gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);
+  projectMarker();
+ }
  function view(p){let c=Math.cos(yaw),s=Math.sin(yaw),a=Math.cos(pitch),b=Math.sin(pitch);let x=c*p[0]+s*p[2],z=-s*p[0]+c*p[2];return [x,a*p[1]-b*z,b*p[1]+a*z]}
  function world(q){let a=Math.cos(pitch),b=Math.sin(pitch);let py=a*q[1]+b*q[2],pz=-b*q[1]+a*q[2];let c=Math.cos(yaw),s=Math.sin(yaw);return [c*q[0]-s*pz,py,s*q[0]+c*pz]}
 
  // Accessible DOM markers share the exact sphere projection used for selecting.
  // Their positions are reevaluated after every camera movement/zoom/resize.
  const parent=canvas.parentElement;
+ // A dedicated transparent Canvas2D halo sits BEHIND the WebGL Moon.
+ // It follows the same Sun vector/camera that illuminate the terminator.
+ const haloCanvas=document.createElement("canvas");
+ haloCanvas.className="lunar-limb-halo";
+ haloCanvas.setAttribute("aria-hidden","true");
+ parent.insertBefore(haloCanvas,canvas);
+ const haloContext=haloCanvas.getContext("2d",{alpha:true});
  const layer=document.createElement("div");layer.className="landing-site-layer";
  layer.setAttribute("aria-label","Historical lunar landing sites");parent.appendChild(layer);
  const tooltip=document.createElement("aside");tooltip.className="landing-site-tooltip";
