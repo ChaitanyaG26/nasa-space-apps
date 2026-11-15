@@ -53,3 +53,23 @@ test("Main results no longer contain long amber technical paragraphs",()=>{
  assert.ok(!app.includes('<div class="note">PROJECTED regolith'));
  assert.ok(!app.includes("No NASA 20-m terrain patch for rover corridor screening at this coordinate.</p></div>"));
 });
+
+test("Simulation information drawer suppresses animation info buttons without changing their layout",()=>{
+ const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../web/styles.css",import.meta.url),"utf8");
+ assert.match(app,/document\.body\.classList\.add\("luna-science-info-open"\)/);
+ assert.match(app,/document\.body\.classList\.remove\("luna-science-info-open"\)/);
+ assert.match(app,/querySelectorAll\("\.mission-sequences \.sequence-info"\)/);
+ assert.match(css,/body\.luna-science-info-open \.mission-sequences \.sequence-info\{/);
+ assert.match(css,/visibility:hidden!important;pointer-events:none!important/);
+ assert.ok(!css.includes("body.luna-science-info-open .mission-sequences{display:none"));
+});
+test("Published browser mission passes rover input through bounded LOLA screening into scenario info",()=>{
+ const app=readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
+ for(const term of ["rover_east_m","rover_north_m","rover_max_slope_deg","roverRouteScreen(",
+                    "attachRover(result,data)","attachRover(output.original,data.mission)",
+                    "attachRover(output.recommended,candidate)"])
+  assert.ok(app.includes(term),term);
+ assert.match(readFileSync(new URL("../web/science-info.mjs",import.meta.url),"utf8"),
+  /route\?\.status\|\|/);
+});
