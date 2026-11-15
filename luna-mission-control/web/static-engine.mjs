@@ -124,11 +124,13 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
     const irradiance=g.sun_distance_km?solarIrradiance(g.sun_distance_km):REFERENCE_SOLAR_IRRADIANCE;
     const regolithC=projectRegolithTemperatureC(irradiance,g.sun_el,fraction);
     const geometricEarth=earthVisibility(g,regionalHorizon);
+    const earthTerrainAngle=regionalHorizon?.coverage?horizonAngleAt(regionalHorizon,g.earth_az):0;
+    const earthClearanceDeg=g.earth_el-earthTerrainAngle;
     const link=g.earth_distance_km?radioLinkBudget(g.earth_distance_km,r):null;
     const step=i<N?thermalStep(landerTempK,regolithC,irradiance,fraction,r.load_w,r,energy>0,r.sample_minutes*60):null;
     const landerTempC=landerTempK-273.15;
     rows.push({time,hours:i*dt,sun_az:round(g.sun_az),sun_el:round(g.sun_el),earth_az:round(g.earth_az),earth_el:round(g.earth_el),
-      power_w:round(power),sun_visible:fraction>0,earth_visible:geometricEarth,solar_fraction:round(fraction,3),
+      power_w:round(power),sun_visible:fraction>0,earth_visible:geometricEarth,earth_clearance_deg:round(earthClearanceDeg,2),solar_fraction:round(fraction,3),
       solar_irradiance_w_m2:round(irradiance),
       battery_wh:round(energy),soc:round(100*energy/r.battery_wh),diviner_observed_c:null,
       temperature_proxy_c:regolithC,
