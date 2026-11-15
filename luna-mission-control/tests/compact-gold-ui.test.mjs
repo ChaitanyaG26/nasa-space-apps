@@ -41,7 +41,8 @@ test("Graph curves match blue LUNA palette, with gold thresholds and chosen site
  const app=src("app.js"),chart=src("science-charts.mjs"),
   globe=src("globe.js"),css=src("styles.css");
  assert.doesNotMatch(app,/chart\("Solar generation",s,"power_w","#f9c74f"\)/);
- assert.match(chart,/stroke="#3a9ad2"/);
+ assert.match(app,/SCIENCE_GRAPH_PALETTE/);
+ assert.match(chart,/plot-active-series/);
  assert.match(css,/stroke:var\(--luna-gold\)!important/);
  assert.match(css,/#optimize:disabled\{/);
  assert.match(css,/#simulate,/);
