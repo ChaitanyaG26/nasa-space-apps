@@ -2262,3 +2262,21 @@ body>.luna-chart-overlay .plot-foot-summary .plot-foot-date time{
 body.luna-science-info-open .mission-sequences .sequence-info{
  visibility:hidden!important;pointer-events:none!important;
 }
+
+/* Optimizer status is button-anchored, hidden at rest, and does not resize the toolbar. */
+.optimize-progress[hidden]{display:none!important}
+.sidebar-layout .mission-toolbar .optimize-trigger .optimize-progress{
+ position:absolute;top:calc(100% + 8px);right:0;z-index:48;
+ width:min(355px,calc(100vw - 28px));min-width:250px;max-width:none;
+ padding:10px 12px;background:#102a42;color:#eaf7ff;
+ border:1px solid #537a96;border-radius:10px;
+ box-shadow:0 10px 30px #0615236b;pointer-events:none;
+}
+.optimize-progress-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:7px}
+.optimize-progress-top span{font-size:11px;line-height:1.45;font-weight:550;overflow-wrap:anywhere}
+.optimize-progress-top strong{font-size:12px;font-weight:750;color:#f5cb56;white-space:nowrap}
+.optimize-progress progress{display:block;width:100%;height:8px;border:0;border-radius:8px;overflow:hidden;accent-color:#f2c953;background:#29485d}
+.optimize-progress progress::-webkit-progress-bar{background:#29485d;border-radius:8px}
+.optimize-progress progress::-webkit-progress-value{background:#f2c953;border-radius:8px;transition:width .13s linear}
+.optimize-progress progress::-moz-progress-bar{background:#f2c953;border-radius:8px}
+@media(max-width:640px){.sidebar-layout .mission-toolbar .optimize-trigger .optimize-progress{right:0;width:min(320px,calc(100vw - 18px));min-width:0;padding:9px 11px}.optimize-progress-top span{font-size:10px}}
