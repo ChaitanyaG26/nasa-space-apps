@@ -118,17 +118,17 @@ function scenarioMarkup(s){
  const state=userState[s.id]||userState.original;
  const target=scenarioTarget(s);
  return '<article class="launch-cola-scenario" data-cola-scenario="'+htmlSafe(s.id)+'">'+
-  '<div class="launch-cola-scenario-head"><div><span class="launch-cola-eyebrow">'+htmlSafe(s.label)+'</span><h3>Launch &amp; transfer</h3></div>'+
+  '<div class="launch-cola-scenario-head"><div><span class="launch-cola-eyebrow">'+htmlSafe(s.label)+'</span></div>'+
   '<span class="launch-cola-uncleared">COLA UNVERIFIED</span></div>'+
-  '<div class="launch-cola-target"><div><small>Lunar destination</small><strong>'+htmlSafe(target?.coords||"Unavailable")+'</strong></div>'+
-  '<div><small>Requested arrival (UTC)</small><strong>'+htmlSafe(target?utc(target.time):"Unavailable")+'</strong></div></div>'+
+  '<div class="launch-cola-target"><div><small>Site</small><strong>'+htmlSafe(target?.coords||"Unavailable")+'</strong></div>'+
+  '<div><small>Arrival · UTC</small><strong>'+htmlSafe(target?utc(target.time):"Unavailable")+'</strong></div></div>'+
   '<label class="launch-cola-field">Launch range<select data-cola-field="site">'+
     LAUNCH_SITES.map(site=>'<option value="'+site.id+'" '+(state.site===site.id?"selected":"")+'>'+htmlSafe(site.name)+'</option>').join("")+
   '</select></label>'+
   '<details class="launch-cola-holds"><summary>External COLA hold times (optional)</summary>'+
   '<p>UTC start,end pairs only; not independently authenticated.</p>'+
   '<textarea data-cola-field="holds" rows="2" placeholder="2026-11-15T12:00Z,2026-11-15T12:40Z">'+htmlSafe(state.holds)+'</textarea></details>'+
-  '<button class="launch-cola-run" data-cola-calc type="button">Calculate departure options</button>'+
+  '<button class="launch-cola-run" data-cola-calc type="button">Find departure windows</button>'+
   '<div data-cola-output aria-live="polite"></div>'+
   '<div data-orbit-host></div>'+
   '<div data-sequences-host></div>'+
