@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-phone-scenarios-v18"
+RELEASE = "20261114-smooth-halo-v19"
 
 
 class Assets(html.parser.HTMLParser):
