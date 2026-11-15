@@ -27,8 +27,22 @@ test("NASA supported date notice is upper right, away from bottom right scroll a
 test("Published pages use current controller and CSS versions",()=>{
  for(const path of ["web/index.html","../index.html"]){
   const html=read(path);
-  assert.match(html,/styles\.css\?v=20261115-fullscreen-v21/);
-  assert.match(html,/app\.js\?v=20261115-fullscreen-v21/);
+  assert.match(html,/styles\.css\?v=20261115-telemetry-v22/);
+  assert.match(html,/app\.js\?v=20261115-telemetry-v22/);
  }
- assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-fullscreen-v21/);
+ assert.match(read("web/app.js"),/science-charts\.mjs\?v=20261115-telemetry-v22/);
+});
+
+test("Point inspection is rendered as a separate telemetry band, not over the chart legend",()=>{
+ const source=read("web/science-charts.mjs");
+ assert.match(source,/plot-live-reading/);
+ assert.match(source,/plot-readout-value/);
+ assert.match(source,/plot-reading-time/);
+ assert.match(source,/plot-reading-number/);
+ assert.match(source,/pointerdown",inspectPoint/);
+ const css=read("web/styles.css");
+ assert.match(css,/body>\.luna-chart-overlay \.plot-tooltip\{display:none!important;/);
+ assert.match(css,/body>\.luna-chart-overlay \.plot-live-reading\{/);
+ assert.match(css,/body>\.luna-chart-overlay \.plot-foot-summary\{/);
+ assert.match(css,/@media\(max-width:760px\)/);
 });

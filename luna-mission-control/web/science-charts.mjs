@@ -160,9 +160,19 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '<circle class="plot-hoverdot" cx="'+M.left+'" cy="'+M.top+'" r="5" fill="'+color+'" stroke="white" stroke-width="2" visibility="hidden"/>'+
  '<text x="'+M.left+'" y="'+(H-2)+'" class="plot-axis-label">UTC</text></svg>'+
  '<div class="plot-tooltip" role="status" hidden></div></div>'+
- '<div class="plot-foot"><span>'+points.length.toLocaleString("en-US")+' '+(kind==="observed"?"archival bins":"computed samples")+
- '</span><span>Min '+esc(fmt(minimum.value,unit))+' · Max '+esc(fmt(maximum.value,unit))+'</span><span>UTC · '+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+
- ' to '+esc(new Date(end).toISOString().slice(0,16).replace("T"," "))+'</span></div></div>';
+ '<div class="plot-foot">'+
+ '<div class="plot-live-reading" aria-label="Selected graph point"><span class="plot-foot-label">Point reading</span>'+
+ '<output class="plot-readout-value"><span class="plot-reading-time">Hover or tap a graph point</span>'+
+ '<strong class="plot-reading-number">—</strong></output></div>'+
+ '<div class="plot-foot-summary">'+
+ '<div class="plot-foot-item plot-foot-count"><span class="plot-foot-label">Data</span><span>'+points.length.toLocaleString("en-US")+' '+(kind==="observed"?"archival bins":"computed samples")+'</span></div>'+
+ '<div class="plot-foot-item plot-foot-range"><span class="plot-foot-label">Value range</span>'+
+ '<span>Min '+esc(fmt(minimum.value,unit))+'</span><span>Max '+esc(fmt(maximum.value,unit))+'</span></div>'+
+ '<div class="plot-foot-item plot-foot-dates"><span class="plot-foot-label">UTC time window</span>'+
+ '<div class="plot-time-pair"><time datetime="'+new Date(start).toISOString()+'">'+esc(new Date(start).toISOString().slice(0,16).replace("T"," "))+'</time>'+
+ '<span class="plot-time-separator">to</span>'+
+ '<time datetime="'+new Date(end).toISOString()+'">'+esc(new Date(end).toISOString().slice(0,16).replace("T"," "))+'</time></div></div>'+
+ '</div></div></div>';
 }
 export function resetCharts(){registry.clear();counter=0;}
 function nearestAt(series,t){
@@ -247,9 +257,12 @@ export function attachChartInteractions(root){
   if(!plot)continue;
   const line=svg.querySelector(".plot-hoverline"),dot=svg.querySelector(".plot-hoverdot");
   const tooltip=svg.parentElement.querySelector(".plot-tooltip");
+  const reading=svg.closest(".science-plot")?.querySelector(".plot-live-reading");
+  const readingTime=reading?.querySelector(".plot-reading-time");
+  const readingNumber=reading?.querySelector(".plot-reading-number");
   const hide=()=>{line.setAttribute("visibility","hidden");dot.setAttribute("visibility","hidden");tooltip.hidden=true;};
   svg.addEventListener("pointerleave",hide);
-  svg.addEventListener("pointermove",event=>{
+  const inspectPoint=event=>{
    const rect=svg.getBoundingClientRect();
    if(!rect.width)return;
    const vx=(event.clientX-rect.left)/rect.width*W;
@@ -263,9 +276,16 @@ export function attachChartInteractions(root){
    line.setAttribute("x1",cx);line.setAttribute("x2",cx);line.setAttribute("visibility","visible");
    dot.setAttribute("cx",cx);dot.setAttribute("cy",cy);dot.setAttribute("visibility","visible");
    tooltip.hidden=false;
-   tooltip.textContent=new Date(p.time).toISOString().slice(0,16).replace("T"," ")+" UTC · "+fmt(p.value,plot.unit);
+   const utcLabel=new Date(p.time).toISOString().slice(0,16).replace("T"," ")+" UTC";
+   const valueLabel=fmt(p.value,plot.unit);
+   tooltip.textContent=utcLabel+" · "+valueLabel;
    tooltip.style.left=Math.min(76,Math.max(8,cx/W*100))+"%";
-  });
+   if(readingTime)readingTime.textContent=utcLabel;
+   if(readingNumber)readingNumber.textContent=valueLabel;
+  };
+  // Pointerdown makes a touch selection visible even without a subsequent drag.
+  svg.addEventListener("pointermove",inspectPoint);
+  svg.addEventListener("pointerdown",inspectPoint);
  }
 }
 

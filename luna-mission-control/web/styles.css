@@ -1795,3 +1795,104 @@ body>.luna-chart-overlay .chart-head .chart-meta{margin-left:auto!important;}
   font-size:12px!important;
  }
 }
+
+/* v22: fullscreen science plot telemetry gets its own reading band, with
+   responsive summary groups. Nothing floats over methodology information. */
+body>.luna-chart-overlay .plot-tooltip{display:none!important;}
+body>.luna-chart-overlay .plot-foot{
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ justify-content:flex-start!important;flex:0 0 auto!important;
+ width:100%!important;min-width:0!important;
+ gap:12px!important;padding:14px 0 0!important;
+ margin-top:6px!important;border-top:1px solid #dce7ee!important;
+ font-size:clamp(12px,1vw,15px)!important;line-height:1.55!important;
+ color:#325c76!important;font-variant-numeric:tabular-nums;
+}
+body>.luna-chart-overlay .plot-live-reading{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ flex-wrap:wrap!important;gap:8px 22px!important;
+ padding:10px 14px!important;background:#eef6fb!important;
+ border:1px solid #c9deed!important;border-radius:9px!important;
+ min-width:0!important;
+}
+body>.luna-chart-overlay .plot-foot-label{
+ display:block!important;color:#577c94!important;
+ font-size:clamp(11px,.9vw,13px)!important;font-weight:650!important;
+ letter-spacing:.02em!important;
+}
+body>.luna-chart-overlay .plot-readout-value{
+ display:flex!important;align-items:center!important;flex-wrap:wrap!important;
+ justify-content:flex-end!important;gap:8px 16px!important;
+ color:#17486a!important;font-size:clamp(13px,1.1vw,17px)!important;
+ min-width:0!important;max-width:100%!important;
+ text-align:right!important;overflow-wrap:anywhere!important;
+}
+body>.luna-chart-overlay .plot-reading-number{
+ color:#164f7b!important;font-size:1.12em!important;
+ font-weight:750!important;white-space:nowrap!important;
+}
+body>.luna-chart-overlay .plot-foot-summary{
+ display:grid!important;grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1.6fr)!important;
+ gap:14px 32px!important;align-items:start!important;min-width:0!important;
+}
+body>.luna-chart-overlay .plot-foot-item{
+ display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+ gap:4px!important;min-width:0!important;overflow-wrap:anywhere!important;
+}
+body>.luna-chart-overlay .plot-foot-item>span:not(.plot-foot-label){
+ display:block!important;font-weight:550!important;color:#234f6c!important;
+}
+body>.luna-chart-overlay .plot-foot-range{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,max-content))!important;
+ gap:4px 24px!important;
+}
+body>.luna-chart-overlay .plot-foot-range .plot-foot-label{grid-column:1/-1!important;}
+body>.luna-chart-overlay .plot-foot-range>span:not(.plot-foot-label){
+ color:#234f6c!important;font-weight:650!important;white-space:normal!important;
+}
+body>.luna-chart-overlay .plot-time-pair{
+ display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+ gap:4px 10px!important;min-width:0!important;overflow-wrap:anywhere!important;
+}
+body>.luna-chart-overlay .plot-time-pair time{
+ display:inline-block!important;min-width:0!important;color:#234f6c!important;
+ font-weight:550!important;white-space:normal!important;
+}
+body>.luna-chart-overlay .plot-time-separator{color:#728c9d!important;}
+@media(max-width:760px){
+ body>.luna-chart-overlay .plot-foot{
+  gap:9px!important;padding-top:10px!important;
+  font-size:12px!important;line-height:1.45!important;
+ }
+ body>.luna-chart-overlay .plot-live-reading{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  gap:2px!important;padding:8px 10px!important;
+ }
+ body>.luna-chart-overlay .plot-readout-value{
+  width:100%!important;display:flex!important;flex-direction:column!important;
+  align-items:flex-start!important;justify-content:flex-start!important;
+  gap:0!important;text-align:left!important;font-size:13px!important;
+ }
+ body>.luna-chart-overlay .plot-foot-summary{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px 14px!important;
+ }
+ body>.luna-chart-overlay .plot-foot-dates{grid-column:1/-1!important;}
+ body>.luna-chart-overlay .plot-foot-range{
+  grid-template-columns:1fr!important;gap:1px!important;
+ }
+ body>.luna-chart-overlay .plot-foot-range .plot-foot-label{grid-column:1!important;}
+ body>.luna-chart-overlay .plot-time-pair{
+  display:flex!important;flex-direction:column!important;
+  align-items:flex-start!important;gap:0!important;
+ }
+ body>.luna-chart-overlay .plot-time-pair time{display:block!important;}
+ body>.luna-chart-overlay .plot-time-separator{display:block!important;}
+}
+@media(max-width:420px){
+ body>.luna-chart-overlay .plot-foot-summary{
+  grid-template-columns:minmax(0,1fr)!important;gap:9px!important;
+ }
+ body>.luna-chart-overlay .plot-foot-dates{grid-column:auto!important;}
+ body>.luna-chart-overlay .plot-foot-item{gap:2px!important;}
+}
