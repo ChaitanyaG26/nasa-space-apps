@@ -9,7 +9,7 @@ test("Both published entry pages have exactly one permanently visible accessible
   assert.equal((html.match(/id="scrollToTop"/g)||[]).length,1);
   assert.match(html,/<button id="scrollToTop" class="scroll-to-top" type="button" aria-label="Scroll to top"/);
   assert.match(html,/<svg viewBox="0 0 24 24"/);
-  assert.match(html,/20261115-screening-v25/);
+  assert.match(html,/20261115-optimize-progress-v26/);
  }
 });
 test("Circle is fixed to the bottom-right even on short mobile screens and does not obscure the Moon legend",()=>{
