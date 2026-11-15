@@ -30,7 +30,7 @@ test("Compact sidebar keeps sky/horizon while hiding removed controls",()=>{
   assert.match(page,/class="sky-stack"/);
   assert.match(page,/id="orbital"/);
   assert.match(page,/id="horizon"/);
-  assert.match(page,/class="spacecraft-assumptions" open/);
+  assert.match(page,/class="toolbar-disclosure spacecraft-assumptions" open/);
   assert.match(page,/id="optimizeMenu"[^>]*hidden/);
   assert.ok(page.indexOf('id="duration"')>page.indexOf("Spacecraft assumptions"));
   assert.ok(page.indexOf('id="preserve"')>page.indexOf('id="optimize"'));
@@ -56,4 +56,12 @@ test("3D science visualization supports pan, zoom, Kepler timing and changing Mo
  for(const expected of ["orbit-3d-canvas","cameraProject","pointermove","shiftKey","wheel","moonEphemeris","keplerTransferPoint","catalogAgeDays","NOT COLA screening"]){
   assert.ok(source.includes(expected),expected);
  }
+});
+
+test("Animated orbit is continuously sampled and shows explicitly illustrative burns",()=>{
+ const scene=readFileSync(new URL("../web/orbit-visualization.mjs",import.meta.url),"utf8");
+ assert.match(scene,/length:601/);
+ assert.match(scene,/data-orbit-burn/);
+ assert.match(scene,/thrusterPhaseAt/);
+ assert.match(scene,/this does not simulate propulsion/);
 });

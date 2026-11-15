@@ -102,9 +102,17 @@ function phaseWorld(t,scene,arrivalDir,planeNormal){
 }
 function createStars(count=110){
  let seed=90210;const rand=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
- return Array.from({length:count},()=>({x:rand()*760,y:rand()*420,r:.4+rand()*1.2,a:.17+rand()*.6}));
+ return Array.from({length:count},()=>({x:rand()*560,y:rand()*540,r:.4+rand()*1.2,a:.17+rand()*.6}));
 }
 const STARFIELD=createStars();
+// Cinematic burn cues only: the idealized two-body path is NOT changed by thrust.
+export function thrusterPhaseAt(f){
+ const t=clamp(f,0,1);
+ if(t<.04)return "Departure burn · illustrative";
+ if(t>=.47&&t<.495)return "Correction burn · illustrative";
+ if(t>=.97)return "Arrival burn · illustrative";
+ return null;
+}
 export function mountOrbitAnimation(host,{
  scenario="original",parkingKm=200,moonDistanceKm=384400,flightDays=null,
  departureUtc=null,moonEphemeris=null
@@ -115,22 +123,27 @@ export function mountOrbitAnimation(host,{
   '<div class="orbit-scene-top"><div><div class="orbit-title">Interactive 3D transfer concept</div>'+
   '<p class="orbit-subtitle">Rotate by dragging · Shift+drag to pan · wheel to zoom · Kepler time-of-flight</p></div>'+
   '<span class="orbit-data-flag">NOT COLA CLEARED</span></div>'+
-  '<canvas class="orbit-3d-canvas" width="760" height="420" tabindex="0" aria-label="Interactive 3D Earth-Moon transfer diagram with Sun direction, rotating Earth, changing Moon location and Kepler-timed spacecraft; not a trajectory solution."></canvas>'+
+  '<canvas class="orbit-3d-canvas" width="560" height="540" tabindex="0" aria-label="Interactive 3D Earth-Moon transfer diagram with Sun direction, rotating Earth, changing Moon location and Kepler-timed spacecraft; not a trajectory solution."></canvas>'+
   '<div class="orbit-controls"><button data-orbit-toggle type="button">Pause</button>'+
   '<button data-orbit-reset type="button">Reset camera</button>'+
   '<input data-orbit-scrub type="range" min="0" max="1000" step="1" value="0" aria-label="Conceptual transit fraction">'+
-  '<span data-orbit-phase class="orbit-phase">Elapsed 0.00 d</span></div>'+
+  '<span data-orbit-phase class="orbit-phase">Elapsed 0.00 d</span>'+
+ '<span data-orbit-burn class="orbit-burn-indicator">Coasting</span></div>'+
   '<div class="orbit-legend">Display distances compressed and body radii exaggerated; lunar position approximated by a truncated theory. This transfer is <b>not</b> targeted to a real Moon intercept and <b>does not</b> avoid tracked objects.</div>'+
   '<details class="orbit-catalog" open><summary>Public space-object context and data quality</summary><div data-orbit-catalog>Loading public station metadata…</div></details>'+
   '</section>';
  const qs=s=>host.querySelector(s),canvas=qs("canvas"),ctx=canvas.getContext("2d");
  if(!ctx)return{destroy(){},setCatalog(){},setTransfer(){}};
+ const pixelRatio=clamp(window.devicePixelRatio||1,1,2);
+ canvas.width=Math.round(560*pixelRatio);canvas.height=Math.round(540*pixelRatio);
+ ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+ ctx.lineJoin="round";ctx.lineCap="round";
  const toggle=qs("[data-orbit-toggle]"),reset=qs("[data-orbit-reset]"),
-  scrub=qs("[data-orbit-scrub]"),phase=qs("[data-orbit-phase]");
+  scrub=qs("[data-orbit-scrub]"),phase=qs("[data-orbit-phase]"),burnIndicator=qs("[data-orbit-burn]");
  const scene={parkingKm,moonDistanceKm,flightDays:flightDays??idealTransferDays(parkingKm,moonDistanceKm),
   departureUtc:Number.isFinite(departureUtc)?departureUtc:Date.parse("2026-11-20T00:00:00Z")};
- const camera={yaw:.55,pitch:.55,zoom:1.24,panX:0,panY:0};
- let alive=true,t=0,last=0,raf=0,dragging=null,visible=true;
+ const camera={yaw:.55,pitch:.55,zoom:1.06,panX:-112,panY:62};
+ let alive=true,t=0,last=0,raf=0,dragging=null,visible=true,cachedTrack=null;
  let playing=!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
  const pauseText=()=>{toggle.textContent=playing?"Pause":t>=1?"Replay":"Play";};
  const observer=typeof IntersectionObserver==="function"?new IntersectionObserver(entries=>{
@@ -158,10 +171,10 @@ export function mountOrbitAnimation(host,{
   return{ra:((time/86400000*13.176)%360+360)%360,dec:5*Math.sin(time/86400000*.2),distanceKm:384400};
  }
  function draw(){
-  ctx.clearRect(0,0,760,420);
-  const gradient=ctx.createLinearGradient(0,0,760,420);
+  ctx.clearRect(0,0,560,540);
+  const gradient=ctx.createLinearGradient(0,0,560,540);
   gradient.addColorStop(0,"#03111f");gradient.addColorStop(.68,"#0a263d");gradient.addColorStop(1,"#071626");
-  ctx.fillStyle=gradient;ctx.fillRect(0,0,760,420);
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,560,540);
   for(const st of STARFIELD){ctx.globalAlpha=st.a;ctx.fillStyle="#daedff";ctx.beginPath();ctx.arc(st.x,st.y,st.r,0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
   const when=scene.departureUtc+t*scene.flightDays*DAY;
@@ -177,13 +190,15 @@ export function mountOrbitAnimation(host,{
    });
    drawLine(pts,"#326a9130",1,[3,6]);
   }
-  const ephem=ephemAt(when),moon=mul(skyDirection(ephem.ra,ephem.dec),213);
-  const path=Array.from({length:181},(_,i)=>phaseWorld(i/180,scene,a,normal));
-  drawLine(path,"#7fd9f087",2,[6,5]);
-  const n=Math.max(2,Math.ceil(t*180));
-  drawLine(path.slice(0,n),accent,3);
+  const ephem=ephemAt(when),moon=mul(skyDirection(ephem.ra,ephem.dec),sphereScale(ephem.distanceKm));
+  if(!cachedTrack)cachedTrack=Array.from({length:601},(_,i)=>phaseWorld(i/600,scene,a,normal));
+  drawLine(cachedTrack,"#7fd9f068",1.5,[5,5]);
+  const n=Math.max(1,Math.floor(t*600));
   const ship=phaseWorld(t,scene,a,normal);
-  const sun=mul(source,300);
+  ctx.shadowColor=accent;ctx.shadowBlur=6;
+  drawLine([...cachedTrack.slice(0,n+1),ship],accent,2.8);
+  ctx.shadowBlur=0;
+  const sun=mul(source,235);
   const sunPt=cameraProject(sun,camera);
   const rays=ctx.createRadialGradient(sunPt.x,sunPt.y,2,sunPt.x,sunPt.y,65*camera.zoom);
   rays.addColorStop(0,"#ffe7a988");rays.addColorStop(1,"#ffc84e00");
@@ -197,11 +212,29 @@ export function mountOrbitAnimation(host,{
   bubble(moon,7.5,"#d5dbe3","#5b718a","Moon · approximate");
   bubble(sun,12,"#ffd875","#d78b16","Sun direction");
   const sc=cameraProject(ship,camera);
+  const burn=thrusterPhaseAt(t);
+  if(burn){
+   // Flame points opposite projected velocity; this does not simulate propulsion.
+   const prior=cameraProject(phaseWorld(clamp(t-.002,0,1),scene,a,normal),camera);
+   const next=cameraProject(phaseWorld(clamp(t+.002,0,1),scene,a,normal),camera);
+   const length=Math.hypot(next.x-prior.x,next.y-prior.y)||1;
+   const vx=(next.x-prior.x)/length,vy=(next.y-prior.y)/length;
+   const nx=-vy,ny=vx,tip=17+5*Math.sin(t*1100);
+   const bx=sc.x-vx*6,by=sc.y-vy*6;
+   ctx.save();ctx.shadowColor="#ffd555";ctx.shadowBlur=16;
+   ctx.beginPath();ctx.moveTo(bx+3*nx,by+3*ny);
+   ctx.lineTo(bx-tip*vx,by-tip*vy);ctx.lineTo(bx-3*nx,by-3*ny);ctx.closePath();
+   ctx.fillStyle="#ffcb53";ctx.fill();ctx.restore();
+   ctx.beginPath();ctx.arc(bx-tip*vx,by-tip*vy,1.8,0,Math.PI*2);
+   ctx.fillStyle="#fff8ce";ctx.fill();
+  }
+  burnIndicator.textContent=burn||"Coasting";
+  burnIndicator.classList.toggle("burn-active",Boolean(burn));
   ctx.beginPath();ctx.arc(sc.x,sc.y,5.2,0,Math.PI*2);ctx.fillStyle=accent;ctx.shadowColor=accent;ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;
   text("Spacecraft",sc.x+10,sc.y-8,accent);
   ctx.fillStyle="#97b8d4";ctx.font="10px system-ui,sans-serif";
-  ctx.fillText("Earth-centered reference · distorted display scale · drag to orbit camera",15,22);
-  ctx.fillText("NOT a conjunction avoidance / certified trajectory",15,406);
+  ctx.fillText("Earth · Moon · Sun | drag to rotate",13,22);
+  ctx.fillText("Educational path only · No certified COLA",13,527);
   scrub.value=Math.round(t*1000);
   const utc=new Date(when).toISOString().slice(0,16).replace("T"," ");
   phase.textContent=(scene.flightDays*t).toFixed(2)+" / "+scene.flightDays.toFixed(2)+" d · "+utc+" UTC";
@@ -209,7 +242,7 @@ export function mountOrbitAnimation(host,{
  function frame(now){
   if(!alive||!host.isConnected)return;
   if(visible&&!document.hidden){
-   if(playing&&last)t=Math.min(1,t+Math.max(0,Math.min(100,now-last))/28000);
+   if(playing&&last)t=Math.min(1,t+Math.max(0,Math.min(50,now-last))/36000);
    if(t>=1&&playing){playing=false;pauseText();}
    draw();
   }
@@ -240,12 +273,12 @@ export function mountOrbitAnimation(host,{
   if(Number.isFinite(distance)&&distance>300000&&distance<450000)scene.moonDistanceKm=distance;
   scene.flightDays=Number.isFinite(days)&&days>0?days:idealTransferDays(scene.parkingKm,scene.moonDistanceKm);
   if(Number.isFinite(launch))scene.departureUtc=launch;
-  t=0;last=0;playing=false;pauseText();draw();
+  t=0;last=0;cachedTrack=null;playing=false;pauseText();draw();
  }
  function startDrag(e){canvas.setPointerCapture(e.pointerId);dragging={x:e.clientX,y:e.clientY,pan:e.shiftKey||e.button===2};}
  function moveDrag(e){
   if(!dragging)return;
-  const dx=e.clientX-dragging.x,dy=e.clientY-dragging.y;
+  const scale=560/Math.max(1,canvas.getBoundingClientRect().width),dx=(e.clientX-dragging.x)*scale,dy=(e.clientY-dragging.y)*scale;
   if(dragging.pan){camera.panX+=dx;camera.panY+=dy;}
   else{camera.yaw+=dx*.007;camera.pitch=clamp(camera.pitch+dy*.007,-1.5,1.5);}
   dragging.x=e.clientX;dragging.y=e.clientY;draw();
@@ -263,7 +296,7 @@ export function mountOrbitAnimation(host,{
    draw();
   }
  });
- reset.addEventListener("click",()=>{Object.assign(camera,{yaw:.55,pitch:.55,zoom:1.24,panX:0,panY:0});draw();});
+ reset.addEventListener("click",()=>{Object.assign(camera,{yaw:.55,pitch:.55,zoom:1.06,panX:-112,panY:62});draw();});
  toggle.addEventListener("click",()=>{if(t>=1)t=0;playing=!playing;last=0;pauseText();draw();});
  scrub.addEventListener("input",()=>{t=Number(scrub.value)/1000;playing=false;pauseText();draw();});
  pauseText();draw();raf=requestAnimationFrame(frame);

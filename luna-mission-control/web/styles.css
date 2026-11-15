@@ -654,3 +654,13 @@ body{background:var(--luna-night);}
 .optimize-menu:focus-within{border-color:#f9ce4c;}
 @media(max-width:850px){.optimize-trigger{flex:1 1 0;min-width:0;max-width:none;}.optimize-menu{right:0;}}
 @media(max-width:640px){.sky-mini svg{height:63px;}.sidebar-layout .sidebar{flex-basis:48dvh;height:48dvh;max-height:56dvh;}.sidebar-layout .mission-toolbar .optimize-trigger{flex:1 1 50%;}.sidebar-layout .mission-toolbar .optimize-trigger #optimize{font-size:11px;padding:7px 5px;}.optimize-menu{min-width:250px;}}
+
+/* Compact nearly-portrait orbit panel, coordinated with the sky/horizon mini preview. */
+#luna-launch-cola .orbit-scene-3d{padding:10px;max-width:100%;}
+#luna-launch-cola .orbit-scene-3d .orbit-3d-canvas{display:block;max-width:440px;width:100%;height:auto;aspect-ratio:560/540;margin:0 auto;}
+#luna-launch-cola .orbit-scene-3d .orbit-scene-top{display:block;}
+#luna-launch-cola .orbit-scene-3d .orbit-data-flag{display:inline-block;margin:0 0 7px;padding:5px 7px;}
+#luna-launch-cola .orbit-scene-3d .orbit-controls{gap:6px;margin-top:7px;}
+#luna-launch-cola .orbit-scene-3d .orbit-phase{flex-basis:auto;}
+#luna-launch-cola .orbit-burn-indicator{display:inline-flex;padding:5px 9px;border:1px solid #3f6179;border-radius:20px;font-size:10px;color:#a9c6db;background:#102b42;}
+#luna-launch-cola .orbit-burn-indicator.burn-active{background:#57411a;color:#ffdf74;border-color:#d6ab47;box-shadow:0 0 15px #ffcf5265;}
