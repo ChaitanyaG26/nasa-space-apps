@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {VEHICLES,LANDERS,vehiclesForSite,chooseVehicle,chooseLander,rocketFraction,landerFraction} from "../web/mission-sequences.mjs";
+import {VEHICLES,LANDERS,vehiclesForSite,chooseVehicle,chooseLander,landersForVehicle,illustratedSurfaceHeight,rocketFraction,landerFraction} from "../web/mission-sequences.mjs";
 
 test("Each primary launch range has a distinct set of selectable rocket illustrations",()=>{
  assert.deepEqual(Object.keys(VEHICLES),["ksc","ccsfs","vandenberg"]);
@@ -16,6 +16,9 @@ test("Lunar probe visual choices are independent and valid",()=>{
  assert.ok(LANDERS.length>=3);
  assert.equal(chooseLander("novac").id,"novac");
  assert.equal(chooseLander("not-present").id,LANDERS[0].id);
+ assert.deepEqual(landersForVehicle("vulcan").map(l=>l.id),["peregrine","concept"]);
+ assert.deepEqual(landersForVehicle("sls").map(l=>l.id),["concept"]);
+ assert.equal(chooseLander("novac","vulcan").id,"peregrine");
 });
 test("Animation progress is bounded and smoothly monotonic",()=>{
  for(const fn of [rocketFraction,landerFraction]){
@@ -37,4 +40,15 @@ test("Launch site and lander coordinate context are supplied per mission",()=>{
  assert.match(launch,/latitude:destination\?\.lat,longitude:destination\?\.lon/);
  assert.match(launch,/data-sequences-host/);
  assert.match(launch,/visualSelections/);
+});
+
+test("Illustrative probe landing feet meet the target height for each site's coordinates",()=>{
+ for(const [lat,lon] of [[-89.5,0],[-85.2,45],[-88,-110]]){
+  const surface=illustratedSurfaceHeight(lat,lon);
+  const landerBodyCenter=surface-21;
+  assert.ok(Math.abs(landerBodyCenter+21-surface)<1e-8);
+  assert.ok(surface>225&&surface<248);
+ }
+ const script=readFileSync(new URL("../web/mission-sequences.mjs",import.meta.url),"utf8");
+ assert.match(script,/surfaceY-21-26/);
 });
