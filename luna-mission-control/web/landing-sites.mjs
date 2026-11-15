@@ -11,12 +11,12 @@ export const LANDING_ORGANIZATIONS={
  firefly:{name:"Firefly Aerospace / U.S.",color:"#c9a5f6"}
 };
 export const HISTORIC_LANDING_SITES=[
- {id:"apollo11",name:"Apollo 11",org:"nasa",lat:.67416,lon:23.47314,date:"1969-07-20",time:"20:17:40",place:"Mare Tranquillitatis",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
- {id:"apollo12",name:"Apollo 12",org:"nasa",lat:-3.0128,lon:-23.4219,date:"1969-11-19",time:null,place:"Oceanus Procellarum",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
- {id:"apollo14",name:"Apollo 14",org:"nasa",lat:-3.64589,lon:-17.47194,date:"1971-02-05",time:null,place:"Fra Mauro",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
- {id:"apollo15",name:"Apollo 15",org:"nasa",lat:26.13239,lon:3.63330,date:"1971-07-30",time:null,place:"Hadley–Apennine",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
- {id:"apollo16",name:"Apollo 16",org:"nasa",lat:-8.9734,lon:15.5011,date:"1972-04-21",time:null,place:"Descartes",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
- {id:"apollo17",name:"Apollo 17",org:"nasa",lat:20.1911,lon:30.7655,date:"1972-12-11",time:null,place:"Taurus–Littrow",source:"https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html"},
+ {id:"apollo11",name:"Apollo 11",org:"nasa",lat:.67416,lon:23.47314,date:"1969-07-20",time:"20:17:39",place:"Mare Tranquillitatis",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
+ {id:"apollo12",name:"Apollo 12",org:"nasa",lat:-3.0128,lon:-23.4219,date:"1969-11-19",time:"06:54:36",place:"Oceanus Procellarum",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
+ {id:"apollo14",name:"Apollo 14",org:"nasa",lat:-3.64589,lon:-17.47194,date:"1971-02-05",time:"09:18:13",place:"Fra Mauro",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
+ {id:"apollo15",name:"Apollo 15",org:"nasa",lat:26.13239,lon:3.63330,date:"1971-07-30",time:"22:16:29",place:"Hadley–Apennine",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
+ {id:"apollo16",name:"Apollo 16",org:"nasa",lat:-8.9734,lon:15.5011,date:"1972-04-21",time:"02:23:35",place:"Descartes",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
+ {id:"apollo17",name:"Apollo 17",org:"nasa",lat:20.1911,lon:30.7655,date:"1972-12-11",time:"19:54:57",place:"Taurus–Littrow",source:"https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf"},
  {id:"change3",name:"Chang’e 3",org:"cnsa",lat:44.1214,lon:-19.5116,date:"2013-12-14",time:null,place:"Mare Imbrium",source:"https://cosparhq.cnes.fr/assets/uploads/2024/09/COSPAR-PPP-2024-Overview.pdf"},
  {id:"change4",name:"Chang’e 4",org:"cnsa",lat:-45.444,lon:177.599,date:"2019-01-03",time:null,place:"Von Kármán crater, far side",source:"https://cosparhq.cnes.fr/assets/uploads/2024/09/COSPAR-PPP-2024-Overview.pdf"},
  {id:"change5",name:"Chang’e 5",org:"cnsa",lat:43.0576,lon:-51.9161,date:"2020-12-01",time:null,place:"Oceanus Procellarum",source:"https://cosparhq.cnes.fr/assets/uploads/2024/09/COSPAR-PPP-2024-Overview.pdf"},
