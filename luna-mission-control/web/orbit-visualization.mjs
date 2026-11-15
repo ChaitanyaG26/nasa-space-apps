@@ -96,7 +96,9 @@ function sunDirection(utc){
  const eps=(23.439-0.00000036*days)*DEG;
  return unit([Math.cos(lambda),Math.sin(lambda)*Math.cos(eps),Math.sin(lambda)*Math.sin(eps)]);
 }
-const sphereScale=distance=>21+194*Math.pow(clamp((distance-(RE+200))/(384400-(RE+200)),0,1),.64);
+// Uniform Earth–Moon distance scale; physical Sun remains outside this viewport.
+export const distanceOnEarthMoonView=(distanceKm,referenceMoonKm=384400)=>210*distanceKm/referenceMoonKm;
+const sphereScale=distanceOnEarthMoonView;
 export function cameraProject(p,{yaw=0.4,pitch=.38,zoom=1,panX=0,panY=0}={}){
  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
  const x=cy*p[0]-sy*p[1],y=sy*p[0]+cy*p[1];
@@ -115,7 +117,7 @@ export function idealizedMoonIntercept(t,arrivalMoon,parkingKm=200){
 }
 function phaseWorld(t,scene,arrivalMoon){
  const p=idealizedMoonIntercept(t,arrivalMoon,scene.parkingKm);
- return mul(unit(p),sphereScale(Math.hypot(...p)));
+ return mul(unit(p),sphereScale(Math.hypot(...p),arrivalMoon.distanceKm));
 }
 export function smoothTransferFractions(count=1200){
  return Array.from({length:count+1},(_,i)=>(1-Math.cos(Math.PI*i/count))/2);
@@ -128,9 +130,7 @@ const STARFIELD=createStars();
 // Cinematic burn cues only: the idealized two-body path is NOT changed by thrust.
 export function thrusterPhaseAt(f){
  const t=clamp(f,0,1);
- if(t<.04)return "Departure burn · illustrative";
- if(t>=.47&&t<.495)return "Correction burn · illustrative";
- if(t>=.97)return "Arrival burn · illustrative";
+ if(t<.015)return "TLI impulse · conceptual";
  return null;
 }
 export function mountOrbitAnimation(host,{
@@ -140,8 +140,8 @@ export function mountOrbitAnimation(host,{
  if(!host||typeof document==="undefined")return{destroy(){},setCatalog(){},setTransfer(){}};
  const accent=scenario==="optimized"?"#59abff":"#f7d45c";
  host.innerHTML='<section class="orbit-scene orbit-scene-3d">'+
-  '<div class="orbit-scene-top"><div><div class="orbit-title">Interactive 3D transfer concept</div>'+
-  '<p class="orbit-subtitle">Rotate by dragging · Shift+drag to pan · wheel to zoom · Kepler time-of-flight</p></div>'+
+  '<div class="orbit-scene-top"><div><div class="orbit-title">Earth–Moon transfer</div>'+
+  '<p class="orbit-subtitle">Drag to rotate · Shift+drag to pan · scroll to zoom</p></div>'+
   '<span class="orbit-data-flag">NOT COLA CLEARED</span></div>'+
   '<div class="orbit-source-tag" data-orbit-source>Moon/Sun: analytic ephemeris · updating JPL cache</div>'+
   '<canvas class="orbit-3d-canvas" width="560" height="540" tabindex="0" aria-label="Interactive 3D Earth-Moon transfer diagram with Sun direction, rotating Earth, changing Moon location and Kepler-timed spacecraft; not a trajectory solution."></canvas>'+
@@ -203,7 +203,7 @@ export function mountOrbitAnimation(host,{
  function fitCamera(){
   const arrival=ephemAt(scene.departureUtc+scene.flightDays*DAY);
   const cloud=Array.from({length:121},(_,i)=>phaseWorld(i/120,scene,arrival));
-  cloud.push([0,0,0],mul(skyDirection(arrival.ra,arrival.dec),sphereScale(arrival.distanceKm)));
+  cloud.push([0,0,0],mul(skyDirection(arrival.ra,arrival.dec),sphereScale(arrival.distanceKm,arrival.distanceKm)));
   const raw=cloud.map(v=>cameraProject(v,{...camera,zoom:1,panX:0,panY:0}));
   const xs=raw.map(p=>p.x),ys=raw.map(p=>p.y);
   const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
@@ -222,19 +222,21 @@ export function mountOrbitAnimation(host,{
   ctx.globalAlpha=1;
   const when=scene.departureUtc+t*scene.flightDays*DAY;
   const atArrival=ephemAt(scene.departureUtc+scene.flightDays*DAY);
-  let source=sunDirection(when);
+  let source=sunDirection(when),sunDistanceKm=149598262;
   if(typeof sunEphemeris==="function"){
    try{
     const officialSun=sunEphemeris(when);
-    if(officialSun&&Number.isFinite(officialSun.ra)&&Number.isFinite(officialSun.dec))
+    if(officialSun&&Number.isFinite(officialSun.ra)&&Number.isFinite(officialSun.dec)){
      source=skyDirection(officialSun.ra,officialSun.dec);
+     if(Number.isFinite(officialSun.distanceKm))sunDistanceKm=officialSun.distanceKm;
+    }
    }catch{/* UTC outside JPL coverage: lower-precision fallback */}
   }
   // Thin parking-orbit reference near Earth. It is not an ascent path.
   drawLine(Array.from({length:97},(_,i)=>{
    const theta=i*Math.PI*2/96;return [23*Math.cos(theta),23*Math.sin(theta),0];
   }),"#487ba43e",1.1,[2,7]);
-  const ephem=ephemAt(when),moon=mul(skyDirection(ephem.ra,ephem.dec),sphereScale(ephem.distanceKm));
+  const ephem=ephemAt(when),moon=mul(skyDirection(ephem.ra,ephem.dec),sphereScale(ephem.distanceKm,atArrival.distanceKm));
   if(!cachedTrack)cachedTrack=smoothTransferFractions().map(f=>({t:f,p:phaseWorld(f,scene,atArrival)}));
   drawLine(cachedTrack.map(v=>v.p),"#7fd9f065",1.5,[5,7]);
   let lo=0,hi=cachedTrack.length;
@@ -243,19 +245,23 @@ export function mountOrbitAnimation(host,{
   ctx.shadowColor=accent;ctx.shadowBlur=7;
   drawLine([...cachedTrack.slice(0,Math.max(1,lo)).map(v=>v.p),ship],accent,3);
   ctx.shadowBlur=0;
-  const sun=mul(source,235);
-  const sunPt=cameraProject(sun,camera);
-  const rays=ctx.createRadialGradient(sunPt.x,sunPt.y,2,sunPt.x,sunPt.y,65*camera.zoom);
-  rays.addColorStop(0,"#ffe7a988");rays.addColorStop(1,"#ffc84e00");
-  ctx.fillStyle=rays;ctx.beginPath();ctx.arc(sunPt.x,sunPt.y,65*camera.zoom,0,Math.PI*2);ctx.fill();
+  // The Sun is hundreds of times farther from Earth than the Moon.
+  // Draw a direction indicator, never a misleading nearby solar body.
+  const origin=cameraProject([0,0,0],camera),sunPoint=cameraProject(source,camera);
+  const sunAngle=Math.atan2(sunPoint.y-origin.y,sunPoint.x-origin.x);
+  ctx.save();ctx.translate(483,47);ctx.rotate(sunAngle);
+  ctx.beginPath();ctx.moveTo(-17,0);ctx.lineTo(17,0);
+  ctx.lineTo(10,-6);ctx.moveTo(17,0);ctx.lineTo(10,6);
+  ctx.strokeStyle="#f9ce63";ctx.lineWidth=2.3;ctx.stroke();ctx.restore();
+  ctx.fillStyle="#edc768";ctx.font="10px system-ui,sans-serif";
+  ctx.fillText("SUN • OFF-FRAME",416,20);
   // Draw bodies and markers with strong visual hierarchy, separate from catalog data.
   bubble([0,0,0],12,"#4c9fd6","#13406a","Earth",source,true);
   const eq=cameraProject([0,0,0],camera),angle=2*Math.PI*(when/86164090.5);
   ctx.strokeStyle="#c5f4ff9a";ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(eq.x+Math.cos(angle)*11*camera.zoom,eq.y-11*camera.zoom);
   ctx.quadraticCurveTo(eq.x-Math.sin(angle)*16*camera.zoom,eq.y,eq.x-Math.cos(angle)*11*camera.zoom,eq.y+11*camera.zoom);ctx.stroke();
-  bubble(moon,7.5,"#d5dbe3","#5b718a",t>=.999?"Moon · arrival":"Moon",source);
-  bubble(sun,12,"#ffd875","#d78b16","Sun direction",source);
+  bubble(moon,5,"#d5dbe3","#5b718a",t>=.999?"Moon · arrival":"Moon",source);
   const sc=cameraProject(ship,camera);
   const burn=thrusterPhaseAt(t);
   if(burn){
@@ -278,13 +284,14 @@ export function mountOrbitAnimation(host,{
   ctx.beginPath();ctx.arc(sc.x,sc.y,5.2,0,Math.PI*2);ctx.fillStyle=accent;ctx.shadowColor=accent;ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;
   text(t>=.999?"Arrival · illustrated":"Spacecraft",sc.x+10,sc.y-8,accent);
   ctx.fillStyle="#97b8d4";ctx.font="10px system-ui,sans-serif";
-  ctx.fillText("Earth · Moon · Sun",13,22);
+  ctx.fillText("EARTH–MOON DISTANCES LINEAR · BODY SIZES ENLARGED",13,22);
   scrub.value=Math.round(t*1000);
   const utc=new Date(when).toISOString().slice(0,16).replace("T"," ");
   phase.textContent=(scene.flightDays*t).toFixed(2)+" / "+scene.flightDays.toFixed(2)+" d · "+utc+" UTC";
   const dyn=transferDynamicsAt(t,scene);
-  qs("[data-orbit-telemetry]").textContent="Earth range "+Math.round(dyn.radiusKm).toLocaleString()+" km · "+
-   "speed "+dyn.speedKmS.toFixed(2)+" km/s · idealized TLI "+dyn.tliDeltaVKmS.toFixed(2)+" km/s";
+  qs("[data-orbit-telemetry]").textContent="Moon "+Math.round(ephem.distanceKm).toLocaleString()+" km · "+
+   "Sun "+(sunDistanceKm/1000000).toFixed(1)+" million km · "+
+   "Two-body speed "+dyn.speedKmS.toFixed(2)+" km/s";
  }
  function frame(now){
   if(!alive||!host.isConnected)return;
