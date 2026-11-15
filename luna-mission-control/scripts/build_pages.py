@@ -30,6 +30,17 @@ if cname.is_file():
 assert 'class="mission-toolbar"' in html, "Top toolbar missing from staged page"
 for control in ("date", "time", "simulate", "optimize", "preserve", "globe"):
     assert html.count(f'id="{control}"') == 1, f"Missing or duplicate {control} control"
+assert '<body class="sidebar-layout">' in html, "Missing vertical mission-sidebar layout"
+aside = html.split("</aside>", 1)[0]
+actions = re.search(r'<nav class="mission-toolbar"[^>]*>(.*?)</nav>', html, re.S)
+assert actions, "Thin top action bar missing"
+assert actions.group(1).count("<button ") == 2, "Top bar must contain exactly two buttons"
+assert "<input" not in actions.group(1) and "<select" not in actions.group(1), "Parameters leaked into top bar"
+for control in ("date", "time", "duration", "sampleMinutes", "mode", "preserve",
+                "area", "battery", "load", "reserve"):
+    assert f'id="{control}"' in aside, f"{control} must be in left sidebar"
+for control in ("simulate", "optimize"):
+    assert f'id="{control}"' in actions.group(1), f"{control} must be in thin top bar"
 style_version = re.search(r'href="\./styles\.css\?v=([^"]+)"', html)
 app_version = re.search(r'src="\./app\.js\?v=([^"]+)"', html)
 assert style_version and app_version, "Missing cache-busting asset version"
