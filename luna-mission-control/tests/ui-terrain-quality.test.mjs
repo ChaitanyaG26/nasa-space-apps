@@ -62,7 +62,7 @@ test("Animation descriptions remain linked to their own scene and not a dark pil
  assert.match(scene,/sequenceInfo\("launch"\)/);
  assert.match(scene,/sequenceInfo\("landing"\)/);
  assert.match(scene,/pointerenter/);
- assert.match(scene,/Local terrain/gi);
+ assert.match(scene,/LOLA 20 m local DEM/);
  assert.match(explorer,/exag=patch\?6:10/);
  assert.match(explorer,/footprintKm=patch\?\.5:50/);
  assert.match(explorer,/terrain-info/);
