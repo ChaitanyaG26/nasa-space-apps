@@ -430,7 +430,7 @@ $("date").addEventListener("change",()=>refreshPreview());
 // results/sidebar independently. Respect reduced-motion preferences.
 $("scrollToTop")?.addEventListener("click",()=>{
  const behavior=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
-  ?"instant":"smooth";
+  ?"auto":"smooth";
  const goTop=element=>{
   if(!element)return;
   if(typeof element.scrollTo==="function")element.scrollTo({top:0,behavior});
