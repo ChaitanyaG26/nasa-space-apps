@@ -266,14 +266,14 @@ const optimizationSearchLabel=(preserve,eligible,skipped)=>{
   (skipped?" "+skipped+" outside supported ephemeris coverage.":"")+
   " Candidates are NOT vetted landing locations.";
 };
-const finalOptimization=(r,preserve,original,screened,runner,skipped)=>{
+const finalOptimization=(r,preserve,original,screened,runner,skipped,refinedCandidates=null)=>{
  screened.sort(compareRank);
  // Keep complete sample arrays ONLY for shortlisted candidates. The original
  // implementation retained every long-duration candidate's entire time series.
- const refined=screened.slice(0,16).map(entry=>{
+ const refined=(refinedCandidates??screened.slice(0,16).map(entry=>{
   const result=runner(entry.request);
   return {...entry,score:rank(result,r),result};
- }).sort(compareRank);
+ })).sort(compareRank);
  const winner=refined[0]??null,feasible=refined.some(c=>c.result.metrics.feasible);
  return {original,recommended:winner?.result??null,recommendation_name:winner?.name??null,
   alternatives:refined.slice(0,5).map(c=>({
@@ -298,19 +298,46 @@ export function optimizeWithEngine(payload,runner,{supported=()=>true}={}){
  }
  return finalOptimization(r,payload.preserve,original,screened,runner,skipped);
 }
-export async function optimizeWithEngineAsync(payload,runner,{supported=()=>true,yieldEvery=12}={}){
+export async function optimizeWithEngineAsync(payload,runner,{supported=()=>true,yieldEvery=12,onProgress}={}){
  const r=validated({...payload.mission,data_mode:"demo"});
- const original=runner(r),screened=[];let skipped=0,processed=0;
- for(const entry of optimizationChoices(r,payload.preserve)){
-  if(!supported(entry.request)){skipped++;continue;}
-  const summary=runner({...entry.request,sample_minutes:60});
-  screened.push({...entry,score:rank(summary,r)});
+ const choices=optimizationChoices(r,payload.preserve);
+ const original=runner(r),screened=[];let skipped=0,processed=0,refinedCount=0;
+ const finalistLimit=Math.min(16,choices.length);
+ const total=1+choices.length+finalistLimit;
+ const notify=(phase,completed)=>onProgress?.({
+  phase,completed,total,screened:processed,candidates:choices.length,
+  skipped,eligible:screened.length,refined:refinedCount,finalists:finalistLimit
+ });
+ const yieldToBrowser=()=>new Promise(resolve=>setTimeout(resolve,0));
+ const batch=Math.max(1,Math.floor(Number(yieldEvery)||12));
+ notify("screening",1);
+ for(const entry of choices){
+  if(!supported(entry.request))skipped++;
+  else {
+   const summary=runner({...entry.request,sample_minutes:60});
+   screened.push({...entry,score:rank(summary,r)});
+  }
   processed++;
-  // Let the browser paint between batches; no DOM layout changes required.
-  if(processed%yieldEvery===0&&typeof setTimeout==="function")
-   await new Promise(resolve=>setTimeout(resolve,0));
+  if(processed%batch===0||processed===choices.length){
+   notify("screening",1+processed);
+   // Pause between batches so the browser can paint progress updates.
+   if(typeof setTimeout==="function")await yieldToBrowser();
+  }
  }
- return finalOptimization(r,payload.preserve,original,screened,runner,skipped);
+ screened.sort(compareRank);
+ const finalists=screened.slice(0,16),refined=[];
+ notify("refining",1+processed);
+ for(const entry of finalists){
+  const result=runner(entry.request);
+  refined.push({...entry,score:rank(result,r),result});
+  refinedCount++;
+  notify("refining",1+processed+refinedCount);
+  if(typeof setTimeout==="function"&&(refinedCount%2===0||refinedCount===finalists.length))
+   await yieldToBrowser();
+ }
+ const output=finalOptimization(r,payload.preserve,original,screened,runner,skipped,refined);
+ notify("complete",total);
+ return output;
 }
 export async function staticApi(path,body){
   await Promise.resolve();
