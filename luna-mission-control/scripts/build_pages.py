@@ -46,6 +46,7 @@ assert style_version and app_version, "Missing cache-busting asset version"
 assert style_version.group(1) == app_version.group(1), "Staged asset versions do not match"
 for module in ("static-engine.mjs", "globe.js", "science-charts.mjs",
                "playback-clock.mjs", "orbit-visualization.mjs", "launch-window.mjs",
-               "moon-sky-3d.mjs", "landing-sites.mjs", "mission-surface-3d.mjs"):
+               "moon-sky-3d.mjs", "landing-sites.mjs", "mission-surface-3d.mjs",
+               "usgs-3dep.mjs"):
     assert (DEST / module).exists(), f"Missing published {module}"
 print("Validated LUNA Pages artifact at", DEST)
