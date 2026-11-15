@@ -1622,3 +1622,59 @@ body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
 @media(forced-colors:active){
  .sidebar-layout .map-page .lunar-limb-halo{display:none;}
 }
+
+
+/* v18 — phone-only scenario interleaving.
+   Desktop retains the original independent 3-column science and COLA grids.
+   On a phone the SAME DOM nodes are moved into their own scenario cards:
+   science graphs -> LOLA terrain -> that scenario's orbit/launch/landing. */
+@media (max-width:760px), (max-width:960px) and (pointer:coarse){
+ #luna-launch-cola.phone-scenario-interleaved{
+  display:block!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  margin:0!important;padding:0!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  overflow:visible!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved>.launch-cola-head,
+ #luna-launch-cola.phone-scenario-interleaved>.launch-cola-form,
+ #luna-launch-cola.phone-scenario-interleaved>.launch-cola-provenance{
+  margin:8px 0 12px!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved>.launch-cola-scenarios{
+  display:none!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved .scenario-triple-viewport,
+ #luna-launch-cola.phone-scenario-interleaved .cards.scenario-single{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  overflow:visible!important;margin:0!important;padding:0!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved .cards.scenario-triple,
+ #luna-launch-cola.phone-scenario-interleaved .cards.scenario-single{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  gap:14px!important;min-width:0!important;max-width:100%!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved [data-scenario-card]{
+  display:flex!important;flex-direction:column!important;gap:10px!important;
+  min-width:0!important;max-width:100%!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved [data-scenario-card]>.scenario-card{
+  width:100%!important;margin:0!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved [data-scenario-card]>.launch-cola-scenario,
+ #luna-launch-cola.phone-scenario-interleaved .cards.scenario-single>.launch-cola-scenario{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  margin:0!important;padding:12px!important;
+  border:1px solid #bcd9eb!important;border-radius:12px!important;
+  background:#f7fbff!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved .launch-cola-scenario .mission-sequences{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved .launch-cola-scenario .sequence-panel{
+  min-width:0!important;
+ }
+ #luna-launch-cola.phone-scenario-interleaved .launch-cola-scenario canvas{
+  max-width:100%!important;width:100%!important;
+ }
+}
