@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-lander-sequence-v8"
+RELEASE = "20261114-physics-ui-v10"
 
 
 class Assets(html.parser.HTMLParser):
@@ -88,17 +88,19 @@ def verify(base_url):
     css_url = urllib.parse.urljoin(base_url, css_path)
     app = fetch_text(fresh(module_url))
     css = fetch_text(fresh(css_url))
-    if "advancePlaybackUtc" not in app or "setChartsCursor" not in app:
-        raise AssertionError("Live app.js lacks upgraded time animation")
-    if ".mission-toolbar" not in css or ".ephemeris-playback" not in css:
-        raise AssertionError("Live stylesheet lacks the updated controls")
+    if "setChartsCursor" not in app or "metric-sequence" in app or "playEphemeris" in app:
+        raise AssertionError("Live app.js still includes removed chart counters or sky playback controls")
+    if ".mission-toolbar" not in css or ".vehicle-readout" not in css:
+        raise AssertionError("Live stylesheet lacks updated mission and vehicle controls")
     # Probe external modules independently; client-side lazy loading would not
     # otherwise reveal missing deployment artifacts in the landing-page response.
     library_dir = urllib.parse.urljoin(module_url, "./")
     modules = {
         "science-charts.mjs": "extremaPath",
         "playback-clock.mjs": "advancePlaybackUtc",
-        "orbit-visualization.mjs": "keplerTransferPoint",
+        "orbit-visualization.mjs": "distanceOnEarthMoonView",
+        "vehicle-performance.mjs": "assessVehicle",
+        "horizons-geocentric.mjs": "geocentricAt",
     }
     for filename, expected in modules.items():
         url = urllib.parse.urljoin(library_dir, filename)
