@@ -118,18 +118,18 @@ function scenarioMarkup(s){
  const state=userState[s.id]||userState.original;
  const target=scenarioTarget(s);
  return '<article class="launch-cola-scenario" data-cola-scenario="'+htmlSafe(s.id)+'">'+
-  '<div class="launch-cola-scenario-head"><div><span class="launch-cola-eyebrow">'+htmlSafe(s.label)+'</span><h3>Launch window &amp; COLA screening</h3></div>'+
-  '<span class="launch-cola-uncleared">NOT CLEARED</span></div>'+
+  '<div class="launch-cola-scenario-head"><div><span class="launch-cola-eyebrow">'+htmlSafe(s.label)+'</span><h3>Launch &amp; transfer</h3></div>'+
+  '<span class="launch-cola-uncleared">COLA UNVERIFIED</span></div>'+
   '<div class="launch-cola-target"><div><small>Lunar destination</small><strong>'+htmlSafe(target?.coords||"Unavailable")+'</strong></div>'+
   '<div><small>Requested arrival (UTC)</small><strong>'+htmlSafe(target?utc(target.time):"Unavailable")+'</strong></div></div>'+
   '<label class="launch-cola-field">Launch range<select data-cola-field="site">'+
     LAUNCH_SITES.map(site=>'<option value="'+site.id+'" '+(state.site===site.id?"selected":"")+'>'+htmlSafe(site.name)+'</option>').join("")+
   '</select></label>'+
-  '<details class="launch-cola-holds"><summary>User-provided COLA hold intervals for this scenario</summary>'+
-  '<p>Paste externally issued UTC hold intervals, one start,end pair per line. The tool cannot authenticate these records. Empty means unscreened, never approved.</p>'+
+  '<details class="launch-cola-holds"><summary>External COLA hold times (optional)</summary>'+
+  '<p>UTC start,end pairs only; not independently authenticated.</p>'+
   '<textarea data-cola-field="holds" rows="2" placeholder="2026-11-15T12:00Z,2026-11-15T12:40Z">'+htmlSafe(state.holds)+'</textarea></details>'+
-  '<button class="launch-cola-run" data-cola-calc type="button">Evaluate '+htmlSafe(s.label.toLowerCase())+'</button>'+
-  '<div data-cola-output aria-live="polite"><p class="launch-cola-hint">Run this scenario to see its own candidate departure times and clearance status.</p></div>'+
+  '<button class="launch-cola-run" data-cola-calc type="button">Calculate departure options</button>'+
+  '<div data-cola-output aria-live="polite"></div>'+
   '<div data-orbit-host></div>'+
   '<div data-sequences-host></div>'+
  '</article>';
@@ -139,10 +139,8 @@ function installPanel(){
  if(!parent||!parent.children.length||parent.querySelector("#luna-launch-cola"))return;
  const el=document.createElement("section");
  el.id="luna-launch-cola";el.className="launch-cola";
- el.innerHTML='<div class="launch-cola-head"><div><small>EARTH TO MOON · OPTIONAL MISSION EXTENSION</small>'+
-  '<h2>Launch windows &amp; COLA</h2>'+
-  '<p>Conceptual launch and lunar-arrival views; no official collision clearance.</p></div>'+
-  '<span class="launch-cola-tag">EDUCATIONAL MODEL</span></div>'+
+ el.innerHTML='<div class="launch-cola-head"><div><h2>Launch windows &amp; COLA</h2></div>'+
+  '<span class="launch-cola-tag">MODEL · NO COLA CLEARANCE</span></div>'+
   '<div class="launch-cola-form">'+
   '<label>LEO parking altitude (km)<input data-cola-shared="parking" type="number" min="160" max="2000" step="20" value="'+controls.parking+'"></label>'+
   '<label>Search ± hours<select data-cola-shared="span"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label>'+
@@ -241,22 +239,17 @@ function renderScenarioPanels(el){
  });
 }
 function resultMarkup(target,candidates,holds){
- const shown=candidates.filter(c=>!c.held).slice(0,5);
+ const shown=candidates.filter(c=>!c.held).slice(0,3);
  const base=shown[0]||candidates[0];
- const heldCount=candidates.filter(c=>c.held).length;
+ if(!base)return '<p class="launch-cola-error">No candidate times in this search.</p>';
  return '<div class="launch-cola-summary">'+
-  '<div><small>IDEALIZED TRANSFER</small><b>'+base.flightDays.toFixed(2)+' days</b></div>'+
-  '<div><small>ESTIMATED TLI ΔV</small><b>'+base.tli.toFixed(2)+' km/s</b></div>'+
-  '<div><small>COLA CLEARANCE</small><b>NOT VERIFIED</b><span>'+(
-   !holds.length?"No official holds supplied; not screened":
-   heldCount+" sampled departures overlap supplied holds; all other times remain unverified")+'</span></div></div>'+
-  '<h4>Candidate departure times · UTC</h4>'+
-  (shown.length?'<div class="launch-cola-table"><table><thead><tr><th>Departure (UTC)</th><th>Arrival offset</th><th>Lunar bearing proxy</th><th>COLA</th></tr></thead><tbody>'+
+  '<div><small>Transfer time</small><b>'+base.flightDays.toFixed(2)+' d</b></div>'+
+  '<div><small>Idealized TLI</small><b>'+base.tli.toFixed(2)+' km/s</b></div>'+
+  '<div><small>Screening</small><b>Unverified</b></div></div>'+
+  (shown.length?'<div class="launch-cola-table"><table><thead><tr><th>Departure (UTC)</th><th>Arrival Δ</th></tr></thead><tbody>'+
    shown.map(c=>'<tr><td>'+htmlSafe(utc(c.launch))+'</td><td>'+
-   (c.timingHours>=0?"+":"")+c.timingHours.toFixed(1)+' h</td><td>'+
-   c.geometry.az.toFixed(0)+'° az / '+c.geometry.el.toFixed(0)+'° el</td><td>NOT VERIFIED</td></tr>').join("")+
-   '</tbody></table></div>':'<p class="launch-cola-error">All sampled times overlap entered holds. Expand the scan or request new official data.</p>')+
-  '<p class="launch-cola-warning">Educational timing hypotheses only. No launch time, flight trajectory, or COLA clearance is operationally validated.</p>';
+   (c.timingHours>=0?"+":"")+c.timingHours.toFixed(1)+' h</td></tr>').join("")+
+   '</tbody></table></div>':'<p class="launch-cola-error">All sampled times overlap supplied holds.</p>');
 }
 function runScenario(article){
  const id=article.dataset.colaScenario;
