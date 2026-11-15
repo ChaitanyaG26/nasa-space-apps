@@ -42,7 +42,7 @@ test("Moon DEM must be truly available before the 3D terrain view is called meas
  const code=readFileSync(new URL("../web/mission-sequences.mjs",import.meta.url),"utf8");
  assert.match(code,/moonGrid\?\.coverage>=\.7/);
  assert.match(code,/earthGrid=sampled\?\.coverage>=\.75/);
- assert.match(code,/Elevation coverage unavailable/);
+ assert.match(code,/Terrain unavailable/);
 });
 test("Earth clearance chart highlights above-zero segments only",()=>{
  const t=Date.parse("2026-11-20T00:00Z");
