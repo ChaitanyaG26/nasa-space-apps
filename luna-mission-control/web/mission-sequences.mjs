@@ -189,24 +189,6 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   query("[data-payload-mass]").value=String(state.payloadKg);
   syncNames();
  };
- const rect=(ctx,x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
- const circle=(ctx,x,y,r,fill)=>{ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);ctx.fillStyle=fill;ctx.fill();};
- const line=(ctx,x,y,x2,y2,color,w=2)=>{
-  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke();
- };
- const write=(ctx,txt,x,y,fill="#c1dceb",size=12)=>{
-  ctx.font="700 "+size+"px system-ui,sans-serif";ctx.fillStyle=fill;ctx.fillText(txt,x,y);
- };
- function sky(ctx,blue=false){
-  const gradient=ctx.createLinearGradient(0,0,0,H);
-  gradient.addColorStop(0,blue?"#071e39":"#020914");
-  gradient.addColorStop(1,blue?"#236183":"#1b2839");
-  rect(ctx,0,0,W,H,gradient);
-  for(let i=0;i<45;i++){
-   const x=(i*179+37)%W,y=(i*67+13)%220;
-   circle(ctx,x,y,.5+(i%3)*.34,"#e8f3ff96");
-  }
- }
  function renderVehicleAssessment(){
   const assessment=assessVehicle(state.rocket,state.payloadKg);
   const node=query("[data-vehicle-readout]");
@@ -216,32 +198,6 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   node.textContent="Launch mass (proxy) "+mass+" · thrust "+thrust+
    " · initial T/W "+twr+" · "+assessment.preliminaryLEOCheck;
   node.title=assessment.limitation||"Unverified launch mass and thrust.";
- }
- function drawRocket(ctx,vehicle,x,y,phase){
-  const w=vehicle.diameterM*2.45,h=vehicle.heightM*1.16,fairingH=Math.max(12,h*.16);
-  ctx.save();ctx.translate(x,y);
-  if(phase>0&&phase<1){
-   const flare=(16+8*Math.sin(phase*83))*(.7+.3*phase);
-   ctx.shadowColor="#ffb847";ctx.shadowBlur=22;
-   ctx.beginPath();ctx.moveTo(-w*.45,0);ctx.quadraticCurveTo(-w*.8,flare*.5,0,flare);
-   ctx.quadraticCurveTo(w*.8,flare*.5,w*.45,0);ctx.fillStyle="#ffb74c";ctx.fill();
-   ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(-w*.22,0);ctx.lineTo(0,flare*.6);ctx.lineTo(w*.22,0);
-   ctx.fillStyle="#fff5b4";ctx.fill();
-  }
-  const coreGradient=ctx.createLinearGradient(-w/2,0,w/2,0);
-  coreGradient.addColorStop(0,"#738ba4");coreGradient.addColorStop(.24,vehicle.paint);
-  coreGradient.addColorStop(.65,vehicle.paint);coreGradient.addColorStop(1,"#788ca0");
-  rect(ctx,-w/2,-h+fairingH,w,h-fairingH,coreGradient);
-  rect(ctx,-w/2,-h*.56,w,h*.07,"#101e31");
-  ctx.beginPath();ctx.moveTo(-w/2,-h+fairingH);ctx.quadraticCurveTo(-w*.39,-h+2,0,-h);
-  ctx.quadraticCurveTo(w*.39,-h+2,w/2,-h+fairingH);ctx.fillStyle="#e8f0f6";ctx.fill();
-  for(const x0 of [-1,1].slice(0,vehicle.boosters?2:0)){
-   const bx=x0*(w*.95);
-   rect(ctx,bx-w*.29,-h*.79,w*.58,h*.79,"#dce6ef");
-   rect(ctx,bx-w*.29,-h*.24,w*.58,h*.08,"#295171");
-  }
-  rect(ctx,-w*.54,-h*.06,w*1.08,h*.06,"#64798a");
-  ctx.restore();
  }
  function drawLaunch(){
   const ctx=contexts.launch;if(!ctx)return;
@@ -256,27 +212,6 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   query("[data-launch-telemetry]").textContent=
    "T+"+kin.elapsedS.toFixed(0)+" s · model altitude "+(kin.altitudeM/1000).toFixed(2)+" km · vertical speed "+
    kin.verticalSpeedMS.toFixed(0)+" m/s · altitude display compressed";
- }
- const terrainSeed=(lat,lon)=>Math.sin(lat*.042+lon*.018)*.5;
- function drawProbe(ctx,probe,x,y,t){
-  ctx.save();ctx.translate(x,y);
-  const col=probe.body;
-  line(ctx,-19,-4,-36,21,probe.legs,3);
-  line(ctx,19,-4,36,21,probe.legs,3);
-  line(ctx,-36,21,-45,21,probe.legs,3);
-  line(ctx,36,21,45,21,probe.legs,3);
-  rect(ctx,-24,-19,48,30,col);
-  rect(ctx,-18,-15,36,18,"#617485");
-  rect(ctx,-21,0,42,8,"#dba84b");
-  rect(ctx,-30,-12,6,12,col);rect(ctx,24,-12,6,12,col);
-  line(ctx,0,-19,0,-42,"#d0e7ec",2);
-  circle(ctx,0,-44,4,"#e9f5fd");
-  if(t<.975&&t>.04){
-   const size=clamp((.98-t)*30,7,22);
-   ctx.beginPath();ctx.moveTo(-8,12);ctx.lineTo(0,12+size);ctx.lineTo(8,12);
-   ctx.fillStyle="#ffd466";ctx.shadowColor="#ffbb37";ctx.shadowBlur=13;ctx.fill();
-  }
-  ctx.restore();
  }
  function drawLanding(){
   const ctx=contexts.landing;if(!ctx)return;
