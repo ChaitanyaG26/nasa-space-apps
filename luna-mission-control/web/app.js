@@ -5,7 +5,8 @@ import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-data-ui-v14";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261115-compact-v24";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-data-ui-v14";
-import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
+import {staticApi,simulateWithGeometry,optimizeWithEngineAsync} from "./static-engine.mjs?v=20261115-screening-v25";
+import {roverRouteScreen} from "./rover-screen.mjs";
 import {loadJplReference,referencePreview,geometrySeries} from "./horizons-static.mjs?v=20261114-extent500-1";
 import {loadLolaGlobal,siteElevation,terrainHorizon} from "./lola-global.mjs";
 import {loadPolarPatch,localPatchXY,samplePolarHeightKm,polarSiteSlopeDeg,refinePolarHorizon} from "./lola-polar-detail.mjs";
@@ -79,7 +80,9 @@ let position={latitude:-89.5,longitude:0},lastMission=null,lastResult=null,compa
 const globe=initGlobe($("globe"),(latitude,longitude)=>{position={latitude,longitude};showCoords();refreshPreview();});
 const moonSky3D=createMoonSky3D($("orbital"));
 function showCoords(){const lat=position.latitude,lon=position.longitude;const text=lat.toFixed(3)+"° "+(lat<0?"S":"N")+" · "+Math.abs(lon).toFixed(3)+"° "+(lon<0?"W":"E");$("mapCoords").textContent=text;}
-function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:30,data_mode:"horizons"}}
+function mission(){const minutes=Number($("time").value)*10;return {latitude:position.latitude,longitude:position.longitude,landing_time:$("date").value+"T"+String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0")+":00Z",duration_days:Number($("duration").value),area_m2:Number($("area").value),panel_tilt_deg:Number($("tilt").value),panel_az_deg:Number($("az").value),battery_wh:Number($("battery").value),load_w:Number($("load").value),reserve_percent:Number($("reserve").value),sample_minutes:30,data_mode:"horizons",
+ rover_east_m:Number($("roverEast").value),rover_north_m:Number($("roverNorth").value),
+ rover_max_slope_deg:Number($("roverSlope").value)}}
 async function api(path,data){
  if(IS_PAGES){
    const selected=(path==="optimize"?data.mission.data_mode:data.data_mode);
@@ -107,6 +110,24 @@ async function api(path,data){
      const horizon=(req)=>refinePolarHorizon(patchFor(req),req.latitude,req.longitude,
        terrainHorizon(lola,req.latitude,req.longitude));
      const height=(req)=>terrain(req).elevation_km??0;
+     const attachRover=(result,req)=>{
+       if(!result)return result;
+       try{
+         const opts={eastM:req.rover_east_m??600,northM:req.rover_north_m??200,
+           maxSlopeDeg:req.rover_max_slope_deg??15};
+         if(![opts.eastM,opts.northM,opts.maxSlopeDeg].every(Number.isFinite)||
+            Math.abs(opts.eastM)>3000||Math.abs(opts.northM)>3000||
+            opts.maxSlopeDeg<1||opts.maxSlopeDeg>30)
+           throw Error("Rover offsets must be within ±3,000 m and slope between 1° and 30°");
+         const route=roverRouteScreen(patchFor(req),req.latitude,req.longitude,opts);
+         result.rover_route=route;
+         result.quality.rover=route.status;
+       }catch(error){
+         result.rover_route={available:false,status:"ROVER SCREEN NOT EVALUATED: "+error.message};
+         result.quality.rover=result.rover_route.status;
+       }
+       return result;
+     };
      if(path==="preview"){
        const p=referencePreview(reference,data,height(data));
        p.terrain=terrain(data);
@@ -117,17 +138,28 @@ async function api(path,data){
        const geometry=geometrySeries(reference,data,height(data));
        const result=simulateWithGeometry(data,geometry,
          "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(data),horizon(data));
+       attachRover(result,data);
        await attachDivinerClimatology(result,data,geometry);
        return attachEphemerisValidation(result,await getHorizonsValidation());
      }
      if(path==="optimize"){
-       const output=optimizeWithEngine(data,req=>simulateWithGeometry(req,geometrySeries(reference,req,height(req)),
-         "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",terrain(req),horizon(req)));
+       const first=reference.samples[0][0],last=reference.samples.at(-1)[0];
+       const supported=req=>{
+         const start=Date.parse(req.landing_time);
+         return Number.isFinite(start)&&start>=first&&
+           start+req.duration_days*86400000<=last;
+       };
+       const output=await optimizeWithEngineAsync(data,req=>
+         simulateWithGeometry(req,geometrySeries(reference,req,height(req)),
+           "NASA/JPL Horizons Sun/Earth range + direction; Moon-center parallax geometry (not site-specific query)",
+           terrain(req),horizon(req)),{supported,yieldEvery:10});
+       attachRover(output.original,data.mission);
        await attachDivinerClimatology(output.original,data.mission,
          geometrySeries(reference,data.mission,height(data.mission)));
        if(output.recommended){
          const candidate={...data.mission,latitude:output.recommended.site.latitude,
            longitude:output.recommended.site.longitude,landing_time:output.recommended.landing_time};
+         attachRover(output.recommended,candidate);
          await attachDivinerClimatology(output.recommended,candidate,
            geometrySeries(reference,candidate,height(candidate)));
        }
@@ -290,6 +322,8 @@ function openScienceInformation(){
  const panel=$("scienceInfoDrawer"),overlay=$("scienceInfoOverlay");
  if(!panel)return;
  scienceInfoReturnFocus=document.activeElement;
+ document.querySelectorAll(".mission-sequences .sequence-info").forEach(icon=>{icon.open=false;});
+ document.body.classList.add("luna-science-info-open");
  overlay.hidden=false;panel.hidden=false;
  $("scienceInfoOpen").setAttribute("aria-expanded","true");
  $("scienceInfoClose").focus();
@@ -298,6 +332,7 @@ function closeScienceInformation(){
  const panel=$("scienceInfoDrawer"),overlay=$("scienceInfoOverlay");
  if(!panel||panel.hidden)return;
  panel.hidden=true;overlay.hidden=true;
+ document.body.classList.remove("luna-science-info-open");
  $("scienceInfoOpen").setAttribute("aria-expanded","false");
  const back=scienceInfoReturnFocus?.isConnected?scienceInfoReturnFocus:$("scienceInfoOpen");
  if(typeof back?.focus==="function")back.focus();
@@ -401,7 +436,7 @@ $("optimize").addEventListener("click",()=>{if(!lastMission)return;
   ]);
   comparison={original:lastResult,dateFixed:fixedDate.recommended,siteFixed:fixedSite.recommended,
    variants:[fixedDate,fixedSite],
-   search:"Date-fixed site search and location-fixed date search run independently.",
+   search:fixedDate.search+" "+fixedSite.search,
    comparison_note:"Candidates are screened against model assumptions, not landing safety requirements."};
   render();showResults();await mountTerrainViews();
  });
