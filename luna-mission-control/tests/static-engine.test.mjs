@@ -160,3 +160,36 @@ test("Optimizer screens full grid with hourly models and refines only top sixtee
  assert.match(date.search,/112 outside supported ephemeris coverage/);
  assert.equal(date.recommended.site.latitude,r.latitude);
 });
+
+test("Async optimizer emits accurate, monotone screening/refinement progress",async()=>{
+ const {optimizeWithEngineAsync}=await import("../web/static-engine.mjs");
+ const events=[];
+ const runner=req=>({site:{latitude:req.latitude,longitude:req.longitude},
+  landing_time:req.landing_time,metrics:{feasible:true,min_soc:55,
+  total_energy_wh:100,predicted_rf_link_hours:null,earth_fraction:1}});
+ const result=await optimizeWithEngineAsync({mission:{...r,sample_minutes:30},preserve:"time"},
+  runner,{yieldEvery:64,onProgress:p=>events.push({...p})});
+ assert.ok(result.recommended);
+ assert.ok(events.some(p=>p.phase==="screening"&&p.screened===511));
+ assert.ok(events.some(p=>p.phase==="refining"&&p.refined===16));
+ assert.equal(events.at(-1).phase,"complete");
+ assert.equal(events.at(-1).completed,events.at(-1).total);
+ assert.ok(events.every((p,i)=>p.completed>=0&&p.completed<=p.total&&
+  (i===0||p.completed>=events[i-1].completed)));
+ assert.equal(events[0].candidates,511);
+});
+test("Skipped date candidates count toward the progress denominator",async()=>{
+ const {optimizeWithEngineAsync}=await import("../web/static-engine.mjs");
+ const events=[];
+ const runner=req=>({site:{latitude:req.latitude,longitude:req.longitude},
+  landing_time:req.landing_time,metrics:{feasible:true,min_soc:55,
+  total_energy_wh:100,predicted_rf_link_hours:null,earth_fraction:1}});
+ await optimizeWithEngineAsync({mission:{...r,sample_minutes:30},preserve:"site"},runner,{
+  supported:req=>Date.parse(req.landing_time)>=Date.parse(r.landing_time),
+  yieldEvery:80,onProgress:p=>events.push({...p})
+ });
+ assert.equal(events.at(-1).skipped,112);
+ assert.equal(events.at(-1).eligible,112);
+ assert.equal(events.at(-1).screened,224);
+ assert.equal(events.at(-1).completed,events.at(-1).total);
+});
