@@ -153,7 +153,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const launch=kind==="launch";
   return '<details class="sequence-info" data-sequence-info="'+kind+'"><summary aria-label="About '+kind+' animation" title="Data and limitations">'+
    '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="5.8" r="1" fill="currentColor"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></summary>'+
-   '<div class="sequence-info-popover"><strong>'+(launch?"Launch terrain and physics":"Lunar terrain and physics")+
+   '<div class="sequence-info-popover"><strong>'+(launch?"Rocket launch animation":"Lunar probe landing animation")+
    '</strong><p data-sequence-data>Loading terrain and Sun angles...</p>'+
    (launch?
     '<p>USGS 3DEP elevations are preferred, with public elevation tiles as a fallback. Native source resolution varies. Turquoise pad ring and gantry are conceptual references, not a pad survey.</p>':
@@ -162,9 +162,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  };
  const tone=scenario==="optimized"?"#62afff":"#f9d25c";
  host.innerHTML='<section class="mission-sequences" aria-label="Mission cinematic sequences">'+
-  '<div class="sequence-panel"><div class="sequence-header"><strong>Launch animation</strong>'+sequenceInfo("launch")+
-  '<label>Rocket<select data-rocket aria-label="Select rocket illustration"></select></label>'+
- '<label>Payload mass (kg)<input data-payload-mass type="number" min="1" max="200000" step="50" value="500" aria-label="Mission payload mass in kilograms"></label></div>'+
+  '<div class="sequence-panel"><div class="sequence-header">'+sequenceInfo("launch")+
+  '<label class="sequence-vehicle-control"><span class="visually-hidden">Rocket</span><select data-rocket aria-label="Rocket type"></select></label>'+
+ '<label class="sequence-payload-control"><span class="visually-hidden">Payload mass (kg)</span><input data-payload-mass type="number" min="1" max="200000" step="50" value="500" aria-label="Payload mass in kilograms" title="Payload mass (kg)" placeholder="Payload kg"></label></div>'+
   '<div class="sequence-meta" data-site-name></div>'+
  '<div class="sequence-terrain-status" data-launch-terrain></div>'+
  '<div class="vehicle-readout" data-vehicle-readout aria-live="polite"></div>'+
@@ -172,16 +172,16 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
  '<div class="sequence-telemetry" data-launch-telemetry></div>'+
   '<div class="sequence-playback"><button data-toggle="launch" type="button">Pause</button>'+
   '<input data-scrub="launch" type="range" min="0" max="1000" value="0" aria-label="Rocket launch animation progress"/>'+
-  '<output data-label="launch">Liftoff</output></div></div>'+
-  '<div class="sequence-panel"><div class="sequence-header"><strong>Probe landing animation</strong>'+sequenceInfo("landing")+
-  '<label>Probe<select data-lander aria-label="Select illustrative lunar landing probe"></select></label></div>'+
+  '<output class="visually-hidden" data-label="launch">Liftoff</output></div></div>'+
+  '<div class="sequence-panel"><div class="sequence-header">'+sequenceInfo("landing")+
+  '<label class="sequence-vehicle-control"><span class="visually-hidden">Landing probe</span><select data-lander aria-label="Landing probe model"></select></label></div>'+
   '<div class="sequence-meta" data-target-name></div>'+
  '<div class="sequence-terrain-status" data-landing-terrain></div>'+
   '<canvas data-scene="landing" width="600" height="278" tabindex="0" aria-label="Rotatable three-dimensional probe descent over NASA LOLA terrain"></canvas>'+
  '<div class="sequence-telemetry" data-landing-telemetry></div>'+
   '<div class="sequence-playback"><button data-toggle="landing" type="button">Pause</button>'+
   '<input data-scrub="landing" type="range" min="0" max="1000" value="0" aria-label="Lunar landing animation progress"/>'+
-  '<output data-label="landing">Approach</output></div></div></section>';
+  '<output class="visually-hidden" data-label="landing">Approach</output></div></div></section>';
  const query=x=>host.querySelector(x);
  for(const detail of host.querySelectorAll(".sequence-info")){
   detail.addEventListener("pointerenter",()=>detail.open=true);
@@ -267,8 +267,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   query("[data-launch-terrain]").textContent=earthStatus+
    (sun?" · Sun "+sun.elevationDeg.toFixed(1)+"°":" · no Sun data");
   query('[data-sequence-info="launch"] [data-sequence-data]').textContent=
-   (earthGrid?.source||earthStatus)+". "+solarDescription(sun,"Launch site")+
-   " · terrain relief shown 2×; no pad structure survey.";
+   (SITE_NAMES[state.site]||state.site)+" · "+(earthGrid?.source||earthStatus)+". "+
+   solarDescription(sun,"Launch site")+" · relief 2×; gantry conceptual. "+
+   query("[data-vehicle-readout]").textContent;
   query("[data-launch-telemetry]").textContent=
    "T+"+kin.elapsedS.toFixed(0)+" s · "+(kin.altitudeM/1000).toFixed(2)+" km (modeled)";
  }
@@ -282,8 +283,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   query("[data-landing-terrain]").textContent=terrainStatus+
    (sun?" · Sun "+sun.elevationDeg.toFixed(1)+"°":" · no Sun data");
   query('[data-sequence-info="landing"] [data-sequence-data]').textContent=
+   state.latitude.toFixed(3)+"°, "+state.longitude.toFixed(3)+"° · "+
    (moonGrid?.source||terrainStatus)+". "+solarDescription(sun,"Lunar site")+
-   (moonGrid?.detail?". Local relief shown 1.25×.":". Regional relief shown 4.5×; local hazards unknown.");
+   (moonGrid?.detail?". Relief 1.25×.":". Regional relief 4.5×; local hazards unresolved.");
   query("[data-landing-telemetry]").textContent=
    "Altitude "+flight.heightM.toFixed(0)+" m · "+flight.downSpeedMS.toFixed(1)+" m/s descent";
  }
