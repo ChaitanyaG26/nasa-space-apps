@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-moon-mobile-v16";
+import "./launch-window.mjs?v=20261114-phone-scenarios-v18";
 import {initGlobe} from "./globe.js?v=20261114-sunlit-halo-v17";
 import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-data-ui-v14";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-moon-mobile-v16";
