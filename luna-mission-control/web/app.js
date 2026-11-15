@@ -413,6 +413,7 @@ $("restartMission").addEventListener("click",()=>{
    if(option)element.value=option.value;
   }else element.value=element.defaultValue;
  }
+ for(const disclosure of document.querySelectorAll("#missionFields details"))disclosure.open=false;
  position={latitude:-89.5,longitude:0};globe.reset?.();moonSky3D.reset();showCoords();
  lastMission=null;lastResult=null;comparison=null;$("optimize").disabled=true;
  terrainInstances.forEach(x=>x.dispose());terrainInstances=[];
