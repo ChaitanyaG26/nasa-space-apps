@@ -106,3 +106,57 @@ test("Fifteen-minute and sixty-minute time steps preserve the same duration",()=
   assert.equal(out.samples.at(-1).hours,168);
  }
 });
+
+test("Earth visibility is a fraction of elapsed hours at every supported engineering step",async()=>{
+ const {simulateWithGeometry}=await import("../web/static-engine.mjs");
+ for(const minutes of [15,30,60]){
+  const req={...r,sample_minutes:minutes,duration_days:1};
+  const count=24*60/minutes;
+  const geometry=(fn)=>Array.from({length:count+1},(_,i)=>({
+   time:new Date(Date.parse(req.landing_time)+i*minutes*60000).toISOString(),
+   sun_el:5,sun_az:0,earth_el:fn(i)?40:-30,earth_az:0
+  }));
+  const all=simulateWithGeometry(req,geometry(()=>true),"Synthetic unit test");
+  const none=simulateWithGeometry(req,geometry(()=>false),"Synthetic unit test");
+  const half=simulateWithGeometry(req,geometry(i=>i<count/2),"Synthetic unit test");
+  assert.equal(all.metrics.earth_hours,24);
+  assert.equal(all.metrics.earth_fraction,1,minutes+"-min total visibility");
+  assert.equal(all.metrics.max_earth_blackout_h,0);
+  assert.equal(none.metrics.earth_fraction,0,minutes+"-min no visibility");
+  assert.equal(none.metrics.max_earth_blackout_h,24);
+  assert.equal(half.metrics.earth_hours,12);
+  assert.equal(half.metrics.earth_fraction,0.5,minutes+"-min half visible");
+ }
+});
+test("Expanded candidate site grid stays finite, geographically bounded and unique",async()=>{
+ const {OPTIMIZATION_SITE_GRID,OPTIMIZATION_TIME_STEP_HOURS}=await import("../web/static-engine.mjs");
+ assert.equal(OPTIMIZATION_SITE_GRID.length,512);
+ assert.equal(OPTIMIZATION_TIME_STEP_HOURS,3);
+ assert.ok(OPTIMIZATION_SITE_GRID.every(([lat,lon])=>lat>=-90&&lat<=-80&&lon>=-180&&lon<180));
+ assert.equal(new Set(OPTIMIZATION_SITE_GRID.map(([a,b])=>a+","+b)).size,512);
+});
+test("Optimizer screens full grid with hourly models and refines only top sixteen",async()=>{
+ const {optimizeWithEngine,optimizeWithEngineAsync}=await import("../web/static-engine.mjs");
+ const calls=[];
+ const runner=req=>{
+  calls.push(req.sample_minutes);
+  return {site:{latitude:req.latitude,longitude:req.longitude},
+   landing_time:req.landing_time,metrics:{feasible:true,min_soc:50,
+    total_energy_wh:150,predicted_rf_link_hours:null,earth_fraction:0.5}};
+ };
+ const args={mission:{...r,sample_minutes:30},preserve:"time"};
+ const optimized=optimizeWithEngine(args,runner);
+ assert.equal(calls[0],30);
+ assert.equal(calls.filter(x=>x===60).length,511);
+ assert.equal(calls.filter(x=>x===30).length,17);
+ assert.match(optimized.search,/511 candidates screened/);
+ assert.equal(optimized.alternatives.length,5);
+ assert.equal(optimized.recommended.landing_time,r.landing_time);
+ const date=await optimizeWithEngineAsync({...args,preserve:"site"},runner,{
+  supported:req=>Date.parse(req.landing_time)>=Date.parse(r.landing_time),
+  yieldEvery:1000
+ });
+ assert.match(date.search,/112 candidates screened/);
+ assert.match(date.search,/112 outside supported ephemeris coverage/);
+ assert.equal(date.recommended.site.latitude,r.latitude);
+});
