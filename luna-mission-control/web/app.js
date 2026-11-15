@@ -222,7 +222,7 @@ function timeRibbon(title,samples,key){
 }
 function windows(samples){
  return chartMarkup("Earth terrain clearance",samples,"earth_clearance_deg",
-  {unit:"°",color:"#8fa2b7",threshold:0,highlightAbove:true});
+  {unit:"°",color:"#6bb8e8",threshold:0,highlightAbove:true});
 }
 const CHART_EXPLANATIONS={
  power:["Solar generation","Estimated array production from Sun elevation, panel orientation and assumed conversion efficiency.","At the lunar poles, shallow sunlight and ridges can interrupt charging. Read watts (vertical) versus UTC (horizontal); zero means no generation."],
@@ -249,19 +249,22 @@ function metricSlot(index,key,content){
  else content=content.replace(/(<div class="chart[^"]*"[^>]*>)/, '$1'+info);
  return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+content+'</div>';
 }
+// Exact, shared graph strokes by visual column. The left column has one
+// navy shade; the right has one sky-blue shade for every scenario.
+export const SCIENCE_GRAPH_PALETTE=Object.freeze({left:"#184a78",right:"#6bb8e8"});
 function card(data,label){
  const m=data.metrics,s=data.samples;
  const rows=[
-  metricSlot(1,"power",chart("Solar generation",s,"power_w","#318dcc")),
-  metricSlot(2,"battery",chart("Battery charge",s,"soc","#6bb8e8",100)),
-  metricSlot(3,"regolith",chart("Regolith temperature",s,"temperature_proxy_c","#3274bb")),
-  metricSlot(4,"lander",chart("Lander thermal model",s,"lander_temperature_c","#5a97d3")),
-  metricSlot(5,"heater",chart("Heater power",s,"heater_w","#68b4e4")),
+  metricSlot(1,"power",chart("Solar generation",s,"power_w",SCIENCE_GRAPH_PALETTE.left)),
+  metricSlot(2,"battery",chart("Battery charge",s,"soc",SCIENCE_GRAPH_PALETTE.right,100)),
+  metricSlot(3,"regolith",chart("Regolith temperature",s,"temperature_proxy_c",SCIENCE_GRAPH_PALETTE.left)),
+  metricSlot(4,"lander",chart("Lander thermal model",s,"lander_temperature_c",SCIENCE_GRAPH_PALETTE.right)),
+  metricSlot(5,"heater",chart("Heater power",s,"heater_w",SCIENCE_GRAPH_PALETTE.left)),
   metricSlot(6,"radio",m.predicted_rf_link_hours!==null?
-   chart("S-band RF margin",s,"rf_margin_db","#367bc2"):
+   chart("S-band RF margin",s,"rf_margin_db",SCIENCE_GRAPH_PALETTE.right):
    '<div class="chart chart-unavailable"><div class="chart-title">S-band RF margin</div><p class="muted">RF model unavailable. Geometric Earth visibility remains shown.</p></div>'),
   metricSlot(7,"diviner",s.some(x=>Number.isFinite(x.diviner_observed_c))?
-   plotMeasured(s,"diviner_observed_c","#719ed9"):
+   plotMeasured(s,"diviner_observed_c",SCIENCE_GRAPH_PALETTE.left):
    '<div class="chart chart-unavailable"><div class="chart-title">Diviner reference (historical)</div><p class="muted">'+escapeHtml(data.quality?.diviner_observations||"No matching archival observations")+'</p></div>'),
   metricSlot(8,"earth",windows(s))
  ];
