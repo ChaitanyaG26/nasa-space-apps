@@ -1,8 +1,8 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-data-ui-v14";
-import {initGlobe} from "./globe.js?v=20261114-landmark-v11";
+import "./launch-window.mjs?v=20261114-gold-ui-v15";
+import {initGlobe} from "./globe.js?v=20261114-gold-ui-v15";
 import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-data-ui-v14";
-import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-data-ui-v14";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-gold-ui-v15";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-data-ui-v14";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
