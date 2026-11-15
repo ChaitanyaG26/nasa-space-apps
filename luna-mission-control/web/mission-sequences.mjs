@@ -158,7 +158,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    (launch?
     '<p>USGS 3DEP elevations are preferred, with public elevation tiles as a fallback. Native source resolution varies. Turquoise pad ring and gantry are conceptual references, not a pad survey.</p>':
     '<p>LOLA 20 m local DEM preferred; 8-ppd regional terrain (~3.8 km samples over 40 km) uses 4.5× exaggerated relief and an enlarged lander. Green/amber circles show a conceptual landing target and vicinity, never evaluated safe zones.</p>')+
-   '<p>Sun geometry uses cached JPL data when available. Night scenes use artificial visibility fill. Motion, lighting and shadows are illustrative, not validated mission guidance.</p></div></details>';
+   '<p>Sun geometry uses cached JPL data where available; night views use artificial fill. Shadows extending beyond the scene are omitted, not shortened. All motion and lighting remain illustrative.</p></div></details>';
  };
  const tone=scenario==="optimized"?"#62afff":"#f9d25c";
  host.innerHTML='<section class="mission-sequences" aria-label="Mission cinematic sequences">'+
