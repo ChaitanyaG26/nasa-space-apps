@@ -46,20 +46,27 @@ test("3D landing scene draws Sun glow and directed shadows only when geometric S
   fillStyle:"#000",strokeStyle:"#000",lineWidth:1,
   createLinearGradient(){return {addColorStop(){}};},
   createRadialGradient(){calls.push("solar-glow");return {addColorStop(){}};},
-  fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},
+  fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},setLineDash(){},
   fill(){calls.push(this.fillStyle);},stroke(){},quadraticCurveTo(){},arc(){},
  };
  const grid={center:0,footprintM:440,coverage:1,rows:Array.from({length:3},(_,j)=>
   Array.from({length:3},(_,i)=>({e:(i-1)*220,n:(1-j)*220,h:0})))};
+ // At high altitude and low solar elevation, the actual shadow projects
+ // beyond the close-up; omit it rather than painting a misleading black bar.
  drawMissionSurface3D(context,{grid,kind:"landing",altitudeM:70,
   sun:{azimuthDeg:115,elevationDeg:12}});
  assert.ok(calls.includes("solar-glow"));
- assert.ok(calls.includes("#02071172"));
+ assert.ok(!calls.includes("#08152550"));
  calls.length=0;
- drawMissionSurface3D(context,{grid,kind:"landing",altitudeM:70,
+ // At touchdown a high Sun produces a short measurable ground shadow.
+ drawMissionSurface3D(context,{grid,kind:"landing",altitudeM:0,
+  sun:{azimuthDeg:115,elevationDeg:55}});
+ assert.ok(calls.includes("#08152550"));
+ calls.length=0;
+ drawMissionSurface3D(context,{grid,kind:"landing",altitudeM:0,
   sun:{azimuthDeg:115,elevationDeg:-10}});
  assert.ok(!calls.includes("solar-glow"));
- assert.ok(!calls.includes("#02071172"));
+ assert.ok(!calls.includes("#08152550"));
 });
 test("Scenario UTC and moving ephemeris samples drive different Moon and spacecraft positions",()=>{
  const base=Date.UTC(2026,11,10,0,0);
