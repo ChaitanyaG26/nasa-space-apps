@@ -154,7 +154,7 @@ export function chartMarkup(title,rows,key,{unit="",color="#208a88",kind="model"
  '<svg data-plot-id="'+id+'" role="img" aria-label="'+esc(title)+' from '+new Date(start).toISOString()+' to '+new Date(end).toISOString()+
  '" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
  '<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+ph+'" fill="#f8fbfc"/>'+
- (highlightAbove&&Number.isFinite(threshold)?'<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'" fill="#3a9ad2" opacity=".07"/>':"")+
+ (highlightAbove&&Number.isFinite(threshold)?'<rect x="'+M.left+'" y="'+M.top+'" width="'+pw+'" height="'+Math.max(0,y(threshold)-M.top).toFixed(2)+'" fill="'+color+'" opacity=".09"/>':"")+
  grid+series+
  '<line class="plot-timecursor" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+ '<line class="plot-hoverline" x1="'+M.left+'" y1="'+M.top+'" x2="'+M.left+'" y2="'+(H-M.bottom)+'" visibility="hidden"/>'+
  '<circle class="plot-hoverdot" cx="'+M.left+'" cy="'+M.top+'" r="5" fill="'+color+'" stroke="white" stroke-width="2" visibility="hidden"/>'+
