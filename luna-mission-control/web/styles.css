@@ -1398,3 +1398,208 @@ body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
   padding:12px!important;
  }
 }
+
+
+/* v16 — exactly two science trace colors for every 2-column chart grid.
+   The data are not reinterpreted: this only standardizes presentation. */
+:root{--luna-plot-left:#184a78;--luna-plot-right:#6bb8e8;}
+.scenario-plot-grid>.metric-slot:nth-child(odd){
+ --metric-color:var(--luna-plot-left)!important;
+ border-top-color:var(--luna-plot-left)!important;
+}
+.scenario-plot-grid>.metric-slot:nth-child(even){
+ --metric-color:var(--luna-plot-right)!important;
+ border-top-color:var(--luna-plot-right)!important;
+}
+.metric-slot .plot-threshold{stroke:var(--luna-gold)!important;}
+.metric-slot .plot-threshold-label{fill:#a07822!important;}
+
+/* Pre-optimization means ONE full-width mission, not an empty three-column
+   grid with a lone narrow card. The two surface sequences share the width. */
+.cards.scenario-single{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%;min-width:0;}
+#luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:only-child){
+ grid-template-columns:minmax(0,1fr)!important;
+ min-width:0!important;width:100%!important;max-width:none!important;
+}
+#luna-launch-cola .launch-cola-scenario:only-child{width:100%;max-width:none;}
+#luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:only-child) .mission-sequences{
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ align-items:start;gap:14px;
+}
+#luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:only-child) .sequence-panel canvas{
+ max-width:none!important;width:100%!important;
+}
+#luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:only-child) .orbit-3d-canvas{
+ max-width:min(100%,760px)!important;
+}
+
+/* The real geocentric Sun direction stays in the scientific model.
+   This is a separate, explicitly decorative golden halo BEHIND the textured
+   NASA lunar globe (visible through its transparent WebGL clear). */
+.sidebar-layout .map-page{
+ position:relative;isolation:isolate;
+ background:#06111e;
+}
+.sidebar-layout .map-page::before{
+ content:"";
+ position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:
+   radial-gradient(circle closest-side at 50% 50%,
+     rgba(249,200,87,.02) 0%,
+     rgba(255,191,72,.06) 54%,
+     rgba(255,206,100,.29) 74%,
+     rgba(245,166,52,.29) 84%,
+     rgba(232,145,49,.13) 95%,
+     transparent 120%),
+   radial-gradient(ellipse at 50% 52%,#193449 0%,#091b2f 54%,#050e1a 95%);
+ filter:blur(9px);
+}
+.sidebar-layout .map-page #globe{position:relative;z-index:1;background:transparent;}
+.sidebar-layout .map-page .map-top,
+.sidebar-layout .map-page .map-bottom{z-index:3;}
+
+/* Ultra-wide / normal desktop rules are unchanged. A tablet or phone uses
+   the SAME components and simulation engine — only layout changes. No
+   separate /phone site, no UA detection, no divergent application versions. */
+@media (max-width:820px), (max-width:1100px) and (orientation:portrait){
+ html,body{max-width:100%;min-width:0;overflow-x:hidden;}
+ .sidebar-layout .shell{
+  display:flex!important;flex-direction:column!important;
+  width:100%!important;height:auto!important;min-height:100svh!important;
+  grid-template-columns:none!important;overflow:visible!important;
+ }
+ .sidebar-layout .sidebar{
+  display:flex!important;flex-direction:column!important;
+  flex:0 0 auto!important;
+  width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important;border-right:0!important;
+  border-bottom:1px solid #294a65!important;
+ }
+ .sidebar-layout .sidebar header{min-height:50px!important;padding:10px 14px!important;}
+ .sidebar-layout .sidebar .fields{
+  display:block!important;flex:0 0 auto!important;
+  width:100%!important;max-height:none!important;min-height:0!important;
+  padding:10px 14px 16px!important;
+  overflow:visible!important;
+ }
+ .sidebar-layout .sidebar .control-group{max-width:100%;min-width:0;}
+ .sidebar-layout .sidebar .sky-stack{max-width:100%;min-width:0;}
+ .sidebar-layout .sky-stack-card{max-width:600px;margin-inline:auto;}
+ .sidebar-layout .sky-mini #orbital,
+ .sidebar-layout .sky-mini #horizon{max-width:100%;}
+ .sidebar-layout .sidebar .toolbar-disclosure .toolbar-flyout{
+  position:static!important;max-width:none!important;width:100%!important;
+  overflow:visible!important;max-height:none!important;box-shadow:none!important;
+ }
+ .sidebar-layout main{
+  display:flex!important;flex-direction:column!important;
+  width:100%!important;height:auto!important;min-height:0!important;
+  flex:0 0 auto!important;overflow:visible!important;
+ }
+ .sidebar-layout .mission-toolbar{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  position:relative!important;
+  width:100%!important;height:auto!important;min-height:0!important;
+  gap:8px!important;padding:10px 12px!important;flex:0 0 auto!important;
+  justify-content:stretch!important;
+ }
+ .sidebar-layout .mission-toolbar #simulate,
+ .sidebar-layout .mission-toolbar .optimize-trigger{
+  width:100%!important;min-width:0!important;max-width:none!important;
+  height:auto!important;margin:0!important;
+ }
+ .sidebar-layout .mission-toolbar .optimize-trigger #optimize{
+  width:100%!important;max-width:none!important;min-width:0!important;
+ }
+ .sidebar-layout .mission-toolbar #restartMission{
+  grid-column:1/-1!important;width:100%!important;min-width:0!important;
+  max-width:none!important;margin:0!important;
+ }
+ .sidebar-layout .mission-toolbar button{
+  min-width:0!important;max-width:none!important;width:100%!important;
+  white-space:normal!important;min-height:44px!important;
+  height:auto!important;font-size:12px!important;padding:8px 10px!important;
+ }
+ .sidebar-layout .map-page{
+  flex:0 0 auto!important;height:clamp(350px,61svh,680px)!important;
+  min-height:350px!important;width:100%;
+  overflow:hidden;
+ }
+ .sidebar-layout .map-top,.sidebar-layout .map-bottom{
+  left:12px;right:12px;gap:8px;
+  font-size:10px!important;line-height:1.35;
+ }
+ .sidebar-layout .map-top{top:12px;}
+ .sidebar-layout .map-bottom{bottom:11px;}
+ .sidebar-layout .results-page{
+  flex:0 0 auto!important;width:100%!important;
+  height:auto!important;min-height:0!important;
+  padding:14px!important;overflow:visible!important;
+ }
+ .sidebar-layout .results-top{flex-wrap:wrap;gap:9px;margin-bottom:12px;}
+ .sidebar-layout .results-top h1{font-size:clamp(20px,5vw,26px);}
+ .sidebar-layout .results-top button{max-width:100%;}
+ .cards.scenario-triple,
+ #luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:nth-child(3)){
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ #luna-launch-cola .launch-cola-scenarios:has(>.launch-cola-scenario:only-child) .mission-sequences{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ #luna-launch-cola .launch-cola-scenario{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  padding:10px!important;
+ }
+ #luna-launch-cola .launch-cola-form{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ #luna-launch-cola .sequence-header{justify-content:center!important;}
+ #luna-launch-cola .sequence-vehicle-control{min-width:0!important;}
+ #luna-launch-cola .sequence-playback{gap:7px!important;}
+ #luna-launch-cola .orbit-scene-3d .orbit-3d-canvas{width:100%!important;max-width:600px!important;}
+ .scenario-card{min-width:0!important;overflow:visible;}
+ .scenario-card .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .scenario-plot-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .metric-slot{min-width:0!important;}
+ .metric-slot .chart{min-width:0;}
+ .metric-slot .plot-wrap svg{max-width:100%;height:auto;}
+ .landing-site-legend{max-width:160px;}
+ .sidebar-layout .map-page::before{
+  filter:blur(7px);
+ }
+}
+@media (max-width:620px){
+ .scenario-plot-grid{grid-template-columns:minmax(0,1fr)!important;}
+ #luna-launch-cola .launch-cola-form{grid-template-columns:minmax(0,1fr)!important;}
+ #luna-launch-cola .launch-cola-target{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .sidebar-layout .results-page{padding:10px!important;}
+ #luna-launch-cola .launch-cola-target strong{overflow-wrap:anywhere;}
+ #luna-launch-cola .sequence-payload-control{flex:0 1 92px!important;min-width:76px!important;}
+ #luna-launch-cola .sequence-vehicle-control{max-width:none!important;flex:1 1 140px!important;}
+ #luna-launch-cola .sequence-info .sequence-info-popover{
+  max-width:min(78vw,270px);
+ }
+ .metric-slot .chart-info-content{max-width:min(78vw,280px);}
+ body>.metric-slot.fullscreen-slot>.science-plot.chart-expanded{
+  width:96vw!important;height:min(86svh,750px)!important;
+  padding:12px!important;
+ }
+ .sidebar-layout .map-top span{display:none;}
+ .sidebar-layout .map-bottom span:first-child{display:none;}
+}
+@media (max-width:360px){
+ .sidebar-layout .mission-toolbar{grid-template-columns:minmax(0,1fr)!important;}
+ .sidebar-layout .mission-toolbar #restartMission{grid-column:1!important;}
+ .sidebar-layout .sidebar header small{font-size:8px;letter-spacing:.5px;}
+ .sidebar-layout .results-top{align-items:flex-start;}
+}
+/* Touch target sizes without changing mouse/desktop presentation. */
+@media (hover:none) and (pointer:coarse){
+ #luna-launch-cola .sequence-playback button,
+ .sidebar-layout .mission-toolbar button,
+ .plot-expand{min-height:40px;}
+ .chart-information>summary,.sequence-info>summary{touch-action:manipulation;}
+}
+/* Suppress the decorative glow for reduced-motion/high-contrast contexts. */
+@media (forced-colors:active){
+ .sidebar-layout .map-page::before{background:Canvas;filter:none;}
+}
