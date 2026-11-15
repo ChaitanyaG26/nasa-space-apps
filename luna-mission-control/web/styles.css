@@ -678,3 +678,28 @@ body{background:var(--luna-night);}
 .sidebar-layout .ephemeris-playback small{font-size:9px;color:#9dbccb;}
 #luna-launch-cola .launch-cola-form{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;}
 @media(max-width:650px){#luna-launch-cola .launch-cola-form{grid-template-columns:1fr;}}
+
+
+/* Scenario cinematic stack: concise launch + landing canvases beneath the orbit. */
+#luna-launch-cola .mission-sequences{display:grid;grid-template-columns:minmax(0,1fr);gap:11px;margin:12px 0 4px;}
+#luna-launch-cola .sequence-panel{min-width:0;padding:11px;border-radius:12px;border:1px solid #d2e2ef;background:#f5f9fd;box-shadow:0 2px 8px #0e315b0a;}
+#luna-launch-cola .sequence-header{display:flex;align-items:end;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+#luna-launch-cola .sequence-header strong{font-size:12px;color:#183e62;letter-spacing:.1px;}
+#luna-launch-cola .sequence-header label{flex:0 1 240px;min-width:142px;margin:0;color:#456c88;font-size:10px;font-weight:750;}
+#luna-launch-cola .sequence-header select{margin:4px 0 0;padding:7px 9px;border-radius:7px;border:1px solid #b6ccdf;background:#fff;color:#183b57;font-size:11px;cursor:pointer;}
+#luna-launch-cola .sequence-meta{color:#6a879e;font-size:10px;line-height:1.45;margin:6px 0;}
+#luna-launch-cola .sequence-panel canvas{display:block;width:100%;height:auto;aspect-ratio:600/278;max-height:280px;border-radius:9px;border:1px solid #3a607d;background:#091d35;}
+#luna-launch-cola .sequence-playback{display:flex;align-items:center;gap:8px;min-width:0;margin-top:8px;}
+#luna-launch-cola .sequence-playback button{background:#184b81;border:1px solid #2770b6;color:#fff;font-size:10px;font-weight:750;border-radius:7px;padding:7px 11px;min-width:55px;}
+#luna-launch-cola .sequence-playback button:hover{background:#2475c3;}
+#luna-launch-cola .sequence-playback input{flex:1;min-width:75px;width:auto;accent-color:#f9ce4c;margin:0;padding:0;}
+#luna-launch-cola .sequence-playback output{color:#3b617c;min-width:65px;font-size:10px;text-align:right;}
+/* An animation needs no stacked paragraphs under it; methodology lives in the parent disclosure. */
+#luna-launch-cola .orbit-scene-3d .orbit-legend,
+#luna-launch-cola .orbit-scene-3d .orbit-catalog,
+#luna-launch-cola .launch-cola-animation{display:none;}
+#luna-launch-cola .orbit-scene-3d .orbit-scene-top{display:flex;gap:10px;justify-content:space-between;}
+#luna-launch-cola .orbit-scene-3d .orbit-title{margin-bottom:3px;}
+#luna-launch-cola .orbit-scene-3d .orbit-subtitle{margin:0 0 7px;}
+#luna-launch-cola .orbit-scene-3d .orbit-data-flag{margin:0 0 7px;}
+@media(max-width:600px){#luna-launch-cola .sequence-header label{flex-basis:100%;}#luna-launch-cola .sequence-playback{flex-wrap:wrap;}#luna-launch-cola .sequence-playback output{flex:0 0 65px;}}
