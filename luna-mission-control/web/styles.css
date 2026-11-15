@@ -2256,3 +2256,9 @@ body>.luna-chart-overlay .plot-foot-summary .plot-foot-date time{
   max-height:65px!important;
  }
 }
+
+/* Suppress animation information controls only while the global reference drawer
+   is open. Visibility preserves their dimensions and the existing layout. */
+body.luna-science-info-open .mission-sequences .sequence-info{
+ visibility:hidden!important;pointer-events:none!important;
+}
