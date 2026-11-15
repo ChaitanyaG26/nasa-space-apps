@@ -1461,7 +1461,7 @@ body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
 /* Ultra-wide / normal desktop rules are unchanged. A tablet or phone uses
    the SAME components and simulation engine — only layout changes. No
    separate /phone site, no UA detection, no divergent application versions. */
-@media (max-width:820px), (max-width:1100px) and (orientation:portrait){
+@media (max-width:960px), (max-width:1100px) and (orientation:portrait){
  html,body{max-width:100%;min-width:0;overflow-x:hidden;}
  .sidebar-layout .shell{
   display:flex!important;flex-direction:column!important;
