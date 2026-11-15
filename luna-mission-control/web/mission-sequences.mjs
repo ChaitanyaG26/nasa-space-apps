@@ -94,11 +94,11 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    if(!alive||token!==earthRequest)return;
    earthGrid=sampled?.coverage>=.75?sampled:null;
    earthStatus=earthGrid?
-    "Open terrain elevation · "+earthGrid.resolutionM.toFixed(1)+" m display pixels; native DEM detail varies":
-    "Elevation coverage unavailable · flat reference only";
+    (earthGrid.source.includes("USGS")?"USGS 3DEP":"Open elevation tiles"):
+    "Terrain unavailable";
   }catch{
    if(token!==earthRequest||!alive)return;
-   earthStatus="Terrain service unavailable · flat reference only";
+   earthStatus="Terrain unavailable";
   }
   draw();
  }
@@ -136,10 +136,10 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
     moonGrid=loadMoonSiteGrid(null,lat,lon,{global:regional});
    }
    terrainStatus=moonGrid?.coverage>=.7?(moonGrid.detail?
-    "LOLA 20 m local DEM · 640 m footprint":
-    "LOLA 8 ppd regional DEM · 40 km footprint; local hazards unresolved"):
-    "NASA elevation unavailable · hazards unknown";
-  }catch{terrainStatus="Lunar elevation unavailable · hazards unknown";}
+    "LOLA 20 m local":
+    "LOLA regional · 4.5× relief"):
+    "LOLA terrain unavailable";
+  }catch{terrainStatus="LOLA terrain unavailable";}
   try{
    if(state.landingUtc){
     const ref=await loadJplReference();
@@ -149,9 +149,20 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   }catch{sunElevationDeg=null;}
   if(request===terrainRequest&&alive)draw();
  }
+ const sequenceInfo=(kind)=>{
+  const launch=kind==="launch";
+  return '<details class="sequence-info" data-sequence-info="'+kind+'"><summary aria-label="About '+kind+' animation" title="Data and limitations">'+
+   '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="5.8" r="1" fill="currentColor"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></summary>'+
+   '<div class="sequence-info-popover"><strong>'+(launch?"Launch terrain and physics":"Lunar terrain and physics")+
+   '</strong><p data-sequence-data>Loading terrain and Sun angles...</p>'+
+   (launch?
+    '<p>USGS 3DEP elevations are preferred, with public elevation tiles as a fallback. Native source resolution varies. Turquoise pad ring and gantry are conceptual references, not a pad survey.</p>':
+    '<p>LOLA 20 m local DEM preferred; 8-ppd regional terrain (~3.8 km samples over 40 km) uses 4.5× exaggerated relief and an enlarged lander. Green/amber circles show a conceptual landing target and vicinity, never evaluated safe zones.</p>')+
+   '<p>Sun geometry uses cached JPL data when available. Night scenes use artificial visibility fill. Motion, lighting and shadows are illustrative, not validated mission guidance.</p></div></details>';
+ };
  const tone=scenario==="optimized"?"#62afff":"#f9d25c";
  host.innerHTML='<section class="mission-sequences" aria-label="Mission cinematic sequences">'+
-  '<div class="sequence-panel"><div class="sequence-header"><strong>Launch animation</strong>'+
+  '<div class="sequence-panel"><div class="sequence-header"><strong>Launch animation</strong>'+sequenceInfo("launch")+
   '<label>Rocket<select data-rocket aria-label="Select rocket illustration"></select></label>'+
  '<label>Payload mass (kg)<input data-payload-mass type="number" min="1" max="200000" step="50" value="500" aria-label="Mission payload mass in kilograms"></label></div>'+
   '<div class="sequence-meta" data-site-name></div>'+
@@ -162,7 +173,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   '<div class="sequence-playback"><button data-toggle="launch" type="button">Pause</button>'+
   '<input data-scrub="launch" type="range" min="0" max="1000" value="0" aria-label="Rocket launch animation progress"/>'+
   '<output data-label="launch">Liftoff</output></div></div>'+
-  '<div class="sequence-panel"><div class="sequence-header"><strong>Probe landing animation</strong>'+
+  '<div class="sequence-panel"><div class="sequence-header"><strong>Probe landing animation</strong>'+sequenceInfo("landing")+
   '<label>Probe<select data-lander aria-label="Select illustrative lunar landing probe"></select></label></div>'+
   '<div class="sequence-meta" data-target-name></div>'+
  '<div class="sequence-terrain-status" data-landing-terrain></div>'+
@@ -172,6 +183,13 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   '<input data-scrub="landing" type="range" min="0" max="1000" value="0" aria-label="Lunar landing animation progress"/>'+
   '<output data-label="landing">Approach</output></div></div></section>';
  const query=x=>host.querySelector(x);
+ for(const detail of host.querySelectorAll(".sequence-info")){
+  detail.addEventListener("pointerenter",()=>detail.open=true);
+  detail.addEventListener("pointerleave",()=>{if(!detail.matches(":focus-within"))detail.open=false;});
+  detail.addEventListener("focusout",()=>{queueMicrotask(()=>{
+   if(!detail.matches(":focus-within")&&!detail.matches(":hover"))detail.open=false;
+  });});
+ }
  const launchSelect=query("[data-rocket]"),landingSelect=query("[data-lander]");
  const canvases={launch:query('[data-scene="launch"]'),landing:query('[data-scene="landing"]')};
  const contexts={},progress={launch:0,landing:0},playing={launch:true,landing:true};
@@ -232,9 +250,9 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const mass=assessment.massProxyKg===null?"unknown":Math.round(assessment.massProxyKg).toLocaleString()+" kg";
   const thrust=assessment.thrustN===null?"unknown":(assessment.thrustN/1000000).toFixed(1)+" MN";
   const twr=assessment.initialTwrProxy===null?"unknown":assessment.initialTwrProxy.toFixed(2);
-  node.textContent="Launch mass (proxy) "+mass+" · thrust "+thrust+
-   " · initial T/W "+twr+" · "+assessment.preliminaryLEOCheck;
-  node.title=assessment.limitation||"Unverified launch mass and thrust.";
+  node.textContent="Initial T/W proxy "+twr+" · "+assessment.preliminaryLEOCheck;
+  node.title="Mass proxy "+mass+"; thrust "+thrust+". "+
+   (assessment.limitation||"Not a verified translunar vehicle estimate.");
  }
  function drawLaunch(){
   const ctx=contexts.launch;if(!ctx)return;
@@ -246,10 +264,13 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   const sun=sunAtLaunch(progress.launch);
   drawMissionSurface3D(ctx,{grid:earthGrid,kind:"launch",camera:cameras.launch,
    altitudeM:kin.altitudeM,vehicle,progress:progress.launch,width:W,height:H,sun});
-  query("[data-launch-terrain]").textContent=earthStatus+" · "+solarDescription(sun,"JPL Earth/Sun");
+  query("[data-launch-terrain]").textContent=earthStatus+
+   (sun?" · Sun "+sun.elevationDeg.toFixed(1)+"°":" · no Sun data");
+  query('[data-sequence-info="launch"] [data-sequence-data]').textContent=
+   (earthGrid?.source||earthStatus)+". "+solarDescription(sun,"Launch site")+
+   " · terrain relief shown 2×; no pad structure survey.";
   query("[data-launch-telemetry]").textContent=
-   "T+"+kin.elapsedS.toFixed(0)+" s · model altitude "+(kin.altitudeM/1000).toFixed(2)+" km · vertical speed "+
-   kin.verticalSpeedMS.toFixed(0)+" m/s · altitude display compressed";
+   "T+"+kin.elapsedS.toFixed(0)+" s · "+(kin.altitudeM/1000).toFixed(2)+" km (modeled)";
  }
  function drawLanding(){
   const ctx=contexts.landing;if(!ctx)return;
@@ -259,10 +280,12 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   drawMissionSurface3D(ctx,{grid:moonGrid?.coverage>=.7?moonGrid:null,kind:"landing",camera:cameras.landing,
    altitudeM:flight.heightM,lander:probe,progress:t,width:W,height:H,sun});
   query("[data-landing-terrain]").textContent=terrainStatus+
-   (moonGrid&&!moonGrid.detail?" · lander enlarged":"")+" · "+solarDescription(sun,"JPL lunar Sun");
+   (sun?" · Sun "+sun.elevationDeg.toFixed(1)+"°":" · no Sun data");
+  query('[data-sequence-info="landing"] [data-sequence-data]').textContent=
+   (moonGrid?.source||terrainStatus)+". "+solarDescription(sun,"Lunar site")+
+   (moonGrid?.detail?". Local relief shown 1.25×.":". Regional relief shown 4.5×; local hazards unknown.");
   query("[data-landing-telemetry]").textContent=
-   "Altitude "+flight.heightM.toFixed(1)+" m · descent "+flight.downSpeedMS.toFixed(2)+" m/s · "+
-   "T+"+flight.elapsedS.toFixed(1)+" s · model T/W "+descent.thrustToWeight.toFixed(2);
+   "Altitude "+flight.heightM.toFixed(0)+" m · "+flight.downSpeedMS.toFixed(1)+" m/s descent";
  }
  const draw=()=>{drawLaunch();drawLanding();};
  function frame(now){
