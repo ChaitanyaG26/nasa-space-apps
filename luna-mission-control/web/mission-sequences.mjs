@@ -1,5 +1,5 @@
 import {loadPolarPatch,samplePolarHeightKm} from "./lola-polar-detail.mjs";
-import {destination} from "./lola-global.mjs";
+import {destination,loadLolaGlobal} from "./lola-global.mjs";
 import {loadJplReference,geometryAtUtc} from "./horizons-static.mjs";
 import {descentParameters,descentAt,normalizeTerrainProfile,genericAscentAt} from "./mission-physics.mjs";
 import {assessVehicle,checkPayloadMass} from "./vehicle-performance.mjs";
@@ -64,7 +64,7 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
    if(!alive||token!==earthRequest)return;
    earthGrid=sampled?.coverage>=.75?sampled:null;
    earthStatus=earthGrid?
-    "Measured public DEM · "+Math.round(earthGrid.resolutionM)+" m tile pixels":
+    "Open terrain elevation · "+earthGrid.resolutionM.toFixed(1)+" m display pixels; native DEM detail varies":
     "Elevation coverage unavailable · flat reference only";
   }catch{
    if(token!==earthRequest||!alive)return;
@@ -100,8 +100,15 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
     measuredTerrain=normalizeTerrainProfile(samples);
     moonGrid=loadMoonSiteGrid(patch,lat,lon);
    }
-   terrainStatus=moonGrid?.coverage>=.7?"NASA LOLA 20 m DEM · true elevation mesh":
-     "No high-resolution LOLA coverage · hazards unknown";
+   if(!moonGrid||moonGrid.coverage<.7){
+    const regional=await loadLolaGlobal();
+    if(request!==terrainRequest||!alive)return;
+    moonGrid=loadMoonSiteGrid(null,lat,lon,{global:regional});
+   }
+   terrainStatus=moonGrid?.coverage>=.7?(moonGrid.detail?
+    "LOLA 20 m local DEM · 640 m footprint":
+    "LOLA 8 ppd regional DEM · 40 km footprint; local hazards unresolved"):
+    "NASA elevation unavailable · hazards unknown";
   }catch{terrainStatus="Lunar elevation unavailable · hazards unknown";}
   try{
    if(state.landingUtc){
@@ -219,7 +226,8 @@ export function mountMissionSequences(host,{scenario="original",site="ksc",latit
   ctx.clearRect(0,0,W,H);
   drawMissionSurface3D(ctx,{grid:moonGrid?.coverage>=.7?moonGrid:null,kind:"landing",camera:cameras.landing,
    altitudeM:flight.heightM,lander:probe,progress:t,width:W,height:H});
-  query("[data-landing-terrain]").textContent=terrainStatus+" · drag to orbit";
+  query("[data-landing-terrain]").textContent=terrainStatus+
+   (moonGrid&&!moonGrid.detail?" · lander enlarged for visibility":"")+" · drag to rotate";
   query("[data-landing-telemetry]").textContent=
    "Altitude "+flight.heightM.toFixed(1)+" m · descent "+flight.downSpeedMS.toFixed(2)+" m/s · "+
    "T+"+flight.elapsedS.toFixed(1)+" s · model T/W "+descent.thrustToWeight.toFixed(2);
