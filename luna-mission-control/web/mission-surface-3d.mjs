@@ -166,8 +166,12 @@ function drawSkySun(ctx,sun,camera,width,height){
  ctx.fillStyle="#fff6d5";ctx.beginPath();ctx.arc(x,y,5.7,0,Math.PI*2);ctx.fill();
 }
 function drawShadow(ctx,sun,camera,footprint,heightM,width,height){
- const position=sunShadowOffset(heightM,sun,footprint*.82);
- if(!position)return;
+ // Use *real modeled vehicle height* and a physically oriented ground
+ // projection. If the predicted tip is outside the useful closeup,
+ // don't paint an arbitrarily truncated, giant black streak.
+ const position=sunShadowOffset(heightM,sun,Infinity);
+ const visibleRadius=Math.min(footprint*.20,130);
+ if(!position||position.lengthM>visibleRadius)return;
  const source=projectTerrainPoint(0,0,.35,camera,width,height);
  const tip=projectTerrainPoint(position.e,position.n,.35,camera,width,height);
  const dx=tip.x-source.x,dy=tip.y-source.y,len=Math.hypot(dx,dy);
@@ -177,7 +181,7 @@ function drawShadow(ctx,sun,camera,footprint,heightM,width,height){
  ctx.lineTo(tip.x+nx*8,tip.y+ny*8);
  ctx.quadraticCurveTo(tip.x,tip.y,tip.x-nx*8,tip.y-ny*8);
  ctx.lineTo(source.x-nx*6,source.y-ny*6);
- ctx.closePath();ctx.fillStyle="#02071172";ctx.fill();
+ ctx.closePath();ctx.fillStyle="#08152550";ctx.fill();
 }
 function cylinder(ctx,{e=0,n=0,z=0,r=5,height=65,body="#e2edf5",camera,sun=null}){
  const faces=[];
@@ -324,7 +328,7 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   // Visual/reference-only pad center and service support scaffolding.
   projectedRing(ctx,viewCamera,width,height,27,"#58c7c5cc",[5,5]);
   launchSupportFrame(ctx,viewCamera,width,height,validSun);
-  drawShadow(ctx,validSun,viewCamera,footprint,z+rocket.heightM,width,height);
+  drawShadow(ctx,validSun,viewCamera,footprint,Math.max(0,altitudeM)+rocket.heightM,width,height);
   if(rocket.boosters)for(const off of [-1,1])
    cylinder(ctx,{e:off*(rocket.diameterM*1.7),n:0,z,r:rocket.diameterM*.32,
     height:rocket.heightM*.83,body:"#9babb7",camera:viewCamera,sun:validSun});
@@ -338,7 +342,7 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   }
  }else{
   const z=120*clamp(altitudeM/180,0,1);
-  drawShadow(ctx,validSun,viewCamera,footprint,z+15*exaggeration,width,height);
+  drawShadow(ctx,validSun,viewCamera,footprint,Math.max(0,altitudeM)+15,width,height);
   // Context rings are illustrative positions, not certified hazard zones.
   const localRing=grid?.detail===false?footprint*.12:48;
   projectedRing(ctx,viewCamera,width,height,localRing,"#50d4b8de",[5,4]);
