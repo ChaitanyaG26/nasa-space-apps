@@ -31,7 +31,8 @@ export function checkPayloadMass(value){
 export function assessVehicle(vehicleId,payloadKg=500){
  const payload=checkPayloadMass(payloadKg),spec=VEHICLE_SPECS[vehicleId]||null;
  if(!spec)return {known:false,payloadKg:payload,leoCapacityKnown:false,
-  performanceKnown:false,reason:"No verified public vehicle specification loaded"};
+  performanceKnown:false,massProxyKg:null,thrustN:null,initialTwrProxy:null,
+  preliminaryLEOCheck:"INSUFFICIENT DATA",reason:"No verified public vehicle specification loaded"};
  const leoCapacityKnown=Number.isFinite(spec.payloadLEOKg);
  const performanceKnown=Number.isFinite(spec.massKg)&&Number.isFinite(spec.thrustN);
  const massProxyKg=performanceKnown?spec.massKg+payload:null;
