@@ -80,3 +80,57 @@ The use of NASA scientific data does **not** make a vehicle trajectory flight-re
 Formal launch collision avoidance additionally requires official conjunction
 screening and restricted tracking/uncertainty data. LUNA never reports
 collision-free status from public catalogs.
+
+
+## 2026 three-scenario and visual-terrain extension
+
+### Simultaneous original and two independent optimizations
+
+Selecting **Optimize & Compare** now runs two **independent** scientific-engine searches against the original mission:
+
+1. Original site, UTC date and hardware assumptions.
+2. **Date fixed; location optimized.** Same UTC landing date, alternate locations from the small demonstrator south-pole search grid.
+3. **Location fixed; date optimized.** Same input site, alternative UTC dates sampled over ±14 days in 12-hour increments.
+
+All three scenarios have their own plots, terrain explorer and Earth–Moon conceptual transfer and launch-range/COLA panels. The demonstration grid is neither exhaustive nor certified for safe landing. Any "recommended" alternative is a ranking under stated battery and communication assumptions, **not** a mission readiness claim.
+
+### Threshold communication chart
+
+The eighth graph is now **Earth terrain clearance** (degrees). Each plotted point follows
+
+\[
+\mathrm{clearance}(t) = \mathrm{EarthCenterElevation}(t) - \mathrm{LOLAHorizon}(\mathrm{EarthAzimuth}(t)).
+\]
+
+Positive clearance is highlighted teal/green; zero or negative clearance remains neutral. This identifies a necessary **geometric** condition for direct-to-Earth line-of-sight, **not** a guarantee of communications. It does not include relay satellites, antenna pointing, link margin or terrestrial ground-station schedules. If the LOLA horizon is unavailable, the model falls back to an unobstructed spherical horizon and must **not** present the result as site-verified.
+
+### Historical lunar landing markers
+
+The 3D Moon globe displays thirteen *documented* touchdown locations: Apollo 11/12/14/15/16/17 (NASA), Chang'e 3/4/5/6 (CNSA), Chandrayaan-3 (ISRO), IM-1 Odysseus (Intuitive Machines) and Blue Ghost Mission 1 (Firefly). Marker colors indicate operator/organization. UTC touchdown times are provided only when verified; otherwise the date is shown with an "exact UTC time unverified" label. A marker click selects the mission's published coordinates in the LUNA globe.
+
+- Apollo coordinates: https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_sites.html
+- Apollo UTC touchdown times: https://www.nasa.gov/wp-content/uploads/2023/10/south-pole.pdf and https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo17info.html
+- Chang'e coordinates: https://cosparhq.cnes.fr/assets/uploads/2024/09/COSPAR-PPP-2024-Overview.pdf
+- Chandrayaan-3 coordinates/time: https://www.nasa.gov/wp-content/uploads/2026/02/42-240a.pdf
+- IM-1 coordinates/time: https://ntrs.nasa.gov/api/citations/20250007036/downloads/aasimndl.pdf
+- Blue Ghost time/location: https://www.nasa.gov/news-release/touchdown-carrying-nasa-science-fireflys-blue-ghost-lands-on-moon/
+
+### Rotatable 3D surface scenes — new fidelity and caution
+
+The user-selected Earth range is sampled from **Mapzen / AWS Open Terrain Tiles** in Terrarium-encoded elevation PNG format (30-ish-meter global tiles, heterogeneous providers). Decode in meters: \((R\times 256 + G + B/256)-32768\). This is **not a verified pad survey**, and the selected range coordinates are *reference coordinates*, not exact approved launch-pad coordinates. Tile availability and CORS depend on public infrastructure. If a tile is blocked, partial or absent, LUNA labels elevation **unavailable** and draws a flat coordinate reference instead of inventing hills.
+
+Source: https://www.mapzen.com/blog/terrain-tile-service/
+
+The lunar descent now samples a 23×23 **NASA LOLA polar DEM** grid over a 440-meter footprint around the scenario's selected landing coordinates. A valid 20 m polar patch is required for the measured terrain claim. The 3D terrain display and lander body can be rotated and zoomed independently. The vehicle's position is still a separately labelled model trajectory:
+- generic vehicle vertical ascent kinematics with manufacturer mass/thrust sensitivity where available;
+- 180 m lunar terminal descent using \(g=1.62\,\mathrm{m/s^2}\), assumed initial and final downward speeds, and constant net acceleration.
+
+To keep the entire 180 m descent and the high-altitude ascent visible inside a compact graphic, their **display height is compressed**. Terrain elevation is rendered in native meter differences relative to the local center sample. The on-screen altitude/speed numbers, not the screen pixels, represent the model's state. These scenes still omit full vehicle/lander dynamics, terrain-relative autopilot, weather/drag, lunar plume interactions, surface hazards finer than DEM resolution and official launch clearance.
+
+### 3D Moon-fixed directions
+
+The small left-sidebar Moon sky viewer uses the same NASA-derived Moon-fixed unit vectors already used in the forecast (Sun and Earth). The user can rotate the camera; the markers are **directions**, not fictitious Sun/Earth distances or radio geometry. This representation deliberately omits the extreme physical distances to preserve legibility. The adjacent terrain horizon is the relevant site-specific angular obstruction calculation.
+
+### Chart help and additional plots
+
+Each of the original eight charts has an on-demand information icon explaining the metric, its relevance to the mission and how to read it. Subtitles and duplicate min/max captions are hidden by default for compactness. **No ninth or tenth graph has been added in this release**: the old binary Earth visibility ribbon was replaced by the continuous, 0°-threshold Earth clearance plot. Extra graphs should only be added if they introduce independent, scientifically supported decision information.
