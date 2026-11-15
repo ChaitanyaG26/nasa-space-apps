@@ -24,6 +24,7 @@ jobs:
       - name: Scientific browser unit tests (no NASA downloads)
         run: |
           node --test luna-mission-control/tests/static-engine.test.mjs
+          node --test luna-mission-control/tests/mobile-scenario-layout.test.mjs
           node --test luna-mission-control/tests/horizons-static.test.mjs
           node --test luna-mission-control/tests/lola-terrain.test.mjs
           node --test luna-mission-control/tests/lola-global.test.mjs
