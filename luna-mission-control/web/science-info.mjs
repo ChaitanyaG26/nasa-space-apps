@@ -35,7 +35,7 @@ export function renderScenarioInfo(data,label){
     (String(route.status||"Rover corridor screening available")+
       (route.found?" · Length "+route.length_m+" m · Peak segment slope "+route.maximum_segment_slope_deg+"°":"")+
       " · NOT a verified rover-safe path"):
-    "No NASA 20 m terrain patch available for rover corridor screening at this coordinate.";
+    (route?.status||"No NASA 20 m terrain patch available for rover corridor screening at this coordinate.");
   terrainRows.push(infoRow("Rover corridor",routeText));
   const thermalRows=[
     infoRow("Regolith model","Projected radiative equilibrium: albedo 0.12, emissivity 0.95, baseline 95 K."),
