@@ -43,14 +43,15 @@ test("Before comparing, one mission and both sequences use full available horizo
  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
  assert.match(css,/\.launch-cola-scenarios:has\(>\.launch-cola-scenario:only-child\) \.sequence-panel canvas/);
 });
-test("The Moon backlight is behind a transparent WebGL globe, not a fabricated ephemeris light",()=>{
+test("Moon halo follows Sun direction through a transparent WebGL globe",()=>{
  const css=file("styles.css"),globe=file("globe.js");
  assert.match(globe,/alpha:true/);
  assert.match(globe,/gl\.clearColor\(0,0,0,0\)/);
- assert.match(css,/\.sidebar-layout \.map-page::before/);
- assert.match(css,/radial-gradient\(circle closest-side at 50% 50%/);
- assert.match(css,/rgba\(255,206,100,\.29\)/);
- assert.match(css,/\.map-page #globe\{position:relative;z-index:1;background:transparent;/);
+ assert.match(globe,/drawLunarLimbHalo\(haloContext/);
+ assert.match(globe,/sunToMoonView\(sun,yaw,pitch\)/);
+ assert.match(css,/\.sidebar-layout \.map-page \.lunar-limb-halo/);
+ assert.match(css,/filter:none!important/);
+ assert.match(css,/\.map-page #globe\{/);
 });
 test("Mobile and portrait tablet share simulation engine, avoid horizontal overflow and stack navigation",()=>{
  const css=file("styles.css"),page=file("index.html");
