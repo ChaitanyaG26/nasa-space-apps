@@ -1603,3 +1603,22 @@ body>.metric-slot.fullscreen-slot .chart-info-content{right:0;top:28px;}
 @media (forced-colors:active){
  .sidebar-layout .map-page::before{background:Canvas;filter:none;}
 }
+
+
+/* v17: remove the stationary amber halo. A Sun-facing Canvas2D rim glow
+   updates from the exact Moon-fixed Sun vector used by the lunar shader. */
+.sidebar-layout .map-page::before{
+ background:radial-gradient(ellipse at 50% 52%,#193449 0%,#091b2f 54%,#050e1a 95%)!important;
+ filter:none!important;
+}
+.sidebar-layout .map-page .lunar-limb-halo{
+ position:absolute;inset:0;width:100%;height:100%;z-index:1;
+ pointer-events:none;display:block;background:transparent;
+ filter:blur(2px);
+}
+.sidebar-layout .map-page #globe{
+ position:relative;z-index:2;background:transparent;
+}
+@media(forced-colors:active){
+ .sidebar-layout .map-page .lunar-limb-halo{display:none;}
+}
