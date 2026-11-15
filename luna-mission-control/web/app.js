@@ -252,16 +252,16 @@ function metricSlot(index,key,content){
 function card(data,label){
  const m=data.metrics,s=data.samples;
  const rows=[
-  metricSlot(1,"power",chart("Solar generation",s,"power_w","#f9c74f")),
-  metricSlot(2,"battery",chart("Battery charge",s,"soc","#4ba4f6",100)),
-  metricSlot(3,"regolith",chart("Regolith temperature",s,"temperature_proxy_c","#e6a65a")),
-  metricSlot(4,"lander",chart("Lander thermal model",s,"lander_temperature_c","#8d8ff5")),
-  metricSlot(5,"heater",chart("Heater power",s,"heater_w","#f9c74f")),
+  metricSlot(1,"power",chart("Solar generation",s,"power_w","#318dcc")),
+  metricSlot(2,"battery",chart("Battery charge",s,"soc","#6bb8e8",100)),
+  metricSlot(3,"regolith",chart("Regolith temperature",s,"temperature_proxy_c","#3274bb")),
+  metricSlot(4,"lander",chart("Lander thermal model",s,"lander_temperature_c","#5a97d3")),
+  metricSlot(5,"heater",chart("Heater power",s,"heater_w","#68b4e4")),
   metricSlot(6,"radio",m.predicted_rf_link_hours!==null?
-   chart("S-band RF margin",s,"rf_margin_db","#4ba4f6"):
+   chart("S-band RF margin",s,"rf_margin_db","#367bc2"):
    '<div class="chart chart-unavailable"><div class="chart-title">S-band RF margin</div><p class="muted">RF model unavailable. Geometric Earth visibility remains shown.</p></div>'),
   metricSlot(7,"diviner",s.some(x=>Number.isFinite(x.diviner_observed_c))?
-   plotMeasured(s,"diviner_observed_c","#8d8ff5"):
+   plotMeasured(s,"diviner_observed_c","#719ed9"):
    '<div class="chart chart-unavailable"><div class="chart-title">Diviner reference (historical)</div><p class="muted">'+escapeHtml(data.quality?.diviner_observations||"No matching archival observations")+'</p></div>'),
   metricSlot(8,"earth",windows(s))
  ];
@@ -353,9 +353,7 @@ function render(){
    {id:"date-fixed",label:"Date fixed · optimize site",data:comparison.dateFixed},
    {id:"site-fixed",label:"Site fixed · optimize date",data:comparison.siteFixed}
   ];
-  html+='<nav class="scenario-navigation" aria-label="Jump between three mission scenarios">'+
-   variants.map(item=>'<button type="button" data-scenario-target="'+item.id+'">'+escapeHtml(item.label)+'</button>').join("")+
-   '</nav><div class="scenario-triple-viewport"><div class="cards scenario-triple">'+
+  html+='<div class="scenario-triple-viewport"><div class="cards scenario-triple">'+
    variants.map(item=>item.data?'<div data-scenario-card="'+item.id+'">'+card(item.data,item.label)+'</div>':
     '<div class="scenario-empty">No candidate found for '+escapeHtml(item.label)+'</div>').join("")+
    '</div></div>';
@@ -404,15 +402,6 @@ $("optimize").addEventListener("click",()=>{if(!lastMission)return;
    comparison_note:"Candidates are screened against model assumptions, not landing safety requirements."};
   render();showResults();await mountTerrainViews();
  });
-});
-$("results").addEventListener("click",event=>{
- const id=event.target.closest("[data-scenario-target]")?.dataset.scenarioTarget;
- if(!id)return;
- const node=$("results").querySelector('[data-scenario-card="'+id+'"]');
- const viewport=$("results").querySelector(".scenario-triple-viewport");
- if(node&&viewport)viewport.scrollTo({left:node.offsetLeft-(viewport.offsetLeft||0),behavior:"smooth"});
- for(const b of $("results").querySelectorAll("[data-scenario-target]"))
-  b.setAttribute("aria-current",String(b.dataset.scenarioTarget===id));
 });
 $("restartMission").addEventListener("click",()=>{
  closeScienceInformation();
