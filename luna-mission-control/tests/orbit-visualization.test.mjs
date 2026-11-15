@@ -29,10 +29,10 @@ test("Mission parameters stay in a scrollable left sidebar while only two action
  for(const page of [html,root]){
   assert.match(page,/<body class="sidebar-layout">/);
   assert.match(page,/<div class="fields" id="missionFields"/);
-  const aside=page.split("</aside>")[0],toolbar=page.match(/<nav class="mission-toolbar"[\\s\\S]*?<\\/nav>/)?.[0];
+  const aside=page.split("</aside>")[0],toolbar=page.match(/<nav class="mission-toolbar"[\s\S]*?<\/nav>/)?.[0];
   assert.ok(toolbar,"top action bar missing");
-  assert.equal((toolbar.match(/<button\\b/g)||[]).length,2,"action bar must contain exactly two buttons");
-  assert.equal((toolbar.match(/<select\\b|<label\\b|<input\\b/g)||[]).length,0,"no parameters allowed in action bar");
+  assert.equal((toolbar.match(/<button\b/g)||[]).length,2,"action bar must contain exactly two buttons");
+  assert.equal((toolbar.match(/<select\b|<label\b|<input\b/g)||[]).length,0,"no parameters allowed in action bar");
   for(const id of ["date","time","duration","sampleMinutes","mode","preserve",
                    "area","tilt","az","battery","load","reserve","thermalCap","rfTx","roverSlope"]){
    assert.ok(aside.includes('id="'+id+'"'),id+" should be in left sidebar");
