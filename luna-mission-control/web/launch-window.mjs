@@ -141,6 +141,14 @@ function installPanel(){
   '<p><a href="https://www.nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/" target="_blank" rel="noopener noreferrer">NASA launch ranges</a> · <a href="https://www.nasa.gov/cara/" target="_blank" rel="noopener noreferrer">NASA conjunction assessment</a> · <a href="https://celestrak.org/NORAD/documentation/gp-data-formats.php" target="_blank" rel="noopener noreferrer">CelesTrak public catalog documentation</a> · <a href="https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_450.169-1.pdf" target="_blank" rel="noopener noreferrer">FAA COLA guidance</a></p></details>'+
   '<p class="launch-cola-scope-note"><b>Launch-site acknowledgement:</b> This educational model focuses on Cape Canaveral Space Force Station, Kennedy Space Center, and Vandenberg Space Force Base as major U.S. orbital launch locations. Many other NASA-associated ranges mainly support sounding rockets, small or specialized missions. This is not a complete list of orbital launch facilities.</p>';
  parent.appendChild(el);
+ // Keep sources and the launch-site acknowledgement, but don't put paragraphs
+ // below the three animation panels. Open them only when explicitly requested.
+ const provenance=el.querySelector(".launch-cola-provenance");
+ const acknowledgement=el.querySelector(".launch-cola-scope-note");
+ if(provenance&&acknowledgement){
+  provenance.appendChild(acknowledgement);
+  el.querySelector(".launch-cola-scenarios")?.before(provenance);
+ }
  for(const field of el.querySelectorAll("[data-cola-shared]")){
   field.value=controls[field.dataset.colaShared];
   field.addEventListener("change",()=>{controls[field.dataset.colaShared]=field.value;});
