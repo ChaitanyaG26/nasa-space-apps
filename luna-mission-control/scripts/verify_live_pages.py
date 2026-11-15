@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-nasa-playback-graphics-v2"
+RELEASE = "20261114-three-d-v5"
 
 
 class Assets(html.parser.HTMLParser):
