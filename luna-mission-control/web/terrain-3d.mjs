@@ -97,8 +97,13 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
  const heading=document.createElement("div");heading.className="terrain-heading";
  const headingTitle=document.createElement("h3");headingTitle.textContent="3D lunar terrain explorer";
  const headingSub=document.createElement("small");
- headingSub.textContent="NASA LOLA measured elevation · rotatable DEM, not photographed street view";
- heading.append(headingTitle,headingSub);
+ headingSub.textContent="NASA LOLA measured terrain · drag to rotate";
+ const note=document.createElement("details");note.className="terrain-info";
+ note.innerHTML='<summary aria-label="Terrain data and exaggeration" title="Terrain information">ⓘ</summary>'+
+  '<div class="terrain-info-content"><strong>Terrain data &amp; limits</strong>'+
+  '<p>20 m local LOLA patches are preferred. Other sites use regional 8-ppd lunar DEM (~3.8 km sample spacing), so 500 m hazards cannot be resolved.</p>'+
+  '<p>Vertical exaggeration changes displayed relief, not measured elevation. Slope colors indicate a screening estimate, not landing or seismic safety. No site-specific moonquake risk map is available.</p></div>';
+ heading.append(headingTitle,note,headingSub);
  const view=document.createElement("div");view.className="terrain-controls";
  const layerLabel=document.createElement("label");layerLabel.textContent="Terrain layer";
  const select=document.createElement("select");select.setAttribute("aria-label","3D terrain layer");
@@ -112,13 +117,13 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
    [[50,"50 km × 50 km"],[100,"100 km × 100 km"],[200,"200 km × 200 km"]];
  for(const [value,label] of footprints){
   const option=document.createElement("option");option.value=String(value);option.textContent=label;
-  if(value===(patch?.5:100))option.selected=true;
+  if(value===(patch?.5:50))option.selected=true;
   footprintSelect.append(option);
  }
  footprintLabel.append(footprintSelect);
  const exaggerationLabel=document.createElement("label");exaggerationLabel.textContent="Vertical exaggeration";
- const exaggeration=document.createElement("input");exaggeration.type="range";exaggeration.min="1";exaggeration.max="15";exaggeration.step="1";exaggeration.value="6";exaggeration.setAttribute("aria-label","Vertical exaggeration");
- const numeric=document.createElement("span");numeric.textContent="6×";
+ const exaggeration=document.createElement("input");exaggeration.type="range";exaggeration.min="1";exaggeration.max="15";exaggeration.step="1";exaggeration.value=patch?"6":"10";exaggeration.setAttribute("aria-label","Vertical exaggeration");
+ const numeric=document.createElement("span");numeric.textContent=(patch?"6":"10")+"×";
  exaggerationLabel.append(exaggeration,numeric);
  const reset=document.createElement("button");reset.type="button";reset.textContent="Reset view";reset.className="terrain-reset";
  view.append(layerLabel,footprintLabel,exaggerationLabel,reset);
@@ -129,11 +134,13 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
  const legend=document.createElement("div");legend.className="terrain-legend";
  const source=document.createElement("p");source.className="terrain-caption";
  const evidence=seismicEvidence(latitude,longitude);
- let footprintKm=patch?.5:100;
+ let footprintKm=patch?.5:50;
  let mesh=buildTerrainMesh({latitude,longitude,patch,global,size:65,footprintKm});
  container.append(heading,view,canvas,legend,status,source);
+ note.addEventListener("pointerenter",()=>note.open=true);
+ note.addEventListener("pointerleave",()=>{if(!note.matches(":focus-within"))note.open=false;});
  let yaw=.65,tilt=.63,zoom=1,active=false,lastX=0,lastY=0;
- let layer="slope",exag=6,frame=null,disposed=false;
+ let layer="slope",exag=patch?6:10,frame=null,disposed=false;
  const update=()=>{
   if(disposed)return;
   const dpr=Math.min(2,window.devicePixelRatio||1);
@@ -142,7 +149,7 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
   const ctx=canvas.getContext("2d");
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,width,height);
-  ctx.fillStyle="#f1f6f8";ctx.fillRect(0,0,width,height);
+  ctx.fillStyle="#e8f2f5";ctx.fillRect(0,0,width,height);
   if(mesh.range.min===null){
    ctx.fillStyle="#4e6776";ctx.font="15px system-ui";
    ctx.fillText("NASA elevation samples unavailable for this view",20,height/2);return;
@@ -179,9 +186,9 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
    for(let i=1;i<4;i++)ctx.lineTo(a[i].x,a[i].y);
    ctx.closePath();ctx.fillStyle=poly.fill;ctx.fill();
   }
-  ctx.fillStyle="#182e3e";ctx.fillRect(15,15,260,31);
-  ctx.fillStyle="#eef8fc";ctx.font="600 12px system-ui";
-  ctx.fillText(mesh.detail?"20-m NASA LOLA / LOCAL TERRAIN":"8-PPD NASA LOLA / REGIONAL TERRAIN",26,35);
+  ctx.fillStyle="#224d6699";ctx.fillRect(15,15,220,25);
+  ctx.fillStyle="#eaf6fc";ctx.font="600 11px system-ui";
+  ctx.fillText(mesh.detail?"LOLA · 20 m local":"LOLA · 8 ppd regional",24,32);
   ctx.fillStyle="#4b6675";ctx.font="12px system-ui";
   ctx.fillText((mesh.footprintKm<1?Math.round(mesh.footprintKm*1000)+" m":mesh.footprintKm+" km")+
     " square  •  Drag to rotate  •  Scroll to zoom",17,height-15);
@@ -222,7 +229,7 @@ export function initTerrain3D(container,{latitude,longitude,patch=null,global=nu
   zoom=1;setLabels();draw();
  });
  exaggeration.addEventListener("input",()=>{exag=Number(exaggeration.value);numeric.textContent=exag+"×";draw();});
- reset.addEventListener("click",()=>{yaw=.65;tilt=.63;zoom=1;exag=6;exaggeration.value="6";numeric.textContent="6×";draw();});
+ reset.addEventListener("click",()=>{yaw=.65;tilt=.63;zoom=1;exag=patch?6:10;exaggeration.value=String(exag);numeric.textContent=exag+"×";draw();});
  const resize=typeof ResizeObserver!=="undefined"?new ResizeObserver(draw):null;
  if(resize)resize.observe(canvas);
  setLabels();draw();
