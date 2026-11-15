@@ -1,10 +1,10 @@
 # LUNA — Moon Mission Control
+**Launch the interactive website at https://lunacontrol.earth/**
 
 <img width="1024" height="769" alt="image" src="https://github.com/user-attachments/assets/a291d69c-afb9-4033-8d85-0d73ef147861" />
 
-**Launch the interactive website at https://lunacontrol.earth/**
-
 ## Table of Contents
+- [LUNA — Moon Mission Control](#luna--moon-mission-control)
 - [Table of Contents](#table-of-contents)
 - [Mission and Relevance](#mission-and-relevance)
 - [Widget Usage Guide](#widget-usage-guide)
