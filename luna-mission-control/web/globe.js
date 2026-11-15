@@ -2,7 +2,7 @@ import {HISTORIC_LANDING_SITES,LANDING_ORGANIZATIONS,siteVector,readableLandingT
 // NASA Lunar Reconnaissance Orbiter color mosaic (CGI Moon Kit), displayed on a globe.
 // https://svs.gsfc.nasa.gov/4720/ . Visual reference, not LOLA terrain hazards.
 export function initGlobe(canvas,onSelect) {
- const gl=canvas.getContext("webgl2",{antialias:true}) || canvas.getContext("webgl",{antialias:true});
+ const gl=canvas.getContext("webgl2",{antialias:true,alpha:true}) || canvas.getContext("webgl",{antialias:true,alpha:true});
  if(!gl){const ctx=canvas.getContext("2d");ctx.fillStyle="#425a69";ctx.fillRect(0,0,canvas.width,canvas.height);return {setSun(){},focus(){},setSite(){}}}
  const vs=gl.createShader(gl.VERTEX_SHADER);
  gl.shaderSource(vs,"attribute vec3 pos;uniform float yaw,pitch,aspect,zoom;varying vec3 normal;varying vec3 cameraNormal;void main(){float c=cos(yaw),s=sin(yaw),a=cos(pitch),b=sin(pitch);vec3 p=vec3(c*pos.x+s*pos.z,pos.y,-s*pos.x+c*pos.z);vec3 q=vec3(p.x,a*p.y-b*p.z,b*p.y+a*p.z);normal=pos;cameraNormal=q;gl_Position=vec4(q.x*zoom/aspect,q.y*zoom,q.z*.5,1.);}");
@@ -51,7 +51,8 @@ export function initGlobe(canvas,onSelect) {
  };
  moonImage.src=LOCAL_URL;
 
- function draw(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);gl.clearColor(.018,.043,.076,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);gl.uniform3fv(u("sun"),sun);gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);projectMarker()}
+ function draw(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);// Transparent clear exposes the gold backlight painted behind the globe canvas.
+ gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);gl.uniform3fv(u("sun"),sun);gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);projectMarker()}
  function view(p){let c=Math.cos(yaw),s=Math.sin(yaw),a=Math.cos(pitch),b=Math.sin(pitch);let x=c*p[0]+s*p[2],z=-s*p[0]+c*p[2];return [x,a*p[1]-b*z,b*p[1]+a*z]}
  function world(q){let a=Math.cos(pitch),b=Math.sin(pitch);let py=a*q[1]+b*q[2],pz=-b*q[1]+a*q[2];let c=Math.cos(yaw),s=Math.sin(yaw);return [c*q[0]-s*pz,py,s*q[0]+c*pz]}
 
