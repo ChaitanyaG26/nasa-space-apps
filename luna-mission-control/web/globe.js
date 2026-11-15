@@ -1,5 +1,5 @@
 import {HISTORIC_LANDING_SITES,LANDING_ORGANIZATIONS,siteVector,readableLandingTime} from "./landing-sites.mjs";
-import {sunToMoonView,drawLunarLimbHalo} from "./lunar-limb-halo.mjs";
+import {sunToMoonView,drawLunarLimbHalo} from "./lunar-limb-halo.mjs?v=20261114-smooth-halo-v19";
 // NASA Lunar Reconnaissance Orbiter color mosaic (CGI Moon Kit), displayed on a globe.
 // https://svs.gsfc.nasa.gov/4720/ . Visual reference, not LOLA terrain hazards.
 export function initGlobe(canvas,onSelect) {
