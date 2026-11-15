@@ -61,3 +61,12 @@ jobs:
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify live published HTML and simulation assets
+        env:
+          PUBLISHED_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          python3 -m py_compile luna-mission-control/scripts/verify_live_pages.py
+          python3 luna-mission-control/scripts/verify_live_pages.py "$PUBLISHED_URL"
+          if [ "${PUBLISHED_URL%/}" != "https://lunacontrol.earth" ]; then
+            python3 luna-mission-control/scripts/verify_live_pages.py "https://lunacontrol.earth/"
+          fi
