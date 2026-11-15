@@ -192,7 +192,7 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       seismic:'NO LOCATION-SPECIFIC SEISMIC HAZARD PREDICTION',
       rover:'NO ROVER TRAVERSABILITY DETERMINED'
     },
-    metrics:{total_energy_wh:Math.round(sum),sun_hours:sun.hours,earth_hours:earth.hours,earth_fraction:round(earth.hours/N,3),
+    metrics:{total_energy_wh:Math.round(sum),sun_hours:sun.hours,earth_hours:earth.hours,earth_fraction:round(earth.hours/(r.duration_days*24),3),
       max_earth_blackout_h:earth.maxGap,max_darkness_h:sun.maxGap,min_soc:round(minSoc,1),
       battery_reserve_pass:reserveOk,communication_pass:commsOk,feasible:reserveOk&&commsOk,
       constraints_label:'Assumption-based battery reserve and arbitrary 24-hour communication gap checks; NOT certified safe',
@@ -209,33 +209,108 @@ export function simulateWithGeometry(input,gs,ephemerisLabel,terrainInfo=null,re
       projected_temperature_max_c:Math.max(...rows.map(x=>x.temperature_proxy_c))},
     sample_minutes:r.sample_minutes,earth_windows:earth.intervals,sun_windows:sun.intervals,rf_link_windows:linkWindows?.intervals??null,samples:rows};
 }
-const grid=[[-89.5,0],[-89.5,45],[-89.5,90],[-89.5,135],[-89.5,-90],[-89.1,15],[-89.1,75],[-89.1,145],[-88.5,-35],[-88.5,55],[-88.5,135]];
-function rank(out,r){
-  const m=out.metrics,possible=1361*r.area_m2*.24*.8*r.duration_days*24;
-  const rfFraction=m.predicted_rf_link_hours===null?m.earth_fraction:m.predicted_rf_link_hours/(r.duration_days*24);
-  return [Number(m.feasible),round(.6*Math.min(1,m.total_energy_wh/Math.max(1,possible))+.4*rfFraction,6),m.min_soc];
-}
+// Deterministic, explicitly illustrative south-polar search. The 15° longitude
+// x 20 latitude mesh is supplemented with 20-m-LOLA-patch neighborhoods.
+// None of these points is a screened or qualified landing zone.
+const SEARCH_LATITUDES=[-89.9,-89.75,-89.5,-89.25,-89,-88.75,-88.5,-88.25,-88,-87.5,-87,-86.5,-86,-85.5,-85,-84,-83,-82,-81,-80];
+const PATCH_CENTERS=[[-89.5,0],[-89.5,90],[-89.5,180],[-85,45]];
+export const OPTIMIZATION_TIME_STEP_HOURS=3;
+const searchSites=()=>{
+ const found=new Map();
+ const add=(lat,lon)=>{
+  const latitude=Math.max(-90,Math.min(90,Number(lat.toFixed(6))));
+  const longitude=Number((((lon+180)%360+360)%360-180).toFixed(6));
+  found.set(latitude.toFixed(6)+","+longitude.toFixed(6),[latitude,longitude]);
+ };
+ for(const lat of SEARCH_LATITUDES)for(let lon=-180;lon<180;lon+=15)add(lat,lon);
+ for(const [lat,lon] of PATCH_CENTERS){
+  for(const dn of [-3000,0,3000])for(const de of [-3000,0,3000]){
+   const nextLat=lat+dn/111320;
+   const nextLon=lon+de/(111320*Math.cos(lat*PI/180));
+   add(nextLat,nextLon);
+  }
+ }
+ return [...found.values()];
+};
+export const OPTIMIZATION_SITE_GRID=Object.freeze(searchSites());
+const rank=(out,r)=>{
+ const m=out.metrics,possible=1361*r.area_m2*.24*.8*r.duration_days*24;
+ const rfFraction=m.predicted_rf_link_hours===null?m.earth_fraction:m.predicted_rf_link_hours/(r.duration_days*24);
+ return [Number(m.feasible),round(.6*Math.min(1,m.total_energy_wh/Math.max(1,possible))+.4*rfFraction,6),m.min_soc];
+};
+const compareRank=(a,b)=>{
+ const x=a.score,y=b.score;
+ return y[0]-x[0]||y[1]-x[1]||y[2]-x[2];
+};
+const optimizationChoices=(r,preserve)=>{
+ const choices=[];
+ if(preserve==="time"){
+  for(const [latitude,longitude] of OPTIMIZATION_SITE_GRID){
+   if(Math.abs(latitude-r.latitude)<1e-6&&Math.abs(longitude-r.longitude)<1e-6)continue;
+   choices.push({name:"Grid "+(choices.length+1),request:{...r,latitude,longitude}});
+  }
+ }else if(preserve==="site"){
+  for(let j=-112;j<=112;j++){
+   if(j===0)continue;
+   choices.push({name:(j>=0?"+":"")+(j*OPTIMIZATION_TIME_STEP_HOURS)+" h",
+    request:{...r,landing_time:iso(Date.parse(r.landing_time)+j*OPTIMIZATION_TIME_STEP_HOURS*HOUR)}});
+  }
+ }else throw Error("preserve must be site or time");
+ return choices;
+};
+const optimizationSearchLabel=(preserve,eligible,skipped)=>{
+ const prefix=preserve==="time"?
+  "South-polar grid (80°–89.9° S, 15° longitudes plus four local patch neighborhoods)":
+  "Fixed site; dates every 3 hours within ±14 days";
+ return prefix+"; "+eligible+" candidates screened at 60-minute resolution; up to 16 finalists recalculated at the chosen timestep."+
+  (skipped?" "+skipped+" outside supported ephemeris coverage.":"")+
+  " Candidates are NOT vetted landing locations.";
+};
+const finalOptimization=(r,preserve,original,screened,runner,skipped)=>{
+ screened.sort(compareRank);
+ // Keep complete sample arrays ONLY for shortlisted candidates. The original
+ // implementation retained every long-duration candidate's entire time series.
+ const refined=screened.slice(0,16).map(entry=>{
+  const result=runner(entry.request);
+  return {...entry,score:rank(result,r),result};
+ }).sort(compareRank);
+ const winner=refined[0]??null,feasible=refined.some(c=>c.result.metrics.feasible);
+ return {original,recommended:winner?.result??null,recommendation_name:winner?.name??null,
+  alternatives:refined.slice(0,5).map(c=>({
+   name:c.name,site:c.result.site,landing_time:c.result.landing_time,metrics:c.result.metrics
+  })),
+  preserve,search:optimizationSearchLabel(preserve,screened.length,skipped),
+  comparison_note:feasible?
+   "A candidate passes assumed battery and communication thresholds, NOT landing safety.":
+   "No refined candidate passes assumption-based battery and 24-hour blackout checks. This is NOT landing safety certification.",
+  scientific_limit:"NASA Horizons and LOLA inform projections; screening uses coarser 60-minute samples before full-resolution refinement. No safe landing, real RF contact or hardware survival is certified."};
+};
 export function optimize(payload){
-  return optimizeWithEngine(payload,simulate);
+ return optimizeWithEngine(payload,simulate);
 }
-
-export function optimizeWithEngine(payload,runner){
-  const r=validated({...payload.mission,data_mode:"demo"}),original=runner(r),choices=[];
-  if(payload.preserve==='time'){
-    grid.forEach(([latitude,longitude],i)=>{if(latitude!==r.latitude||longitude!==r.longitude)choices.push({name:'Grid '+(i+1),request:{...r,latitude,longitude}})});
-  }else if(payload.preserve==='site'){
-    for(let j=-28;j<=28;j++)if(j!==0)choices.push({name:(j>=0?'+':'')+(j*12)+' h',request:{...r,landing_time:iso(Date.parse(r.landing_time)+j*12*HOUR)}});
-  }else throw Error('preserve must be site or time');
-  const sorted=choices.map(c=>({...c,result:runner(c.request)})).sort((a,b)=>{
-    const x=rank(a.result,r),y=rank(b.result,r);return y[0]-x[0]||y[1]-x[1]||y[2]-x[2];
-  });
-  const winner=sorted[0],feasible=sorted.some(c=>c.result.metrics.feasible);
-  return {original,recommended:winner?.result??null,recommendation_name:winner?.name??null,
-    alternatives:sorted.slice(0,5).map(c=>({name:c.name,site:c.result.site,landing_time:c.result.landing_time,metrics:c.result.metrics})),
-    preserve:payload.preserve,
-    search:payload.preserve==='time'?'Demonstration grid of 11 south-pole coordinates; not vetted landing zones.':'Fixed site; landing dates sampled every 12 hours within ±14 days.',
-    comparison_note:feasible?'Candidate passes assumed battery and communication thresholds, NOT landing safety.':'No evaluated candidate passes assumption-based battery and 24-hour blackout checks. This is NOT landing safety certification.',
-    scientific_limit:'NASA Horizons and coarse LOLA inform projections; landing safety, lander thermal survival, and RF links remain unvalidated.'};
+export function optimizeWithEngine(payload,runner,{supported=()=>true}={}){
+ const r=validated({...payload.mission,data_mode:"demo"});
+ const original=runner(r),screened=[];let skipped=0;
+ for(const entry of optimizationChoices(r,payload.preserve)){
+  if(!supported(entry.request)){skipped++;continue;}
+  const summary=runner({...entry.request,sample_minutes:60});
+  screened.push({...entry,score:rank(summary,r)});
+ }
+ return finalOptimization(r,payload.preserve,original,screened,runner,skipped);
+}
+export async function optimizeWithEngineAsync(payload,runner,{supported=()=>true,yieldEvery=12}={}){
+ const r=validated({...payload.mission,data_mode:"demo"});
+ const original=runner(r),screened=[];let skipped=0,processed=0;
+ for(const entry of optimizationChoices(r,payload.preserve)){
+  if(!supported(entry.request)){skipped++;continue;}
+  const summary=runner({...entry.request,sample_minutes:60});
+  screened.push({...entry,score:rank(summary,r)});
+  processed++;
+  // Let the browser paint between batches; no DOM layout changes required.
+  if(processed%yieldEvery===0&&typeof setTimeout==="function")
+   await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ return finalOptimization(r,payload.preserve,original,screened,runner,skipped);
 }
 export async function staticApi(path,body){
   await Promise.resolve();
