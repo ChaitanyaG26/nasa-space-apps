@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-solar-3d-v13"
+RELEASE = "20261114-data-ui-v14"
 
 
 class Assets(html.parser.HTMLParser):
@@ -104,6 +104,8 @@ def verify(base_url):
         "landing-sites.mjs": "HISTORIC_LANDING_SITES",
         "moon-sky-3d.mjs": "createMoonSky3D",
         "mission-surface-3d.mjs": "loadMoonSiteGrid",
+        "usgs-3dep.mjs": "decodeFloatTiff",
+        "terrain-3d.mjs": "terrain-info",
     }
     for filename, expected in modules.items():
         url = urllib.parse.urljoin(library_dir, filename)
