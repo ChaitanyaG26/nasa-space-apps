@@ -2,7 +2,7 @@ import {renderScientificInformation} from "./science-info.mjs";
 import "./launch-window.mjs?v=20261114-phone-scenarios-v18";
 import {initGlobe} from "./globe.js?v=20261114-smooth-halo-v19";
 import {createMoonSky3D} from "./moon-sky-3d.mjs?v=20261114-data-ui-v14";
-import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261115-telemetry-v22";
+import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261115-legible-v23";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
 import {initTerrain3D} from "./terrain-3d.mjs?v=20261114-data-ui-v14";
 import {staticApi,simulateWithGeometry,optimizeWithEngine} from "./static-engine.mjs?v=20261114-extent500-1";
