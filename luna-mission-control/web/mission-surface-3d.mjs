@@ -6,7 +6,7 @@
  * No elevation data -> unknown/flat reference plane; NEVER invented mountains.
  * Motion poses belong to the separately labeled kinematic demonstration.
  */
-import {destination} from "./lola-global.mjs";
+import {destination,elevationGlobalKm} from "./lola-global.mjs";
 import {samplePolarHeightKm} from "./lola-polar-detail.mjs";
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 export const LAUNCH_RANGE_COORDS={
@@ -20,63 +20,112 @@ export function mercatorTile(lat,lon,z=13){
  const x=(lon+180)/360*n,y=(1-Math.asinh(Math.tan(phi))/Math.PI)/2*n;
  return {x:Math.floor(x),y:Math.floor(y),fractionX:x%1,fractionY:y%1,z};
 }
-export async function loadEarthSiteGrid(siteId,{size=21,footprintM=600}={}){
- const loc=LAUNCH_RANGE_COORDS[siteId];if(!loc)return null;
- if(typeof Image==="undefined"||typeof document==="undefined")return null;
- const tile=mercatorTile(loc.lat,loc.lon),url=
-  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/"+tile.z+"/"+tile.x+"/"+tile.y+".png";
+const earthGridCache=new Map();
+async function getTerrariumTile(z,x,y){
  const image=new Image();image.crossOrigin="anonymous";image.decoding="async";
  const loaded=new Promise((resolve,reject)=>{
-  const timer=setTimeout(()=>reject(new Error("Terrain tile timed out")),7500);
+  const timer=setTimeout(()=>reject(new Error("Terrain tile timed out")),6500);
   image.onload=()=>{clearTimeout(timer);resolve();};
-  image.onerror=()=>{clearTimeout(timer);reject(new Error("Public DEM tile unavailable"));};
+  image.onerror=()=>{clearTimeout(timer);reject(new Error("Public tile unavailable"));};
  });
- image.src=url;await loaded;
- const off=document.createElement("canvas");off.width=256;off.height=256;
- const ctx=off.getContext("2d",{willReadFrequently:true});
+ image.src="https://s3.amazonaws.com/elevation-tiles-prod/terrarium/"+z+"/"+x+"/"+y+".png";
+ await loaded;
+ const canvas=document.createElement("canvas");canvas.width=256;canvas.height=256;
+ const ctx=canvas.getContext("2d",{willReadFrequently:true});
+ if(!ctx)throw Error("Canvas image decoder unavailable");
  ctx.drawImage(image,0,0,256,256);
- const pixels=ctx.getImageData(0,0,256,256).data;
- const at=(u,v)=>{
-  const x=clamp(Math.round(u),0,255),y=clamp(Math.round(v),0,255),i=(y*256+x)*4;
-  if(pixels[i+3]<220)return null;
-  return decodeTerrariumRGB(pixels[i],pixels[i+1],pixels[i+2]);
+ return ctx.getImageData(0,0,256,256).data;
+}
+async function getEarthGridAtZoom(siteId,{size,footprintM},z){
+ const loc=LAUNCH_RANGE_COORDS[siteId],tile=mercatorTile(loc.lat,loc.lon,z);
+ const pixelM=Math.cos(loc.lat*Math.PI/180)*2*Math.PI*6378137/(2**z*256);
+ const half=footprintM/(2*pixelM),originX=tile.fractionX*256,originY=tile.fractionY*256;
+ const xs=[Math.floor((originX-half)/256),Math.floor((originX+half)/256)];
+ const ys=[Math.floor((originY-half)/256),Math.floor((originY+half)/256)];
+ const wanted=[];
+ for(let j=ys[0];j<=ys[1];j++)for(let i=xs[0];i<=xs[1];i++)wanted.push([i,j]);
+ // A single 256px tile silently returned null data at a tile boundary.
+ // Here *all* crossing tiles are fetched and sampled bilinearly.
+ if(wanted.length>9)throw Error("Too many terrain tiles for requested extent");
+ const tiles=new Map(await Promise.all(wanted.map(async ([x,y])=>
+  [x+","+y,await getTerrariumTile(z,tile.x+x,tile.y+y)])));
+ const elevation=(x,y)=>{
+  const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  const get=(xx,yy)=>{
+   const tx=Math.floor(xx/256),ty=Math.floor(yy/256);
+   const buffer=tiles.get(tx+","+ty);
+   if(!buffer)return null;
+   const col=((xx%256)+256)%256,row=((yy%256)+256)%256;
+   const i=(row*256+col)*4;
+   return buffer[i+3]<220?null:decodeTerrariumRGB(buffer[i],buffer[i+1],buffer[i+2]);
+  };
+  const values=[get(ix,iy),get(ix+1,iy),get(ix,iy+1),get(ix+1,iy+1)];
+  if(values.some(v=>v===null))return null;
+  return values[0]*(1-fx)*(1-fy)+values[1]*fx*(1-fy)+
+   values[2]*(1-fx)*fy+values[3]*fx*fy;
  };
- const worldPixelM=Math.cos(loc.lat*Math.PI/180)*2*Math.PI*6378137/(2**tile.z*256);
  const rows=[];
  for(let j=0;j<size;j++){
   const row=[];
   for(let i=0;i<size;i++){
    const e=(i/(size-1)-.5)*footprintM,n=(.5-j/(size-1))*footprintM;
-   const u=tile.fractionX*256+e/worldPixelM,v=tile.fractionY*256-n/worldPixelM;
-   row.push({e,n,h:u>=0&&u<256&&v>=0&&v<256?at(u,v):null});
+   row.push({e,n,h:elevation(originX+e/pixelM,originY-n/pixelM)});
   }
   rows.push(row);
  }
+ const coverage=rows.flat().filter(v=>Number.isFinite(v.h)).length/(size*size);
  return {rows,center:rows[Math.floor(size/2)][Math.floor(size/2)]?.h??null,
-  siteId,source:"Mapzen / AWS open elevation tiles · mixed SRTM/USGS source",footprintM,
-  resolutionM:worldPixelM,coverage:rows.flat().filter(v=>Number.isFinite(v.h)).length/size**2};
+  siteId,source:"Mapzen / AWS open Terrarium elevation tiles, mixed sources",footprintM,
+  resolutionM:pixelM,sourceResolutionKnown:false,coverage,tileZoom:z};
 }
-export function loadMoonSiteGrid(patch,lat,lon,{size=23,footprintM=440}={}){
- if(!patch||!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+export async function loadEarthSiteGrid(siteId,{size=41,footprintM=600}={}){
+ if(!LAUNCH_RANGE_COORDS[siteId]||typeof Image==="undefined"||typeof document==="undefined")return null;
+ const key=[siteId,size,footprintM].join(":");
+ if(!earthGridCache.has(key)){
+  const promise=(async()=>{
+   // z15 exposes finer raster sampling, but does not imply the native DEM
+   // itself has this resolution. z14 is a network/service fallback.
+   for(const z of [15,14,13]){
+    try{
+     const grid=await getEarthGridAtZoom(siteId,{size,footprintM},z);
+     if(grid.coverage>=.75)return grid;
+    }catch{/* Missing tile/CORS: retry a lower zoom level. */}
+   }
+   return null;
+  })();
+  earthGridCache.set(key,promise);
+  promise.catch(()=>earthGridCache.delete(key));
+ }
+ return earthGridCache.get(key);
+}
+export function loadMoonSiteGrid(patch,lat,lon,{size=33,footprintM=640,global=null}={}){
+ if(!patch&&!global)return null;
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+ // A 500 m square around the target cannot be resolved by 8 ppd LOLA.
+ // Only display coarse regional relief when a 20 m local patch is absent.
+ const detailed=Boolean(patch);
+ if(!detailed){footprintM=40000;size=33;}
  const rows=[];
  for(let j=0;j<size;j++){
   const row=[];
   for(let i=0;i<size;i++){
    const e=(i/(size-1)-.5)*footprintM,n=(.5-j/(size-1))*footprintM;
    const [a,b]=destination(lat,lon,(Math.atan2(e,n)*180/Math.PI+360)%360,Math.hypot(e,n)/1000);
-   const h=samplePolarHeightKm(patch,a,b);
-   row.push({e,n,h:h===null?null:h*1000});
+   const h=detailed?samplePolarHeightKm(patch,a,b):elevationGlobalKm(global,a,b);
+   row.push({e,n,h:h===null?null:h*(detailed?1000:1000)});
   }
   rows.push(row);
  }
  const valid=rows.flat().filter(v=>Number.isFinite(v.h));
  return {rows,center:rows[Math.floor(size/2)][Math.floor(size/2)]?.h??null,
-  source:"NASA LOLA 20 m polar DEM",footprintM,resolutionM:20,coverage:valid.length/size**2};
+  source:detailed?"NASA LOLA 20 m polar DEM":"NASA LOLA global 8 pixels/degree (regional)",
+  detail:detailed,footprintM,resolutionM:detailed?20:3800,
+  sourceResolutionKnown:true,coverage:valid.length/size**2};
 }
 export function projectTerrainPoint(e,n,z,camera={yaw:.6,pitch:.65,zoom:1},width=600,height=278){
  const cy=Math.cos(camera.yaw),sy=Math.sin(camera.yaw),cp=Math.cos(camera.pitch),sp=Math.sin(camera.pitch);
  const east=cy*e-sy*n,north=sy*e+cy*n;
- const scale=.63*(camera.zoom||1);
+ const scale=.63*(camera.zoom||1)*(camera.worldScale||1);
  return {x:width/2+east*scale,y:height*.82+(north*sp-z*cp)*scale,
   depth:north*cp+z*sp};
 }
@@ -106,9 +155,9 @@ function vehicleCylinder(ctx,{e=0,n=0,z=0,r=5,height=65,body="#e2edf5",camera}){
  ctx.lineTo(shoulder.x-r*.63,shoulder.y);ctx.lineTo(shoulder.x+r*.63,shoulder.y);
  ctx.closePath();ctx.fillStyle=body;ctx.fill();
 }
-function landerSolid(ctx,{z=0,camera,body="#bfcddd",flame=false}){
+function landerSolid(ctx,{z=0,camera,scale=1,body="#bfcddd",flame=false}){
  const half=15,top=15,base=4;
- const p=(e,n,z0)=>projectTerrainPoint(e,n,z0,camera);
+ const p=(e,n,z0)=>projectTerrainPoint(e*scale,n*scale,z0*scale,camera);
  const a=p(-half,-half,z+base),b=p(half,-half,z+base),
   c=p(half,half,z+base),d=p(-half,half,z+base),
   A=p(-half,-half,z+top),B=p(half,-half,z+top),C=p(half,half,z+top),D=p(-half,half,z+top);
@@ -140,6 +189,10 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
  const cells=grid?.rows,center=Number.isFinite(grid?.center)?grid.center:0;
  const size=cells?.length||17;
  const footprint=grid?.footprintM||440;
+ // Camera shows 440 m as a readable surface extent. On a 40 km coarse
+ // regional fallback, the spacecraft is intentionally size-exaggerated.
+ const viewCamera={...camera,worldScale:Math.min(1,440/footprint)};
+ const vehicleExaggeration=Math.max(1,footprint/440);
  const get=(j,i)=>{
   if(cells)return cells[j]?.[i]||null;
   return {e:(i/(size-1)-.5)*footprint,n:(.5-j/(size-1))*footprint,h:0};
@@ -148,7 +201,7 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
  for(let j=0;j<size-1;j++)for(let i=0;i<size-1;i++){
   const pts=[get(j,i),get(j,i+1),get(j+1,i+1),get(j+1,i)];
   if(pts.some(p=>!p||!Number.isFinite(p.h)))continue;
-  const p=pts.map(t=>projectTerrainPoint(t.e,t.n,(t.h-center)*1.0,camera,width,height));
+  const p=pts.map(t=>projectTerrainPoint(t.e,t.n,(t.h-center)*1.0,viewCamera,width,height));
   const dhx=pts[1].h-pts[0].h,dhy=pts[3].h-pts[0].h;
   const light=clamp(.73+.25*(dhx-dhy)/Math.max(1,footprint/(size-1)),.45,1.0);
   const shade=Math.round((kind==="launch"?106:126)*light);
@@ -163,30 +216,30 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   ctx.strokeStyle="#8ba7ba50";ctx.lineWidth=.8;
   for(let j=0;j<10;j++){
    const v=(j/9-.5)*footprint;
-   let a=projectTerrainPoint(v,-footprint/2,0,camera,width,height),
-    b=projectTerrainPoint(v,footprint/2,0,camera,width,height);
+   let a=projectTerrainPoint(v,-footprint/2,0,viewCamera,width,height),
+    b=projectTerrainPoint(v,footprint/2,0,viewCamera,width,height);
    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
-   a=projectTerrainPoint(-footprint/2,v,0,camera,width,height);
-   b=projectTerrainPoint(footprint/2,v,0,camera,width,height);
+   a=projectTerrainPoint(-footprint/2,v,0,viewCamera,width,height);
+   b=projectTerrainPoint(footprint/2,v,0,viewCamera,width,height);
    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
   }
  }
  if(kind==="launch"){
   // Ascent altitude compressed above 300 m; no fake high-altitude terrain.
   const z=190*(1-Math.exp(-Math.max(0,altitudeM)/1800));
-  const center=projectTerrainPoint(0,0,0,camera,width,height);
+  const center=projectTerrainPoint(0,0,0,viewCamera,width,height);
   ctx.beginPath();ctx.ellipse(center.x,center.y,18,6,0,0,Math.PI*2);
   ctx.fillStyle="#111d2890";ctx.fill();
   const rocket=vehicle||{heightM:70,diameterM:3.7,paint:"#e0e6ec"};
   if(rocket.boosters){
    for(const off of [-1,1])vehicleCylinder(ctx,{e:off*(rocket.diameterM*1.7),n:0,z,
-    r:rocket.diameterM*.32,height:rocket.heightM*.83,body:"#9babb7",camera});
+    r:rocket.diameterM*.32,height:rocket.heightM*.83,body:"#9babb7",camera:viewCamera});
   }
   vehicleCylinder(ctx,{z,r:Math.max(2,rocket.diameterM/2),
-   height:rocket.heightM,body:rocket.paint,camera});
+   height:rocket.heightM,body:rocket.paint,camera:viewCamera});
   if(progress>.04&&progress<.99){
-   const tip=projectTerrainPoint(0,0,z-28,camera,width,height);
-   const tail=projectTerrainPoint(0,0,z,camera,width,height);
+   const tip=projectTerrainPoint(0,0,z-28,viewCamera,width,height);
+   const tail=projectTerrainPoint(0,0,z,viewCamera,width,height);
    ctx.beginPath();ctx.moveTo(tail.x-5,tail.y);ctx.lineTo(tip.x,tip.y);
    ctx.lineTo(tail.x+5,tail.y);ctx.closePath();ctx.fillStyle="#ffca67";ctx.fill();
   }
@@ -194,9 +247,9 @@ export function drawMissionSurface3D(ctx,{grid=null,kind="launch",camera={yaw:.6
   // The terminal 180 m is compressed solely for visibility; numerical
   // altitude and vertical speed are provided by the physical kinematic model.
   const z=120*clamp(altitudeM/180,0,1);
-  const target=projectTerrainPoint(0,0,0,camera,width,height);
+  const target=projectTerrainPoint(0,0,0,viewCamera,width,height);
   ctx.beginPath();ctx.arc(target.x,target.y,4,0,Math.PI*2);
   ctx.strokeStyle="#e5ca76";ctx.lineWidth=1.6;ctx.stroke();
-  landerSolid(ctx,{z,camera,body:lander?.body||"#c8d5e0",flame:progress>.01&&progress<.99});
+  landerSolid(ctx,{z,camera:viewCamera,scale:vehicleExaggeration,body:lander?.body||"#c8d5e0",flame:progress>.01&&progress<.99});
  }
 }
