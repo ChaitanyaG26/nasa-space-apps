@@ -74,6 +74,8 @@ export function renderScientificInformation(result,comparison){
     '<p><b>Modeled:</b> power, battery charge, terrain-dependent visibility, thermal and RF estimates. Inputs describe an illustrative spacecraft, not a certified mission.</p></div>'+
     compare+
     renderScenarioInfo(comparison?.original||result,comparison?"Original selection":"Selected site")+
+    (comparison?.dateFixed?renderScenarioInfo(comparison.dateFixed,"Date fixed · optimized location"):"")+
+    (comparison?.siteFixed?renderScenarioInfo(comparison.siteFixed,"Location fixed · optimized date"):"")+
     (comparison?.recommended?renderScenarioInfo(comparison.recommended,"Recommended alternative"):"")+
     '<section class="science-info-group science-info-sources"><h4>References</h4>'+
     '<ul>'+
