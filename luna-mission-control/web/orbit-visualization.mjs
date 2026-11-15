@@ -193,9 +193,11 @@ export function mountOrbitAnimation(host,{
   text(label,p.x+r+7,p.y+4);
  };
  function ephemAt(time){
-  const m=typeof moonEphemeris==="function"?moonEphemeris(time):null;
-  if(m&&Number.isFinite(m.ra)&&Number.isFinite(m.dec)&&Number.isFinite(m.distanceKm))
-   return m;
+  try{
+   const m=typeof moonEphemeris==="function"?moonEphemeris(time):null;
+   if(m&&Number.isFinite(m.ra)&&Number.isFinite(m.dec)&&Number.isFinite(m.distanceKm))
+    return m;
+  }catch{/* Cache coverage gaps revert to explicit analytic fallback. */}
   return{ra:((time/86400000*13.176)%360+360)%360,dec:5*Math.sin(time/86400000*.2),distanceKm:384400};
  }
  function fitCamera(){
@@ -300,11 +302,22 @@ export function mountOrbitAnimation(host,{
   host.dataset.catalogSource=data?.source||"Unavailable";
  }
  function setEphemerides(moon,sun){
-  if(typeof moon==="function")moonEphemeris=moon;
-  if(typeof sun==="function")sunEphemeris=sun;
+  const arrival=scene.departureUtc+scene.flightDays*DAY;
+  let verified=false;
+  try{
+   const m=typeof moon==="function"?moon(arrival):null;
+   const sol=typeof sun==="function"?sun(arrival):null;
+   verified=Boolean(m&&sol&&Number.isFinite(m.distanceKm)&&Number.isFinite(sol.distanceKm));
+  }catch{/* Requested mission is outside the JPL cache window. */}
+  if(verified){
+   moonEphemeris=moon;sunEphemeris=sun;
+   qs("[data-orbit-source]").textContent=
+    "Moon/Sun: JPL Horizons ICRF vectors · 1 h Hermite interpolation";
+  }else{
+   qs("[data-orbit-source]").textContent=
+    "Moon/Sun: approximate theory (JPL vectors outside mission date)";
+  }
   cachedTrack=null;fitCamera();draw();
-  qs("[data-orbit-source]").textContent=
-   "Moon/Sun: NASA JPL Horizons geocentric ICRF state vectors · Hermite";
  }
  function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,departureUtc:launch}={}){
   if(Number.isFinite(alt)&&alt>=160&&alt<=2000)scene.parkingKm=alt;
