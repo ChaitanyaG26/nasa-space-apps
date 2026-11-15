@@ -15,5 +15,5 @@ def test_lunar_terminator_uses_solar_incidence():
     assert 'float incidence=max(dot(n,normalize(sun)),0.0);' in text
     # Faint ambient illumination is for viewing the Moon's dark side,
     # not an assertion that the dark side receives solar power.
-    assert 'float brightness=0.075+0.925*sqrt(incidence);' in text
+    assert 'float brightness=0.29+0.71*sqrt(incidence);' in text
     assert 'smoothstep(-0.30,0.55' not in text
