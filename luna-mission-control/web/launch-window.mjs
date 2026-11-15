@@ -1,4 +1,5 @@
-import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-compact-sky-v7";
+import {mountOrbitAnimation,loadCatalogContext} from "./orbit-visualization.mjs?v=20261114-lander-sequence-v8";
+import {mountMissionSequences} from "./mission-sequences.mjs?v=20261114-lander-sequence-v8";
 /* LUNA Earth-to-Moon launch-window teaching model.
  * Not an official Launch COLA screening, range clearance, or flight trajectory.
  * NASA LSP launch range references: nasa.gov/kennedy/launch-services-program/launch-services-program-launch-sites/
@@ -86,6 +87,8 @@ const userState={
 };
 let controls={parking:200,span:24,step:60};
 let orbitControllers=[];
+let sequenceControllers=[];
+const visualSelections={original:{rocket:"falcon9",lander:"blueghost"},optimized:{rocket:"falcon9",lander:"blueghost"}};
 function findScenarios(){
  const shared=globalThis.window?.lunaLaunchScenarios;
  if(Array.isArray(shared)&&shared.length)return shared.filter(s=>s?.data!==null);
@@ -95,7 +98,7 @@ function scenarioTarget(s){
  const time=Date.parse(s?.arrival_time||"");
  const lat=Number(s?.latitude),lon=Number(s?.longitude);
  return Number.isFinite(time)&&Number.isFinite(lat)&&Number.isFinite(lon)
-  ? {time,coords:lat.toFixed(3)+"°, "+lon.toFixed(3)+"°"}:null;
+  ? {time,lat,lon,coords:lat.toFixed(3)+"°, "+lon.toFixed(3)+"°"}:null;
 }
 function scenarioMarkup(s){
  const state=userState[s.id]||userState.original;
@@ -108,13 +111,13 @@ function scenarioMarkup(s){
   '<label class="launch-cola-field">Launch range<select data-cola-field="site">'+
     LAUNCH_SITES.map(site=>'<option value="'+site.id+'" '+(state.site===site.id?"selected":"")+'>'+htmlSafe(site.name)+'</option>').join("")+
   '</select></label>'+
-  '<p class="launch-cola-site-note" data-cola-note></p>'+
   '<details class="launch-cola-holds"><summary>User-provided COLA hold intervals for this scenario</summary>'+
   '<p>Paste externally issued UTC hold intervals, one start,end pair per line. The tool cannot authenticate these records. Empty means unscreened, never approved.</p>'+
   '<textarea data-cola-field="holds" rows="2" placeholder="2026-11-15T12:00Z,2026-11-15T12:40Z">'+htmlSafe(state.holds)+'</textarea></details>'+
   '<button class="launch-cola-run" data-cola-calc type="button">Evaluate '+htmlSafe(s.label.toLowerCase())+'</button>'+
   '<div data-cola-output aria-live="polite"><p class="launch-cola-hint">Run this scenario to see its own candidate departure times and clearance status.</p></div>'+
   '<div data-orbit-host></div>'+
+  '<div data-sequences-host></div>'+
  '</article>';
 }
 function installPanel(){
@@ -124,14 +127,14 @@ function installPanel(){
  el.id="luna-launch-cola";el.className="launch-cola";
  el.innerHTML='<div class="launch-cola-head"><div><small>EARTH TO MOON · OPTIONAL MISSION EXTENSION</small>'+
   '<h2>Launch windows &amp; COLA</h2>'+
-  '<p>Separate preliminary launch screens for the original and optimized lunar missions. <b>Not an official collision-avoidance assessment.</b></p></div>'+
+  '<p>Conceptual launch and lunar-arrival views; no official collision clearance.</p></div>'+
   '<span class="launch-cola-tag">EDUCATIONAL MODEL</span></div>'+
   '<div class="launch-cola-form">'+
   '<label>LEO parking altitude (km)<input data-cola-shared="parking" type="number" min="160" max="2000" step="20" value="'+controls.parking+'"></label>'+
   '<label>Search ± hours<select data-cola-shared="span"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label>'+
   '</div>'+
   '<div class="launch-cola-scenarios" data-cola-list></div>'+
-  '<div class="launch-cola-animation"><b>Interactive 3D mission views</b><p>Pan and rotate each conceptual transfer in 3D. Future Higgsfield clips can be added separately; no depicted route is collision-cleared.</p></div>'+
+
   '<details class="launch-cola-provenance"><summary>Methodology, scientific limits and sources</summary>'+
   '<p>Truncated lunar theory and idealized two-body Earth-to-lunar-radius transfer. The destination coordinates label the selected lunar surface site; the simplified transfer does not solve a surface landing, lunar orbit insertion, or a vehicle-specific path. The 3D view shows Moon direction from a truncated theory with compressed distances, not a verified interception. Ranking uses an arrival-timing and Moon-bearing heuristic, not operational launch trajectory optimization.</p>'+
   '<p>Real launch approval requires vehicle/range capabilities, trajectory targeting, tracked-object ephemerides, uncertainties and official COLA clearance. CelesTrak public OMM data is a partial, lower-fidelity reference and cannot validate a collision-free route. A time outside entered hold intervals is never declared safe.</p>'+
@@ -147,7 +150,13 @@ function installPanel(){
   const article=e.target.closest("[data-cola-scenario]");
   if(!article)return;
   const id=article.dataset.colaScenario;
-  if(e.target.dataset.colaField==="site"){userState[id].site=e.target.value;renderSiteNote(article);}
+  if(e.target.dataset.colaField==="site"){
+   userState[id].site=e.target.value;
+   article.sequenceController?.setSite(e.target.value);
+   if(article.sequenceController)visualSelections[id]=article.sequenceController.selection();
+  }
+  if(e.target.matches("[data-rocket],[data-lander]")&&article.sequenceController)
+   visualSelections[id]=article.sequenceController.selection();
  });
  el.addEventListener("input",e=>{
   const id=e.target.closest("[data-cola-scenario]")?.dataset.colaScenario;
@@ -160,11 +169,19 @@ function installPanel(){
 }
 function renderScenarioPanels(el){
  orbitControllers.forEach(c=>c.destroy());orbitControllers=[];
+ sequenceControllers.forEach(c=>c.destroy());sequenceControllers=[];
  const list=el.querySelector("[data-cola-list]");
  const scenarios=findScenarios();
  list.innerHTML=scenarios.map(s=>scenarioMarkup(s)).join("");
  for(const article of list.querySelectorAll("[data-cola-scenario]")){
-  renderSiteNote(article);
+  const siteId=userState[article.dataset.colaScenario]?.site||"ksc";
+  const destination=scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario));
+  const sequence=mountMissionSequences(article.querySelector("[data-sequences-host]"),{
+   scenario:article.dataset.colaScenario,site:siteId,
+   latitude:destination?.lat,longitude:destination?.lon,
+   ...visualSelections[article.dataset.colaScenario]
+  });
+  article.sequenceController=sequence;sequenceControllers.push(sequence);
   const controller=mountOrbitAnimation(article.querySelector("[data-orbit-host]"),{
    scenario:article.dataset.colaScenario,moonEphemeris:moonPosition,
    departureUtc:scenarioTarget(scenarios.find(s=>s.id===article.dataset.colaScenario))?.time-5*DAY
@@ -173,12 +190,6 @@ function renderScenarioPanels(el){
   orbitControllers.push(controller);
   loadCatalogContext().then(data=>controller.setCatalog(data));
  }
-}
-function renderSiteNote(article){
- const id=article.dataset.colaScenario;
- const site=LAUNCH_SITES.find(s=>s.id===userState[id]?.site)||LAUNCH_SITES[0];
- article.querySelector("[data-cola-note]").textContent=
-  site.category+" · "+site.lat.toFixed(3)+"°, "+site.lon.toFixed(3)+"° · "+site.note;
 }
 function resultMarkup(target,candidates,holds){
  const shown=candidates.filter(c=>!c.held).slice(0,5);
