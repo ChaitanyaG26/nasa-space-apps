@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-RELEASE = "20261114-sunlit-halo-v17"
+RELEASE = "20261114-phone-scenarios-v18"
 
 
 class Assets(html.parser.HTMLParser):
@@ -103,6 +103,7 @@ def verify(base_url):
         "horizons-geocentric.mjs": "geocentricAt",
         "landing-sites.mjs": "HISTORIC_LANDING_SITES",
         "lunar-limb-halo.mjs": "haloLimbStrength",
+        "mobile-scenario-layout.mjs": "arrangeScenarioPanels",
         "moon-sky-3d.mjs": "createMoonSky3D",
         "mission-surface-3d.mjs": "loadMoonSiteGrid",
         "usgs-3dep.mjs": "decodeFloatTiff",
