@@ -1,3 +1,4 @@
+import {HISTORIC_LANDING_SITES,LANDING_ORGANIZATIONS,siteVector,readableLandingTime} from "./landing-sites.mjs";
 // NASA Lunar Reconnaissance Orbiter color mosaic (CGI Moon Kit), displayed on a globe.
 // https://svs.gsfc.nasa.gov/4720/ . Visual reference, not LOLA terrain hazards.
 export function initGlobe(canvas,onSelect) {
@@ -53,12 +54,72 @@ export function initGlobe(canvas,onSelect) {
  function draw(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*dpr),h=Math.round(canvas.clientHeight*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);gl.clearColor(.018,.043,.076,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.uniform1f(u("yaw"),yaw);gl.uniform1f(u("pitch"),pitch);gl.uniform1f(u("aspect"),w/h);gl.uniform1f(u("zoom"),zoom);gl.uniform3fv(u("sun"),sun);gl.drawElements(gl.TRIANGLES,indexes.length,gl.UNSIGNED_SHORT,0);projectMarker()}
  function view(p){let c=Math.cos(yaw),s=Math.sin(yaw),a=Math.cos(pitch),b=Math.sin(pitch);let x=c*p[0]+s*p[2],z=-s*p[0]+c*p[2];return [x,a*p[1]-b*z,b*p[1]+a*z]}
  function world(q){let a=Math.cos(pitch),b=Math.sin(pitch);let py=a*q[1]+b*q[2],pz=-b*q[1]+a*q[2];let c=Math.cos(yaw),s=Math.sin(yaw);return [c*q[0]-s*pz,py,s*q[0]+c*pz]}
- function projectMarker(){let p=[Math.cos(selected.lat*Math.PI/180)*Math.sin(selected.lon*Math.PI/180),Math.sin(selected.lat*Math.PI/180),Math.cos(selected.lat*Math.PI/180)*Math.cos(selected.lon*Math.PI/180)],q=view(p);let marker=document.getElementById("selectedMarker");if(!marker){marker=document.createElement("div");marker.id="selectedMarker";marker.style.cssText="position:absolute;pointer-events:none;width:14px;height:14px;background:#60faec;border:2px solid white;box-shadow:0 0 20px #25e9db;border-radius:50%;transform:translate(-50%,-50%);z-index:2";canvas.parentElement.appendChild(marker)}let radius=Math.min(canvas.clientWidth,canvas.clientHeight)*zoom/2;marker.style.display=q[2]>=0?"block":"none";marker.style.left=(canvas.clientWidth/2+q[0]*radius)+"px";marker.style.top=(canvas.clientHeight/2-q[1]*radius)+"px"}
+
+ // Accessible DOM markers share the exact sphere projection used for selecting.
+ // Their positions are reevaluated after every camera movement/zoom/resize.
+ const parent=canvas.parentElement;
+ const layer=document.createElement("div");layer.className="landing-site-layer";
+ layer.setAttribute("aria-label","Historical lunar landing sites");parent.appendChild(layer);
+ const tooltip=document.createElement("aside");tooltip.className="landing-site-tooltip";
+ tooltip.hidden=true;tooltip.setAttribute("role","status");parent.appendChild(tooltip);
+ const legend=document.createElement("div");legend.className="landing-site-legend";
+ legend.innerHTML='<strong>Historical landings</strong>'+
+  Object.entries(LANDING_ORGANIZATIONS).map(([key,org])=>
+   '<span><i style="--marker-color:'+org.color+'"></i>'+org.name+'</span>').join("")+
+  '<small>Markers: documented touchdown sites · hover for UTC details</small>';
+ parent.appendChild(legend);
+ const markers=HISTORIC_LANDING_SITES.map(site=>{
+  const element=document.createElement("button");
+  element.type="button";element.className="landing-site-marker";
+  element.style.setProperty("--marker-color",LANDING_ORGANIZATIONS[site.org].color);
+  element.title=site.name+" — "+readableLandingTime(site);
+  element.setAttribute("aria-label",site.name+" landing, "+readableLandingTime(site));
+  element.addEventListener("mouseenter",()=>{
+   tooltip.replaceChildren();
+   for(const [tag,txt] of [["strong",site.name],["span",LANDING_ORGANIZATIONS[site.org].name],
+    ["span",site.place],["time",readableLandingTime(site)]]){
+    const n=document.createElement(tag);n.textContent=txt;tooltip.appendChild(n);
+   }
+   tooltip.hidden=false;positionTooltip(element);
+  });
+  element.addEventListener("mouseleave",()=>tooltip.hidden=true);
+  element.addEventListener("focus",()=>{
+   element.dispatchEvent(new Event("mouseenter"));});
+  element.addEventListener("blur",()=>tooltip.hidden=true);
+  element.addEventListener("click",event=>{
+   event.stopPropagation();
+   selected={lat:site.lat,lon:site.lon};
+   onSelect(site.lat,site.lon);draw();
+  });
+  layer.appendChild(element);
+  return {site,element};
+ });
+ function positionTooltip(marker){
+  const r=marker.getBoundingClientRect(),pr=parent.getBoundingClientRect();
+  tooltip.style.left=Math.max(4,Math.min(pr.width-240,r.left-pr.left+16))+"px";
+  tooltip.style.top=Math.max(8,Math.min(pr.height-135,r.top-pr.top-8))+"px";
+ }
+ function projectHistoricMarkers(){
+  const rect=canvas.getBoundingClientRect(),pr=parent.getBoundingClientRect();
+  const radius=Math.min(rect.width,rect.height)*zoom/2;
+  for(const item of markers){
+   const q=view(siteVector(item.site.lat,item.site.lon));
+   const px=rect.left-pr.left+rect.width/2+q[0]*radius;
+   const py=rect.top-pr.top+rect.height/2-q[1]*radius;
+   const visible=q[2]>.015&&Math.hypot(q[0],q[1])<=1.005;
+   item.element.hidden=!visible;
+   if(visible){item.element.style.left=px+"px";item.element.style.top=py+"px";}
+  }
+ }
+
+ function projectMarker(){let p=[Math.cos(selected.lat*Math.PI/180)*Math.sin(selected.lon*Math.PI/180),Math.sin(selected.lat*Math.PI/180),Math.cos(selected.lat*Math.PI/180)*Math.cos(selected.lon*Math.PI/180)],q=view(p);let marker=document.getElementById("selectedMarker");if(!marker){marker=document.createElement("div");marker.id="selectedMarker";marker.style.cssText="position:absolute;pointer-events:none;width:14px;height:14px;background:#60faec;border:2px solid white;box-shadow:0 0 20px #25e9db;border-radius:50%;transform:translate(-50%,-50%);z-index:2";canvas.parentElement.appendChild(marker)}let radius=Math.min(canvas.clientWidth,canvas.clientHeight)*zoom/2;marker.style.display=q[2]>=0?"block":"none";marker.style.left=(canvas.clientWidth/2+q[0]*radius)+"px";marker.style.top=(canvas.clientHeight/2-q[1]*radius)+"px";projectHistoricMarkers();}
  let start=null;
  canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);start={x:e.clientX,y:e.clientY,yaw,pitch,moved:false}});
  canvas.addEventListener("pointermove",e=>{if(!start)return;let dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.abs(dx)+Math.abs(dy)>4)start.moved=true;yaw=start.yaw+dx*.008;pitch=Math.max(-1.55,Math.min(1.55,start.pitch+dy*.008));draw()});
  canvas.addEventListener("pointerup",e=>{if(!start)return;let moved=start.moved;start=null;if(moved)return;let r=canvas.getBoundingClientRect();let rad=Math.min(r.width,r.height)*zoom/2,x=(e.clientX-r.left-r.width/2)/rad,y=-(e.clientY-r.top-r.height/2)/rad;if(x*x+y*y>1)return;let p=world([x,y,Math.sqrt(1-x*x-y*y)]);let lat=Math.asin(Math.max(-1,Math.min(1,p[1])))*180/Math.PI,lon=Math.atan2(p[0],p[2])*180/Math.PI;selected={lat,lon};onSelect(lat,lon);draw()});
  canvas.addEventListener("wheel",e=>{e.preventDefault();zoom=Math.max(.3,Math.min(1.75,zoom*(e.deltaY>0?.92:1.08)));draw()},{passive:false});
  window.addEventListener("resize",draw);
- draw();return {setSun(x,y,z){sun=[x,y,z];draw()},focus(){yaw=0;pitch=-1.1;zoom=.9;draw()},setSite(lat,lon){selected={lat,lon};draw()}};
+ draw();return {setSun(x,y,z){sun=[x,y,z];draw()},focus(){yaw=0;pitch=-1.1;zoom=.9;draw()},
+ reset(){yaw=.4;pitch=-.67;zoom=.75;selected={lat:-89.5,lon:0};tooltip.hidden=true;draw();},
+ setSite(lat,lon){selected={lat,lon};draw()}};
 }
