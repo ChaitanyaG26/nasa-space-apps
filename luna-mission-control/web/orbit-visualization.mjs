@@ -119,6 +119,21 @@ function phaseWorld(t,scene,arrivalMoon){
  const p=idealizedMoonIntercept(t,arrivalMoon,scene.parkingKm);
  return mul(unit(p),sphereScale(Math.hypot(...p),arrivalMoon.distanceKm));
 }
+/** Every animation frame samples Moon state at its UTC time and at arrival.
+ * Site changes at the same UTC should not fabricate different Earth–Moon
+ * geocentric geometry; the local landing-site model changes separately.
+ */
+export function sampleScenarioFrame(scene,fraction,moonAt,sunAt=null){
+ const t=clamp(fraction,0,1);
+ if(!Number.isFinite(scene?.departureUtc)||!(scene?.flightDays>0)||typeof moonAt!=="function")
+  throw new RangeError("Valid scenario departure UTC, flight duration and Moon ephemeris are required");
+ const utc=scene.departureUtc+t*scene.flightDays*DAY;
+ const arrivalUtc=scene.departureUtc+scene.flightDays*DAY;
+ const arrivalMoon=moonAt(arrivalUtc),moon=moonAt(utc);
+ const spacecraftKm=idealizedMoonIntercept(t,arrivalMoon,scene.parkingKm??200);
+ return {utc,arrivalUtc,moon,arrivalMoon,
+  sun:typeof sunAt==="function"?sunAt(utc):null,spacecraftKm};
+}
 export function smoothTransferFractions(count=1200){
  return Array.from({length:count+1},(_,i)=>(1-Math.cos(Math.PI*i/count))/2);
 }
@@ -138,7 +153,7 @@ export function mountOrbitAnimation(host,{
  departureUtc=null,moonEphemeris=null,sunEphemeris=null
 }={}){
  if(!host||typeof document==="undefined")return{destroy(){},setCatalog(){},setTransfer(){}};
- const accent=scenario==="optimized"?"#59abff":"#f7d45c";
+ const accent=scenario==="date-fixed"?"#5cadf0":scenario==="site-fixed"?"#7ed4ba":"#f7d45c";
  host.innerHTML='<section class="orbit-scene orbit-scene-3d">'+
   '<div class="orbit-scene-top"><div><div class="orbit-title">Earth–Moon transfer</div>'+
   '<p class="orbit-subtitle">Drag to rotate · Shift+drag to pan · scroll to zoom</p></div>'+
@@ -220,8 +235,8 @@ export function mountOrbitAnimation(host,{
   ctx.fillStyle=gradient;ctx.fillRect(0,0,560,540);
   for(const st of STARFIELD){ctx.globalAlpha=st.a;ctx.fillStyle="#daedff";ctx.beginPath();ctx.arc(st.x,st.y,st.r,0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
-  const when=scene.departureUtc+t*scene.flightDays*DAY;
-  const atArrival=ephemAt(scene.departureUtc+scene.flightDays*DAY);
+  const sampled=sampleScenarioFrame(scene,t,ephemAt);
+  const when=sampled.utc,atArrival=sampled.arrivalMoon;
   let source=sunDirection(when),sunDistanceKm=149598262;
   if(typeof sunEphemeris==="function"){
    try{
@@ -236,12 +251,12 @@ export function mountOrbitAnimation(host,{
   drawLine(Array.from({length:97},(_,i)=>{
    const theta=i*Math.PI*2/96;return [23*Math.cos(theta),23*Math.sin(theta),0];
   }),"#487ba43e",1.1,[2,7]);
-  const ephem=ephemAt(when),moon=mul(skyDirection(ephem.ra,ephem.dec),sphereScale(ephem.distanceKm,atArrival.distanceKm));
+  const ephem=sampled.moon,moon=mul(skyDirection(ephem.ra,ephem.dec),sphereScale(ephem.distanceKm,atArrival.distanceKm));
   if(!cachedTrack)cachedTrack=smoothTransferFractions().map(f=>({t:f,p:phaseWorld(f,scene,atArrival)}));
   drawLine(cachedTrack.map(v=>v.p),"#7fd9f065",1.5,[5,7]);
   let lo=0,hi=cachedTrack.length;
   while(lo<hi){const mid=(lo+hi)>>1;if(cachedTrack[mid].t<t)lo=mid+1;else hi=mid;}
-  const ship=phaseWorld(t,scene,atArrival);
+  const ship=mul(unit(sampled.spacecraftKm),sphereScale(Math.hypot(...sampled.spacecraftKm),atArrival.distanceKm));
   ctx.shadowColor=accent;ctx.shadowBlur=7;
   drawLine([...cachedTrack.slice(0,Math.max(1,lo)).map(v=>v.p),ship],accent,3);
   ctx.shadowBlur=0;
@@ -308,30 +323,45 @@ export function mountOrbitAnimation(host,{
   host.dataset.catalogRecords=String(data?.records?.length||0);
   host.dataset.catalogSource=data?.source||"Unavailable";
  }
- function setEphemerides(moon,sun){
-  const arrival=scene.departureUtc+scene.flightDays*DAY;
-  let verified=false;
+ function officialCoverageAt(moon,sun){
   try{
-   const m=typeof moon==="function"?moon(arrival):null;
-   const sol=typeof sun==="function"?sun(arrival):null;
-   verified=Boolean(m&&sol&&Number.isFinite(m.distanceKm)&&Number.isFinite(sol.distanceKm));
-  }catch{/* Requested mission is outside the JPL cache window. */}
-  if(verified){
+   if(typeof moon!=="function"||typeof sun!=="function")return false;
+   for(const utc of [scene.departureUtc,scene.departureUtc+scene.flightDays*DAY]){
+    const m=moon(utc),sol=sun(utc);
+    if(!m||!sol||!Number.isFinite(m.distanceKm)||!Number.isFinite(sol.distanceKm))return false;
+   }
+   return true;
+  }catch{return false;}
+ }
+ function updateSourceTag(){
+  const valid=officialCoverageAt(moonEphemeris,sunEphemeris);
+  qs("[data-orbit-source]").textContent=valid?
+   "JPL Horizons Moon/Sun positions · UTC-interpolated ICRF vectors":
+   "Moon/Sun positions: analytic approximation (JPL date coverage unavailable)";
+  host.dataset.ephemerisQuality=valid?"jpl":"approximate";
+ }
+ function setEphemerides(moon,sun){
+  // Validate the *full interval*, not just arrival; never label extrapolated
+  // or out-of-cache start frames as JPL precision.
+  if(officialCoverageAt(moon,sun)){
    moonEphemeris=moon;sunEphemeris=sun;
-   qs("[data-orbit-source]").textContent=
-    "Moon/Sun: JPL Horizons ICRF vectors · 1 h Hermite interpolation";
   }else{
-   qs("[data-orbit-source]").textContent=
-    "Moon/Sun: approximate theory (JPL vectors outside mission date)";
+   sunEphemeris=null;
   }
+  updateSourceTag();
   cachedTrack=null;fitCamera();draw();
  }
- function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,departureUtc:launch}={}){
+ function setTransfer({flightDays:days,parkingKm:alt,moonDistanceKm:distance,
+  departureUtc:launch,preservePlayback=false}={}){
+  const wasPlaying=playing,oldT=t;
   if(Number.isFinite(alt)&&alt>=160&&alt<=2000)scene.parkingKm=alt;
   if(Number.isFinite(distance)&&distance>300000&&distance<450000)scene.moonDistanceKm=distance;
   scene.flightDays=Number.isFinite(days)&&days>0?days:idealTransferDays(scene.parkingKm,scene.moonDistanceKm);
   if(Number.isFinite(launch))scene.departureUtc=launch;
-  t=0;last=0;cachedTrack=null;playing=false;fitCamera();pauseText();draw();
+  // Arrival-ephemeris updates should not stop a playing animation.
+  t=preservePlayback?oldT:0;
+  playing=preservePlayback?wasPlaying:!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  last=0;cachedTrack=null;fitCamera();updateSourceTag();pauseText();draw();
  }
  function startDrag(e){canvas.setPointerCapture(e.pointerId);dragging={x:e.clientX,y:e.clientY,pan:e.shiftKey||e.button===2};}
  function moveDrag(e){
