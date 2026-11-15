@@ -1,5 +1,5 @@
 import {renderScientificInformation} from "./science-info.mjs";
-import "./launch-window.mjs?v=20261114-lander-sequence-v8";
+import "./launch-window.mjs?v=20261114-physics-ui-v10";
 import {initGlobe} from "./globe.js?v=20261114-terminator-v2";
 import {chartMarkup,resetCharts,attachChartInteractions,utcTicks,setChartsCursor} from "./science-charts.mjs?v=20261114-graphics-v2";
 import {advancePlaybackUtc,formatPlaybackUtc} from "./playback-clock.mjs?v=20261114-clock-v1";
@@ -245,8 +245,7 @@ function timeRibbon(title,samples,key){
 }
 function windows(samples){return timeRibbon("Geometric Earth visibility · teal = visible",samples,"earth_visible");}
 function metricSlot(index,key,content){
- return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'"><div class="metric-sequence">'+
-  String(index).padStart(2,"0")+' / 08</div>'+content+'</div>';
+ return '<div class="metric-slot metric-'+key+'" data-metric="'+key+'">'+content+'</div>';
 }
 function card(data,label){
  const m=data.metrics,s=data.samples;
@@ -345,7 +344,7 @@ setupScienceInformation();
 function render(){
  resetCharts();
  let html=lastResult?
-  '<div class="science-overview"><span class="science-overview-tag">NASA DATA + MODELS</span><p>Sun, Earth and terrain data inform these graphs. Power, thermal, radio and safety results are preliminary estimates.</p><button type="button" data-info-open class="science-overview-link">ⓘ View information &amp; sources</button></div>':"";
+  '<div class="science-overview"><span class="science-overview-tag">NASA data · engineering models</span><button type="button" data-info-open class="science-overview-link">Methods &amp; sources</button></div>':"";
  if(comparison){
   html+='<div class="science-compare-heading"><span>Original and alternative mission scenarios</span><button type="button" data-info-open>Comparison details</button></div>'+
    '<div class="cards scenario-compare">'+card(comparison.original,"ORIGINAL SELECTION")+
@@ -401,26 +400,7 @@ document.addEventListener("pointerdown",e=>{if(!e.target.closest(".optimize-trig
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!optimizeMenu.hidden){closeOptimizeMenu();$("optimize").focus();}});
 
 $("back").addEventListener("click",showGlobe);
-// Time animation evaluates the ephemeris at exact UTC steps: source vectors
-// are hourly NASA/JPL samples; intermediate positions are interpolated.
-const controls=document.createElement("div");controls.className="ephemeris-playback";
-controls.innerHTML='<button type="button" id="playEphemeris" aria-pressed="false">▶ Animate sky</button>'+
- '<small id="playbackStatus">JPL reference · interpolated frames</small>';
-$("time").closest("label").insertAdjacentElement("afterend",controls);
-let playing=false,timer=null;
-function stopPlayback(){playing=false;if(timer!==null)clearTimeout(timer);timer=null;$("playEphemeris").textContent="▶ Animate sky";$("playEphemeris").setAttribute("aria-pressed","false");}
-async function animateFrame(){
- if(!playing)return;
- const n=advancePlaybackUtc($("date").value,Number($("time").value),3);
- $("date").value=n.date;$("time").value=n.slot;$("timeLabel").textContent=formatPlaybackUtc(n.slot);
- setChartsCursor($("results"),n.iso);
- const available=await refreshPreview();
- if(!playing)return;
- if(!available){stopPlayback();$("playbackStatus").textContent="Stopped: NASA ephemeris unavailable at selected UTC";return;}
- timer=setTimeout(animateFrame,280);
-}
-$("playEphemeris").addEventListener("click",()=>{if(playing){stopPlayback();return;}playing=true;$("playEphemeris").textContent="Ⅱ Pause animation";$("playEphemeris").setAttribute("aria-pressed","true");$("playbackStatus").textContent="UTC · hourly NASA vectors, sub-hour interpolation";animateFrame();});
-$("time").addEventListener("input",()=>{stopPlayback();$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
-$("date").addEventListener("change",()=>{stopPlayback();refreshPreview()});
+$("time").addEventListener("input",()=>{$("timeLabel").textContent=formatPlaybackUtc(Number($("time").value));setChartsCursor($("results"),mission().landing_time);refreshPreview();});
+$("date").addEventListener("change",()=>refreshPreview());
 showCoords();refreshPreview();
 
