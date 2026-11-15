@@ -50,7 +50,7 @@ test("Descent scene uses measured LOLA and cached JPL reference where available"
  const launch=readFileSync(new URL("../web/launch-window.mjs",import.meta.url),"utf8");
  for(const term of ["loadPolarPatch","samplePolarHeightKm","normalizeTerrainProfile","descentAt","geometryAtUtc"])
   assert.ok(scene.includes(term),term);
- assert.match(launch,/landingUtc:destination\?\.time/);
+ assert.match(launch,/landingUtc:arrival/);
  assert.match(scene,/hazards unknown/);
  assert.match(scene,/LOLA 20 m local DEM/);
 });
