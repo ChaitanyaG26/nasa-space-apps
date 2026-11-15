@@ -16,7 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"web"/"assets"/"horizons-geocentric-icrf.json"
 UTC=timezone.utc
 START=datetime(2026,10,1,tzinfo=UTC)
-STOP=datetime(2027,3,1,tzinfo=UTC)
+STOP=datetime(2027,6,1,tzinfo=UTC)
 CHUNK=timedelta(days=14)
 STEP=timedelta(hours=1)
 ENDPOINT="https://ssd.jpl.nasa.gov/api/horizons.api"
