@@ -1,7 +1,8 @@
-# LUNA — Moon Mission Control
+# LUNA (Lunar Utility for Navigation and Analysis) — Moon Mission Control
 **Launch the interactive website at https://lunacontrol.earth/**
 
-<img width="1280" height="961" alt="image" src="https://github.com/user-attachments/assets/b0c353c1-f6a8-47d8-8ee3-cc73b1415e41" />
+<img width="4402" height="3375" alt="Untitled design" src="https://github.com/user-attachments/assets/e8d3d7fa-5eb1-4d62-b002-4033a4d3243b" />
+A photo of our team, GASA (the team member to the very right is Harry Jang and was photoshopped in WITHOUT AI).
 
 ## Table of Contents
 - [LUNA — Moon Mission Control](#luna--moon-mission-control)
@@ -9,6 +10,8 @@
 - [Mission and Relevance](#mission-and-relevance)
 - [Widget Usage Guide](#widget-usage-guide)
 - [Code and Limitations](#code-and-limitations)
+
+**All code was AI-generated to process the data and present it with graphs/animation. Nothing else was AI-generated.**
 
 ## Mission and Relevance
 The goal of our mission planner is to allow a visitor to quickly compare the efficacy of rough landing location and time parameters (ie, as in the possibility of a 1- to 35-day mission for those given inputs), and create two other alternatives (one which preserves the same landing location, if the priority is to search/analyze/observe that *specific* area, and one which preserves the same landing time, if the priority is to reach the Moon by that *specific* time). We achieve this through various factors, whilst providing a few details on how such can be achieved (ie, choosing a specific location as the launch point, an animation of the orbit of a chosen rocket with a chosen payload, and the launch time projections, among other things).
