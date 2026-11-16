@@ -1,8 +1,8 @@
 # LUNA (Lunar Utility for Navigation and Analysis) — Moon Mission Control
 **Launch the interactive website at https://lunacontrol.earth/**
-### **Code was AI-generated to process data and present it with graphs/animation. Nothing else was AI-generated.**
+### **Code was AI-generated to process NASA resources and present them. Nothing else was AI-generated.**
 
-<img width="4402" height="3375" alt="Untitled design" src="https://github.com/user-attachments/assets/e8d3d7fa-5eb1-4d62-b002-4033a4d3243b" />
+<img width="4402" height="2013" alt="Untitled design" src="https://github.com/user-attachments/assets/9f4891f8-3575-4e77-b662-766489e22304" />
 A photo of our team, GASA (the team member to the very right is Harry Jang and was photoshopped in WITHOUT AI).
 
 ## Table of Contents
