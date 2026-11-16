@@ -1,5 +1,5 @@
 # [LUNA — Moon Mission Control](https://lunacontrol.earth/)
-**Launch the Lunar Utility for Navigation and Analysis website at https://lunacontrol.earth/**
+**Launch the *L*unar *U*tility for *N*avigation and *A*nalysis website at https://lunacontrol.earth/**
 ### **Code was AI-generated to process and present NASA data. Nothing else was AI-generated.**
 
 <img width="4402" height="2013" alt="Untitled design" src="https://github.com/user-attachments/assets/9f4891f8-3575-4e77-b662-766489e22304" />
